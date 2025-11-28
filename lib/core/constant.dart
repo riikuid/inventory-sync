@@ -1,0 +1,23 @@
+// Config
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+final baseUrl = dotenv.env['BASE_URL'].toString();
+final baseApiUrl = dotenv.env['API_URL'].toString();
+const notificationIcon = '@mipmap/ic_launcher';
+const defaultImage = '';
+
+// Shared Preference Name
+const tokenPref = '_token';
+const visitPref = '_visit';
+const bookmarkCoordinatePref = '_bookmark_coordinate';
+const bookmarkCoordinateEditPref = '_bookmark_coordinate_edit';
+const allowNotificationPref = '_allow_notification';
+
+// Http
+const int timeoutRequest = 10; // in second
+const String timeoutMessage =
+    "Permintaan terlalu lama diproses. Silakan periksa internet Anda dan coba lagi.";
+const String noConnectionMessage =
+    "Tidak ada koneksi internet. Silakan periksa jaringan Anda dan coba lagi.";
+const String errorMessage =
+    "Terjadi kesalahan pada sistem. Silakan coba lagi nanti.";

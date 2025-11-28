@@ -1,0 +1,20 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_sync_apps/features/auth/presentations/blocs/auth_cubit/auth_cubit.dart';
+import 'package:inventory_sync_apps/features/auth/presentations/blocs/permission_cubit/permission_cubit.dart';
+
+class BlocSetting {
+  static List<BlocProvider> providers() {
+    return [
+      BlocProvider<AuthCubit>(
+        create: (BuildContext context) => AuthCubit()..authCheck(),
+      ),
+      BlocProvider<PermissionCubit>(
+        create: (BuildContext context) => PermissionCubit(),
+      ),
+      // BlocProvider<RefreshLayoutCubit>(
+      //   create: (BuildContext context) => RefreshLayoutCubit(),
+      // ),
+    ];
+  }
+}
