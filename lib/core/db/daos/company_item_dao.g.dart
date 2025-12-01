@@ -6,4 +6,7 @@ part of 'company_item_dao.dart';
 mixin _$CompanyItemDaoMixin on DatabaseAccessor<AppDatabase> {
   $CompanyItemsTable get companyItems => attachedDatabase.companyItems;
   $ProductsTable get products => attachedDatabase.products;
+  $VariantsTable get variants => attachedDatabase.variants;
+  $UnitsTable get units => attachedDatabase.units;
+  $BrandsTable get brands => attachedDatabase.brands;
 }

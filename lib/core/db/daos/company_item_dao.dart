@@ -6,10 +6,10 @@ import '../tables.dart'; // ini yg nge-export tables + generated
 
 part 'company_item_dao.g.dart';
 
-@DriftAccessor(tables: [CompanyItems, Products])
+@DriftAccessor(tables: [CompanyItems, Products, Variants, Units, Brands])
 class CompanyItemDao extends DatabaseAccessor<AppDatabase>
     with _$CompanyItemDaoMixin {
-  CompanyItemDao(AppDatabase db) : super(db);
+  CompanyItemDao(super.db);
 
   /// Cari berdasarkan company code atau nama produk
   Future<List<CompanyItemWithProduct>> searchByQuery(String query) async {
@@ -29,6 +29,51 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
           ),
         )
         .toList();
+  }
+
+  Stream<List<CompanyItemVariantRow>> watchVariantsWithStock(
+    String companyItemId,
+  ) {
+    // join variants (per company item) + brand + units aktif
+    final query =
+        (select(
+          variants,
+        )..where((v) => v.companyItemId.equals(companyItemId))).join([
+          leftOuterJoin(brands, brands.id.equalsExp(variants.brandId)),
+          leftOuterJoin(
+            units,
+            units.variantId.equalsExp(variants.id) &
+                units.status.equals('ACTIVE'),
+          ),
+        ]);
+
+    return query.watch().map((rows) {
+      final map = <String, CompanyItemVariantRow>{};
+
+      for (final row in rows) {
+        final v = row.readTable(variants);
+        final b = row.readTableOrNull(brands);
+        final u = row.readTableOrNull(units);
+
+        map.putIfAbsent(
+          v.id,
+          () => CompanyItemVariantRow(
+            variantId: v.id,
+            name: v.name,
+            brandName: b?.name,
+            defaultLocation: v.defaultLocation,
+            stock: 0,
+          ),
+        );
+
+        if (u != null) {
+          final current = map[v.id]!;
+          map[v.id] = current.copyWith(stock: current.stock + 1);
+        }
+      }
+
+      return map.values.toList();
+    });
   }
 
   Future<CompanyItem?> getById(String id) {
@@ -80,4 +125,30 @@ class CompanyItemWithProduct {
   final Product product;
 
   CompanyItemWithProduct({required this.item, required this.product});
+}
+
+class CompanyItemVariantRow {
+  final String variantId;
+  final String name;
+  final String? brandName;
+  final String? defaultLocation;
+  final int stock;
+
+  CompanyItemVariantRow({
+    required this.variantId,
+    required this.name,
+    this.brandName,
+    this.defaultLocation,
+    required this.stock,
+  });
+
+  CompanyItemVariantRow copyWith({int? stock}) {
+    return CompanyItemVariantRow(
+      variantId: variantId,
+      name: name,
+      brandName: brandName,
+      defaultLocation: defaultLocation,
+      stock: stock ?? this.stock,
+    );
+  }
 }

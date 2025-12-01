@@ -32,11 +32,21 @@ class SetupCompanyItemCubit extends Cubit<SetupCompanyItemState> {
         return;
       }
 
-      // ambil semua brand dari local DB (Drift via repository)
+      // ambil brand dari DB
       final brandRows = await inventoryRepo.getAllBrands();
-      // sesuaikan dengan return type-mu, misal List<BrandData>
       final brands = brandRows
           .map((b) => BrandOption(id: b.id, name: b.name))
+          .toList();
+
+      // aturan: tipe item hanya bisa diedit jika BELUM ada variant
+      final hasVariants = detail.variants.isNotEmpty;
+      final canEditType = !hasVariants;
+
+      // brand yang sudah dipakai variant lain
+      final usedBrandIds = detail.variants
+          .map((v) => v.brandId)
+          .whereType<String>()
+          .toSet()
           .toList();
 
       emit(
@@ -44,11 +54,12 @@ class SetupCompanyItemCubit extends Cubit<SetupCompanyItemState> {
           companyItemId: companyItemId,
           productName: detail.productName,
           companyCode: detail.companyCode,
-          isSet: null,
-          hasComponents: null,
+          // kalau sudah ada variant, pakai nilai isSet/hasComponents dari detail,
+          // kalau belum, biarkan null supaya user pilih pertama kali
+          isSet: hasVariants ? detail.isSet : null,
+          hasComponents: hasVariants ? detail.hasComponents : null,
           brandId: null,
           brandName: null,
-          // default: "<CODE> <PRODUCT>"
           variantName: '${detail.companyCode} ${detail.productName}',
           defaultLocation: null,
           specJson: null,
@@ -56,6 +67,8 @@ class SetupCompanyItemCubit extends Cubit<SetupCompanyItemState> {
           newComponents: const [],
           selectedExistingComponentIds: const [],
           brands: brands,
+          canEditType: canEditType,
+          usedBrandIds: usedBrandIds,
           isSaving: false,
         ),
       );
@@ -145,16 +158,24 @@ class SetupCompanyItemCubit extends Cubit<SetupCompanyItemState> {
 
   void onBrandSelected(BrandOption? brand) {
     final s = state;
-    if (s is! SetupCompanyItemLoaded) return;
+    if (s is! SetupCompanyItemLoaded || brand == null) return;
 
-    // hitung auto name sebelum & sesudah
+    // Jangan boleh pilih brand yang sudah dipakai
+    if (s.usedBrandIds.contains(brand.id)) {
+      emit(
+        const SetupCompanyItemError(
+          'Brand ini sudah dipakai untuk variant lain pada kode ini.',
+        ),
+      );
+      return;
+    }
+
     final oldBrandName = s.brandName;
     final autoBefore =
         (s.companyCode + ' ' + s.productName + ' ' + (oldBrandName ?? ''))
             .trim();
-    final autoAfter =
-        (s.companyCode + ' ' + s.productName + ' ' + (brand?.name ?? ''))
-            .trim();
+    final autoAfter = (s.companyCode + ' ' + s.productName + ' ' + brand.name)
+        .trim();
 
     final current = s.variantName;
 
@@ -162,8 +183,8 @@ class SetupCompanyItemCubit extends Cubit<SetupCompanyItemState> {
 
     emit(
       s.copyWith(
-        brandId: brand?.id,
-        brandName: brand?.name,
+        brandId: brand.id,
+        brandName: brand.name,
         variantName: shouldOverwrite ? autoAfter : current,
       ),
     );
@@ -183,6 +204,20 @@ class SetupCompanyItemCubit extends Cubit<SetupCompanyItemState> {
     }
     if (s.isSet == null || s.hasComponents == null) {
       emit(const SetupCompanyItemError('Pilih tipe item terlebih dahulu'));
+      return;
+    }
+
+    // Validasi Brand
+    if (s.brandId == null) {
+      emit(const SetupCompanyItemError('Pilih brand terlebih dahulu'));
+      return;
+    }
+    if (s.usedBrandIds.contains(s.brandId)) {
+      emit(
+        const SetupCompanyItemError(
+          'Sudah ada variant dengan brand ini untuk item ini.',
+        ),
+      );
       return;
     }
 

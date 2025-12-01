@@ -7,7 +7,7 @@ import 'package:inventory_sync_apps/features/inventory/data/inventory_repository
 
 import '../../../sync/data/sync_repository.dart';
 import '../bloc/product_list/product_list_cubit.dart';
-import 'company_item_list.dart';
+import 'company_item_list_screen.dart';
 import 'search_item_screen.dart';
 
 class ProductListScreen extends StatelessWidget {
@@ -61,38 +61,43 @@ class _ProductListViewState extends State<_ProductListView> {
         backgroundColor: cs.primary,
         foregroundColor: Colors.white,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildSearchBar(context),
-            const SizedBox(height: 16),
-            Expanded(
-              child: BlocBuilder<ProductListCubit, ProductListState>(
-                builder: (context, state) {
-                  if (state is ProductListLoading ||
-                      state is ProductListInitial) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (state is ProductListError) {
-                    return Center(child: Text('Error: ${state.message}'));
-                  } else if (state is ProductListEmpty) {
-                    return const Center(child: Text('Tidak ada produk.'));
-                  } else if (state is ProductListLoaded) {
-                    final products = state.products;
-                    return ListView.separated(
-                      itemCount: products.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final p = products[index];
-                        return _ProductCard(summary: p);
-                      },
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await context.read<ProductListCubit>().load();
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              _buildSearchBar(context),
+              const SizedBox(height: 16),
+              Expanded(
+                child: BlocBuilder<ProductListCubit, ProductListState>(
+                  builder: (context, state) {
+                    if (state is ProductListLoading ||
+                        state is ProductListInitial) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (state is ProductListError) {
+                      return Center(child: Text('Error: ${state.message}'));
+                    } else if (state is ProductListEmpty) {
+                      return const Center(child: Text('Tidak ada produk.'));
+                    } else if (state is ProductListLoaded) {
+                      final products = state.products;
+                      return ListView.separated(
+                        itemCount: products.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) {
+                          final p = products[index];
+                          return _ProductCard(summary: p);
+                        },
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

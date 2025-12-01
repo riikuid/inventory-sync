@@ -12,6 +12,7 @@ class BlocSetting {
       BlocProvider<PermissionCubit>(
         create: (BuildContext context) => PermissionCubit(),
       ),
+
       // BlocProvider<RefreshLayoutCubit>(
       //   create: (BuildContext context) => RefreshLayoutCubit(),
       // ),

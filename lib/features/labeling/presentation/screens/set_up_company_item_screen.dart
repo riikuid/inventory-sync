@@ -108,8 +108,12 @@ class _SetupBodyState extends State<_SetupBody> {
                 children: [
                   _buildHeader(loaded),
                   const SizedBox(height: 12),
-                  _buildTypeSection(context, loaded),
-                  const SizedBox(height: 16),
+
+                  if (loaded.canEditType) ...[
+                    _buildTypeSection(context, loaded),
+                    const SizedBox(height: 16),
+                  ],
+
                   _buildVariantSection(context, loaded),
                   const SizedBox(height: 16),
                   _buildPhotoSection(context, loaded),
@@ -221,7 +225,7 @@ class _SetupBodyState extends State<_SetupBody> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Variant Utama',
+              'Daftarkan Varian',
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
             ),
             const SizedBox(height: 12),
@@ -233,6 +237,7 @@ class _SetupBodyState extends State<_SetupBody> {
                   context,
                   state.brands,
                   state.brandId,
+                  state.usedBrandIds,
                 );
                 if (selected != null) {
                   cubit.onBrandSelected(selected);
@@ -449,13 +454,9 @@ class _SetupBodyState extends State<_SetupBody> {
     BuildContext context,
     List<BrandOption> brands,
     String? currentId,
+    List<String> usedBrandIds, // ⬅️ tambahan
   ) async {
     final controller = TextEditingController();
-    BrandOption? selected = brands.firstWhere(
-      (b) => b.id == currentId,
-      orElse: () =>
-          brands.isNotEmpty ? brands.first : BrandOption(id: '', name: ''),
-    );
 
     return showModalBottomSheet<BrandOption>(
       context: context,
@@ -516,15 +517,35 @@ class _SetupBodyState extends State<_SetupBody> {
                         itemCount: filtered.length,
                         itemBuilder: (ctx, index) {
                           final b = filtered[index];
-                          final isSelected = b.id == currentId;
+                          final isCurrent = b.id == currentId;
+                          final isUsed =
+                              usedBrandIds.contains(b.id) && !isCurrent;
+
                           return ListTile(
-                            title: Text(b.name),
-                            trailing: isSelected
+                            enabled: !isUsed,
+                            title: Text(
+                              b.name,
+                              style: TextStyle(
+                                color: isUsed ? Colors.grey : Colors.black,
+                              ),
+                            ),
+                            subtitle: isUsed
+                                ? const Text(
+                                    'Sudah dipakai variant lain',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  )
+                                : null,
+                            trailing: isCurrent
                                 ? const Icon(Icons.check, color: Colors.green)
                                 : null,
-                            onTap: () {
-                              Navigator.of(ctx).pop(b);
-                            },
+                            onTap: isUsed
+                                ? null
+                                : () {
+                                    Navigator.of(ctx).pop(b);
+                                  },
                           );
                         },
                       ),

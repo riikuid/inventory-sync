@@ -2,8 +2,6 @@ import 'package:drift/drift.dart';
 import 'package:inventory_sync_apps/core/db/app_database.dart';
 
 import '../../../core/db/daos/company_item_dao.dart';
-import '../../../core/db/daos/unit_dao.dart';
-import '../../../core/db/daos/variant_dao.dart';
 
 class InventoryRepository {
   final AppDatabase db;
@@ -219,6 +217,12 @@ class InventoryRepository {
       variants: variantSummaries,
     );
   }
+
+  Stream<List<CompanyItemVariantRow>> watchVariantsWithStockForItem(
+    String companyItemId,
+  ) {
+    return _companyItemDao.watchVariantsWithStock(companyItemId);
+  }
 }
 
 class ProductSummary {
@@ -281,6 +285,18 @@ class CompanyItemDetail {
     required this.isSet,
     required this.hasComponents,
   });
+
+  CompanyItemDetail copyWith({List<VariantSummary>? variants}) {
+    return CompanyItemDetail(
+      companyItemId: companyItemId,
+      companyCode: companyCode,
+      productId: productId,
+      productName: productName,
+      isSet: isSet,
+      hasComponents: hasComponents,
+      variants: variants ?? this.variants,
+    );
+  }
 }
 
 /// DTO variant di detail screen
@@ -288,6 +304,7 @@ class VariantSummary {
   final String variantId;
   final String name;
   final String? brandName;
+  final String? brandId;
   final String? defaultLocation;
   final int stock;
 
@@ -295,7 +312,25 @@ class VariantSummary {
     required this.variantId,
     required this.name,
     this.brandName,
+    this.brandId,
     this.defaultLocation,
     required this.stock,
   });
+
+  VariantSummary copyWith({
+    String? name,
+    String? brandName,
+    String? brandId,
+    String? defaultLocation,
+    int? stock,
+  }) {
+    return VariantSummary(
+      variantId: variantId,
+      name: name ?? this.name,
+      brandName: brandName ?? this.brandName,
+      brandId: brandId ?? this.brandId,
+      defaultLocation: defaultLocation ?? this.defaultLocation,
+      stock: stock ?? this.stock,
+    );
+  }
 }

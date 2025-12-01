@@ -33,7 +33,7 @@ class SetupCompanyItemLoaded extends SetupCompanyItemState {
   final bool? hasComponents;
 
   final String? brandId;
-  final String? brandName; // ⬅️ NEW
+  final String? brandName;
   final String variantName;
   final String? defaultLocation;
   final String? specJson;
@@ -42,7 +42,13 @@ class SetupCompanyItemLoaded extends SetupCompanyItemState {
   final List<ComponentInput> newComponents;
   final List<String> selectedExistingComponentIds;
 
-  final List<BrandOption> brands; // ⬅️ NEW
+  final List<BrandOption> brands;
+
+  /// NEW: apakah user boleh mengubah tipe item (set/single)
+  final bool canEditType;
+
+  /// NEW: brand apa saja yang sudah punya variant
+  final List<String> usedBrandIds;
 
   final bool isSaving;
 
@@ -53,14 +59,16 @@ class SetupCompanyItemLoaded extends SetupCompanyItemState {
     required this.isSet,
     required this.hasComponents,
     required this.brandId,
-    required this.brandName, // ⬅️ NEW
+    required this.brandName,
     required this.variantName,
     required this.defaultLocation,
     required this.specJson,
     required this.photoLocalPaths,
     required this.newComponents,
     required this.selectedExistingComponentIds,
-    required this.brands, // ⬅️ NEW
+    required this.brands,
+    required this.canEditType, // NEW
+    required this.usedBrandIds, // NEW
     this.isSaving = false,
   });
 
@@ -76,6 +84,8 @@ class SetupCompanyItemLoaded extends SetupCompanyItemState {
     List<ComponentInput>? newComponents,
     List<String>? selectedExistingComponentIds,
     List<BrandOption>? brands,
+    bool? canEditType,
+    List<String>? usedBrandIds,
     bool? isSaving,
   }) {
     return SetupCompanyItemLoaded(
@@ -94,6 +104,8 @@ class SetupCompanyItemLoaded extends SetupCompanyItemState {
       selectedExistingComponentIds:
           selectedExistingComponentIds ?? this.selectedExistingComponentIds,
       brands: brands ?? this.brands,
+      canEditType: canEditType ?? this.canEditType,
+      usedBrandIds: usedBrandIds ?? this.usedBrandIds,
       isSaving: isSaving ?? this.isSaving,
     );
   }
@@ -114,6 +126,8 @@ class SetupCompanyItemLoaded extends SetupCompanyItemState {
     newComponents,
     selectedExistingComponentIds,
     brands,
+    canEditType,
+    usedBrandIds,
     isSaving,
   ];
 }
