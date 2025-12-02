@@ -13,7 +13,8 @@ class CompanyItemListInitial extends CompanyItemListState {}
 class CompanyItemListLoading extends CompanyItemListState {}
 
 class CompanyItemListLoaded extends CompanyItemListState {
-  final List<CompanyItemSummary> items;
+  final List<CompanyItemListRow> items;
+
   const CompanyItemListLoaded(this.items);
 
   @override

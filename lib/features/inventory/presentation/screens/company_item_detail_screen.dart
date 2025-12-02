@@ -11,6 +11,7 @@ import '../../../labeling/presentation/bloc/setup_company_item/setup_company_ite
 import '../../../labeling/presentation/screens/label_set_screen.dart';
 import '../../../labeling/presentation/screens/set_up_company_item_screen.dart';
 import '../bloc/company_item_detail/company_item_detail_cubit.dart';
+import 'variant_detail_screen.dart';
 
 class CompanyItemDetailScreen extends StatelessWidget {
   final String companyItemId;
@@ -309,139 +310,175 @@ class _CompanyItemDetailView extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final v = detail.variants[index];
-        return Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+        return GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VariantDetailScreen(
+                variantId: v.variantId,
+                userId: 'USER_ID'.toString(),
+              ),
+            ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 10,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(4),
-                    color: v.stock > 0
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey.shade400,
+          child: Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      color: v.stock > 0
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey.shade400,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        v.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          if (v.brandName != null) ...[
-                            Icon(
-                              Icons.sell_outlined,
-                              size: 14,
-                              color: Colors.grey.shade600,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              v.brandName!,
-                              style: TextStyle(
-                                color: Colors.grey.shade700,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                          if (v.defaultLocation != null) ...[
-                            const SizedBox(width: 12),
-                            Icon(
-                              Icons.location_on_outlined,
-                              size: 14,
-                              color: Colors.grey.shade600,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              v.defaultLocation!,
-                              style: TextStyle(
-                                color: Colors.grey.shade700,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                          TextButton(
-                            onPressed: () {
-                              // TODO: ambil userId dari AuthCubit atau model user yang kamu punya
-                              final userId =
-                                  'CURRENT_USER_ID'; // sementara hardcode, nanti ganti
-
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => BlocProvider(
-                                    create: (ctx) => LabelSetCubit(
-                                      labelingRepository: ctx
-                                          .read<LabelingRepository>(),
-                                      variantId: v.variantId,
-                                      variantName: v.name,
-                                      brandName: v.brandName,
-                                      defaultLocation: v.defaultLocation,
-                                      userId: userId,
-                                    ),
-                                    child: const LabelSetScreen(),
-                                  ),
-                                ),
-                              );
-                            },
-                            child: const Text('Label as Set'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Row(
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          v.stock.toString(),
+                          v.name,
                           style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
                           ),
                         ),
-                        Text(
-                          'unit',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 12,
-                          ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            if (v.brandName != null) ...[
+                              Icon(
+                                Icons.sell_outlined,
+                                size: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                v.brandName!,
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                            if (v.defaultLocation != null) ...[
+                              const SizedBox(width: 12),
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                v.defaultLocation!,
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                            TextButton(
+                              onPressed: () {
+                                // TODO: ambil userId dari AuthCubit atau model user yang kamu punya
+                                final userId =
+                                    'CURRENT_USER_ID'; // sementara hardcode, nanti ganti
+
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => BlocProvider(
+                                      create: (ctx) => LabelSetCubit(
+                                        labelingRepository: ctx
+                                            .read<LabelingRepository>(),
+                                        variantId: v.variantId,
+                                        variantName: v.name,
+                                        brandName: v.brandName,
+                                        defaultLocation: v.defaultLocation,
+                                        userId: userId,
+                                      ),
+                                      child: const LabelSetScreen(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: const Text('Label as Set'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                // TODO: ambil userId dari AuthCubit atau model user yang kamu punya
+                                final userId =
+                                    'CURRENT_USER_ID'; // sementara hardcode, nanti ganti
+
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => BlocProvider(
+                                      create: (ctx) => LabelSetCubit(
+                                        labelingRepository: ctx
+                                            .read<LabelingRepository>(),
+                                        variantId: v.variantId,
+                                        variantName: v.name,
+                                        brandName: v.brandName,
+                                        defaultLocation: v.defaultLocation,
+                                        userId: userId,
+                                      ),
+                                      child: const LabelSetScreen(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: const Text('Label as Set'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    const SizedBox(width: 8),
-                    // PopupMenuButton<String>(
-                    //   onSelected: (value) {
-                    //     if (value == 'duplicate_brand') {
-                    //       _duplicateVariantToOtherBrand(context, v);
-                    //     }
-                    //   },
-                    //   itemBuilder: (ctx) => [
-                    //     const PopupMenuItem(
-                    //       value: 'duplicate_brand',
-                    //       child: Text('Duplikat ke Brand lain'),
-                    //     ),
-                    //   ],
-                    // ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(width: 12),
+                  Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            v.stock.toString(),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            'unit',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 8),
+                      // PopupMenuButton<String>(
+                      //   onSelected: (value) {
+                      //     if (value == 'duplicate_brand') {
+                      //       _duplicateVariantToOtherBrand(context, v);
+                      //     }
+                      //   },
+                      //   itemBuilder: (ctx) => [
+                      //     const PopupMenuItem(
+                      //       value: 'duplicate_brand',
+                      //       child: Text('Duplikat ke Brand lain'),
+                      //     ),
+                      //   ],
+                      // ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );

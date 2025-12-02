@@ -21,9 +21,12 @@ class CompanyItemListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (ctx) =>
-          CompanyItemListCubit(ctx.read<InventoryRepository>())
-            ..load(productId),
+      create: (_) {
+        final repo = context.read<InventoryRepository>();
+        final cubit = CompanyItemListCubit(repo);
+        cubit.watch(productId: productId);
+        return cubit;
+      },
       child: _CompanyItemListView(productName: productName),
     );
   }
@@ -81,7 +84,7 @@ class _CompanyItemListView extends StatelessWidget {
                       ),
                     ),
                     title: Text('Kode ${ci.companyCode}'),
-                    subtitle: Text('${ci.stock} unit aktif'),
+                    subtitle: Text('${ci.totalUnits} unit'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       Navigator.of(context).push(

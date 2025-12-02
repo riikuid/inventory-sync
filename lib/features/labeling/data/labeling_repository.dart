@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:inventory_sync_apps/core/db/app_database.dart';
+import 'package:inventory_sync_apps/features/labeling/data/models/label_component_result.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/db/daos/company_item_dao.dart';
@@ -8,6 +9,8 @@ import '../../../core/db/daos/unit_dao.dart';
 import '../../../core/db/daos/variant_component_dao.dart';
 import '../../../core/db/daos/variant_dao.dart';
 import '../../../core/db/daos/variant_photo_dao.dart';
+import 'models/assembly_result.dart';
+import 'models/scan_unit_result.dart';
 
 class LabelingRepository {
   final AppDatabase db;
@@ -195,6 +198,135 @@ class LabelingRepository {
 
     await _unitDao.insertUnit(companion);
     return unitId;
+  }
+
+  @override
+  Future<LabelComponentResult> createComponentUnits({
+    required String variantId,
+    required String componentId,
+    required int quantity,
+    String? location,
+    required String userId,
+  }) async {
+    final now = DateTime.now();
+    final uuid = const Uuid();
+
+    final List<String> generatedQr = [];
+    final List<UnitsCompanion> entries = [];
+
+    for (int i = 0; i < quantity; i++) {
+      final unitId = uuid.v4();
+      // Sementara format QR simple; nanti bisa kamu ganti pakai skema final
+      final qr = 'U-$unitId';
+      generatedQr.add(qr);
+
+      entries.add(
+        UnitsCompanion(
+          id: Value(unitId),
+          variantId: Value(variantId),
+          componentId: Value(componentId),
+          parentUnitId: const Value(null),
+          qrValue: Value(qr),
+          status: const Value('ACTIVE'),
+          location: Value(location),
+          printCount: const Value(0),
+          lastPrintedAt: const Value(null),
+          createdBy: Value(userId),
+          updatedBy: Value(userId),
+          lastPrintedBy: const Value(null),
+          syncedAt: const Value(null),
+          lastModifiedAt: Value(now),
+          needSync: const Value(true),
+          createdAt: Value(now),
+          updatedAt: Value(now),
+        ),
+      );
+    }
+
+    await _unitDao.insertUnits(entries);
+
+    return LabelComponentResult(
+      generatedCount: quantity,
+      sampleQrValue: generatedQr.isNotEmpty ? generatedQr.first : null,
+    );
+  }
+
+  @override
+  Future<ScanUnitResult?> scanUnitByQr(String qrValue) async {
+    final joined = await _unitDao.findByQrWithJoins(qrValue);
+    if (joined == null) return null;
+
+    final u = joined.unit;
+    final c = joined.component;
+    final v = joined.variant;
+
+    return ScanUnitResult(
+      unitId: u.id,
+      qrValue: u.qrValue,
+      status: u.status,
+      componentId: c?.id,
+      componentName: c?.name,
+      variantId: v?.id,
+      variantName: v?.name,
+    );
+  }
+
+  @override
+  Future<AssemblyResult> assembleComponents({
+    required String variantId,
+    required List<String> componentUnitIds,
+    required String userId,
+    String? location,
+  }) async {
+    if (componentUnitIds.length < 2) {
+      throw Exception('Minimal butuh 2 komponen untuk assembly');
+    }
+
+    final now = DateTime.now();
+    final uuid = const Uuid();
+
+    // Jalankan dalam transaction supaya konsisten
+    return _unitDao.transaction(() async {
+      // 1) Buat unit SET baru
+      final parentId = uuid.v4();
+      final parentQr = 'SET-$parentId'; // sementara, silakan ganti pattern
+
+      final parentEntry = UnitsCompanion(
+        id: Value(parentId),
+        variantId: Value(variantId),
+        componentId: const Value(null),
+        parentUnitId: const Value(null),
+        qrValue: Value(parentQr),
+        status: const Value('ACTIVE'),
+        location: Value(location),
+        printCount: const Value(0),
+        lastPrintedAt: const Value(null),
+        createdBy: Value(userId),
+        updatedBy: Value(userId),
+        lastPrintedBy: const Value(null),
+        syncedAt: const Value(null),
+        lastModifiedAt: Value(now),
+        needSync: const Value(true),
+        createdAt: Value(now),
+        updatedAt: Value(now),
+      );
+
+      final parentUnit = await _unitDao.insertParentUnit(parentEntry);
+
+      // 2) Tandai semua komponen jadi BOUND + set parent_unit_id
+      await _unitDao.bindUnitsToParent(
+        parentUnitId: parentUnit.id,
+        componentUnitIds: componentUnitIds,
+        userId: userId,
+        now: now,
+      );
+
+      return AssemblyResult(
+        parentUnitId: parentUnit.id,
+        parentQrValue: parentUnit.qrValue,
+        boundComponentUnitIds: componentUnitIds,
+      );
+    });
   }
 }
 

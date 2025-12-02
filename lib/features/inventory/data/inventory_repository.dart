@@ -1,7 +1,8 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide Component;
 import 'package:inventory_sync_apps/core/db/app_database.dart';
 
 import '../../../core/db/daos/company_item_dao.dart';
+import '../../../core/db/daos/variant_dao.dart';
 
 class InventoryRepository {
   final AppDatabase db;
@@ -9,7 +10,7 @@ class InventoryRepository {
   InventoryRepository(this.db);
 
   CompanyItemDao get _companyItemDao => db.companyItemDao;
-  // VariantDao get _variantDao => db.variantDao;
+  VariantDao get _variantDao => db.variantDao;
   // UnitDao get _unitDao => db.unitDao;
 
   Future<List<Brand>> getAllBrands() async {
@@ -218,10 +219,62 @@ class InventoryRepository {
     );
   }
 
+  Stream<List<CompanyItemListRow>> watchCompanyItems({String? productId}) {
+    return _companyItemDao.watchCompanyItemsWithStock(productId: productId);
+  }
+
   Stream<List<CompanyItemVariantRow>> watchVariantsWithStockForItem(
     String companyItemId,
   ) {
     return _companyItemDao.watchVariantsWithStock(companyItemId);
+  }
+
+  Stream<VariantDetailRow?> watchVariantDetail(String variantId) {
+    return _variantDao.watchVariantDetail(variantId);
+  }
+
+  Future<List<Component>> getComponentsForProduct(String productId) {
+    return _variantDao.getComponentsByProduct(productId);
+  }
+
+  Future<Component> createComponentForVariantProduct({
+    required String productId,
+    required String? brandId,
+    required String name,
+    String? manufCode,
+    String? specJson,
+  }) {
+    return _variantDao.createComponentForProduct(
+      productId: productId,
+      brandId: brandId,
+      name: name,
+      manufCode: manufCode,
+      specJson: specJson,
+    );
+  }
+
+  Future<void> attachComponentToVariant({
+    required String variantId,
+    required String componentId,
+  }) {
+    return _variantDao.attachComponentToVariant(
+      variantId: variantId,
+      componentId: componentId,
+    );
+  }
+
+  Future<void> detachComponentFromVariant({
+    required String variantId,
+    required String componentId,
+  }) {
+    return _variantDao.detachComponentFromVariant(
+      variantId: variantId,
+      componentId: componentId,
+    );
+  }
+
+  Future<void> deleteComponent(String componentId) {
+    return _variantDao.deleteComponent(componentId);
   }
 }
 

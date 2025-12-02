@@ -31,6 +31,56 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
         .toList();
   }
 
+  Stream<List<CompanyItemListRow>> watchCompanyItemsWithStock({
+    String? productId, // optional, kalau mau filter per product
+  }) {
+    final base = select(companyItems).join([
+      innerJoin(products, products.id.equalsExp(companyItems.productId)),
+      leftOuterJoin(
+        variants,
+        variants.companyItemId.equalsExp(companyItems.id),
+      ),
+      leftOuterJoin(
+        units,
+        units.variantId.equalsExp(variants.id) & units.status.equals('ACTIVE'),
+      ),
+    ]);
+
+    if (productId != null) {
+      base.where(products.id.equals(productId));
+    }
+
+    return base.watch().map((rows) {
+      final map = <String, CompanyItemListRow>{};
+
+      for (final row in rows) {
+        final ci = row.readTable(companyItems);
+        final p = row.readTable(products);
+        final u = row.readTableOrNull(units);
+
+        map.putIfAbsent(
+          ci.id,
+          () => CompanyItemListRow(
+            companyItemId: ci.id,
+            companyCode: ci.companyCode,
+            productName: p.name,
+            categoryName:
+                null, // atau ambil dari join category kalau kamu tambahkan
+            totalUnits: 0,
+          ),
+        );
+
+        if (u != null) {
+          final current = map[ci.id]!;
+          map[ci.id] = current.copyWith(totalUnits: current.totalUnits + 1);
+        }
+      }
+
+      return map.values.toList()
+        ..sort((a, b) => a.companyCode.compareTo(b.companyCode));
+    });
+  }
+
   Stream<List<CompanyItemVariantRow>> watchVariantsWithStock(
     String companyItemId,
   ) {
@@ -149,6 +199,32 @@ class CompanyItemVariantRow {
       brandName: brandName,
       defaultLocation: defaultLocation,
       stock: stock ?? this.stock,
+    );
+  }
+}
+
+class CompanyItemListRow {
+  final String companyItemId;
+  final String companyCode;
+  final String productName;
+  final String? categoryName; // kalau mau sekalian
+  final int totalUnits; // total unit aktif untuk kode ini
+
+  CompanyItemListRow({
+    required this.companyItemId,
+    required this.companyCode,
+    required this.productName,
+    this.categoryName,
+    required this.totalUnits,
+  });
+
+  CompanyItemListRow copyWith({int? totalUnits}) {
+    return CompanyItemListRow(
+      companyItemId: companyItemId,
+      companyCode: companyCode,
+      productName: productName,
+      categoryName: categoryName,
+      totalUnits: totalUnits ?? this.totalUnits,
     );
   }
 }
