@@ -197,15 +197,15 @@ class _SearchResultCard extends StatelessWidget {
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'ID: ${item.companyItemId}',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    // const SizedBox(height: 4),
+                    // Text(
+                    //   'ID: ${item.companyItemId}',
+                    //   style: TextStyle(
+                    //     color: Colors.grey.shade600,
+                    //     fontSize: 12,
+                    //   ),
+                    //   overflow: TextOverflow.ellipsis,
+                    // ),
                   ],
                 ),
               ),

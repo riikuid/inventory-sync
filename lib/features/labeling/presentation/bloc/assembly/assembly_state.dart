@@ -1,60 +1,59 @@
 // lib/features/labeling/presentation/bloc/assembly/assembly_state.dart
-import 'package:equatable/equatable.dart';
 
-import '../../../data/models/scan_unit_result.dart';
-import '../../../data/models/assembly_result.dart';
+import 'package:equatable/equatable.dart';
 
 class AssemblyState extends Equatable {
   @override
   List<Object?> get props => [];
 }
 
-class AssemblyInitial extends AssemblyState {}
-
 class AssemblyReady extends AssemblyState {
   final String variantId;
   final String variantName;
 
-  final ScanUnitResult? componentA;
-  final ScanUnitResult? componentB;
+  // ⬇️ komponen yg wajib ada di set
+  final List<String> requiredComponentIds;
+
+  // map: componentId -> hasil scan (tipe bebas, ikut return scanUnitByQr)
+  final Map<String, dynamic> scannedByComponentId;
 
   final bool isSaving;
-  final AssemblyResult? assemblyResult;
   final String? errorMessage;
+  final dynamic assemblyResult; // tipe sesuai hasil assembleComponents
 
-  bool get canAssemble =>
-      componentA != null &&
-      componentB != null &&
-      !isSaving &&
-      assemblyResult == null;
+  bool get isCompleted =>
+      requiredComponentIds.isNotEmpty &&
+      scannedByComponentId.length == requiredComponentIds.length;
+
+  bool get canAssemble => !isSaving && isCompleted;
 
   AssemblyReady({
     required this.variantId,
     required this.variantName,
-    this.componentA,
-    this.componentB,
+    required this.requiredComponentIds,
+    Map<String, dynamic>? scannedByComponentId,
     this.isSaving = false,
-    this.assemblyResult,
     this.errorMessage,
-  });
+    this.assemblyResult,
+  }) : scannedByComponentId = scannedByComponentId ?? {};
 
   AssemblyReady copyWith({
-    ScanUnitResult? componentA,
-    bool clearComponentA = false,
-    ScanUnitResult? componentB,
-    bool clearComponentB = false,
+    String? variantId,
+    String? variantName,
+    List<String>? requiredComponentIds,
+    Map<String, dynamic>? scannedByComponentId,
     bool? isSaving,
-    AssemblyResult? assemblyResult,
     String? errorMessage,
+    dynamic assemblyResult,
   }) {
     return AssemblyReady(
-      variantId: variantId,
-      variantName: variantName,
-      componentA: clearComponentA ? null : (componentA ?? this.componentA),
-      componentB: clearComponentB ? null : (componentB ?? this.componentB),
+      variantId: variantId ?? this.variantId,
+      variantName: variantName ?? this.variantName,
+      requiredComponentIds: requiredComponentIds ?? this.requiredComponentIds,
+      scannedByComponentId: scannedByComponentId ?? this.scannedByComponentId,
       isSaving: isSaving ?? this.isSaving,
-      assemblyResult: assemblyResult ?? this.assemblyResult,
       errorMessage: errorMessage,
+      assemblyResult: assemblyResult ?? this.assemblyResult,
     );
   }
 
@@ -62,16 +61,17 @@ class AssemblyReady extends AssemblyState {
   List<Object?> get props => [
     variantId,
     variantName,
-    componentA,
-    componentB,
+    requiredComponentIds,
+    scannedByComponentId,
     isSaving,
-    assemblyResult,
     errorMessage,
+    assemblyResult,
   ];
 }
 
 class AssemblyError extends AssemblyState {
   final String message;
+
   AssemblyError(this.message);
 
   @override

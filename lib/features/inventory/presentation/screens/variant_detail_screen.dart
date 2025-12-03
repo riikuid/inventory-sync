@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
 import '../../../../core/db/app_database.dart';
 import '../../../../core/db/daos/variant_dao.dart';
+import '../../../../shared/widgets/primary_button.dart';
 import '../../../labeling/data/labeling_repository.dart';
 import '../../../labeling/presentation/bloc/label_set/label_state_cubit.dart';
 import '../../../labeling/presentation/screens/label_set_screen.dart';
@@ -80,6 +81,7 @@ class _VariantDetailView extends StatelessWidget {
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
             ),
+            bottomNavigationBar: _buildLabelingActions(context, detail),
             body: Stack(
               children: [
                 ListView(
@@ -90,9 +92,9 @@ class _VariantDetailView extends StatelessWidget {
                     if (isSet) ...[
                       _buildComponentsSection(context, detail),
                       const SizedBox(height: 16),
-                      _buildLabelingActionsForSet(context, detail),
+                      // _buildLabelingActionsForSet(context, detail),
                     ] else ...[
-                      _buildLabelingActionsForSingle(context, detail),
+                      // _buildLabelingActionsForSingle(context, detail),
                     ],
                     const SizedBox(height: 16),
                     _buildUnitSummary(context, detail),
@@ -321,12 +323,147 @@ class _VariantDetailView extends StatelessWidget {
                               builder: (_) => AssemblyScreen(
                                 variantId: d.variantId,
                                 variantName: d.name,
+                                componentIds: d.components
+                                    .map((c) => c.componentId)
+                                    .toList(),
                                 userId: userId,
                               ),
                             ),
                           );
                         },
                   child: const Text('Assembly'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabelingActions(BuildContext context, VariantDetailRow d) {
+    final labelingRepo = context.read<LabelingRepository>();
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.onPrimary,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0x10000000),
+            blurRadius: 10,
+            offset: const Offset(0, -1),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CustomButton(
+              height: 40,
+              elevation: 0,
+              color: AppColors.secondary,
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => BlocProvider(
+                      create: (ctx) => LabelSetCubit(
+                        labelingRepository: labelingRepo,
+                        variantId: d.variantId,
+                        variantName: d.name,
+                        brandName: d.brandName,
+                        defaultLocation: d.defaultLocation,
+                        userId: userId,
+                      ),
+                      child: const LabelSetScreen(),
+                    ),
+                  ),
+                );
+              },
+              child: Text(
+                'Label as Set',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: CustomButton(
+                    height: 40,
+                    elevation: 0,
+                    color: AppColors.surface,
+                    borderColor: AppColors.primary,
+                    onPressed: d.components.isEmpty
+                        ? null
+                        : () async {
+                            // pilih komponen dulu baru masuk LabelComponentScreen
+                            final comp = await _pickComponentForLabel(
+                              context,
+                              d,
+                            );
+                            if (comp == null) return;
+
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => LabelComponentScreen(
+                                  variantId: d.variantId,
+                                  variantName: d.name,
+                                  componentId: comp.componentId,
+                                  componentName: comp.name,
+                                  defaultLocation: d.defaultLocation,
+                                  userId: userId,
+                                ),
+                              ),
+                            );
+                          },
+                    child: Text(
+                      'Label Component',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+                Expanded(
+                  child: CustomButton(
+                    height: 40,
+                    elevation: 0,
+                    color: AppColors.surface,
+                    borderColor: AppColors.primary,
+                    onPressed: d.components.length < 2
+                        ? null
+                        : () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => AssemblyScreen(
+                                  variantId: d.variantId,
+                                  variantName: d.name,
+                                  componentIds: d.components
+                                      .map((c) => c.componentId)
+                                      .toList(),
+                                  userId: userId,
+                                ),
+                              ),
+                            );
+                          },
+                    child: Text(
+                      'Gabungkan',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

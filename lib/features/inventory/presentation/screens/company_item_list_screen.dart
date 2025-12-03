@@ -67,23 +67,26 @@ class _CompanyItemListView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.secondary.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        ci.companyCode,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                    // leading: Container(
+                    //   padding: const EdgeInsets.symmetric(
+                    //     horizontal: 12,
+                    //     vertical: 8,
+                    //   ),
+                    //   decoration: BoxDecoration(
+                    //     color: Theme.of(
+                    //       context,
+                    //     ).colorScheme.secondary.withOpacity(0.15),
+                    //     borderRadius: BorderRadius.circular(8),
+                    //   ),
+                    //   child: Text(
+                    //     ci.companyCode,
+                    //     style: const TextStyle(fontWeight: FontWeight.bold),
+                    //   ),
+                    // ),
+                    title: Text(
+                      ci.companyCode,
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    title: Text('Kode ${ci.companyCode}'),
                     subtitle: Text('${ci.totalUnits} unit'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {

@@ -384,56 +384,56 @@ class _CompanyItemDetailView extends StatelessWidget {
                                 ),
                               ),
                             ],
-                            TextButton(
-                              onPressed: () {
-                                // TODO: ambil userId dari AuthCubit atau model user yang kamu punya
-                                final userId =
-                                    'CURRENT_USER_ID'; // sementara hardcode, nanti ganti
+                            // TextButton(
+                            //   onPressed: () {
+                            //     // TODO: ambil userId dari AuthCubit atau model user yang kamu punya
+                            //     final userId =
+                            //         'CURRENT_USER_ID'; // sementara hardcode, nanti ganti
 
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => BlocProvider(
-                                      create: (ctx) => LabelSetCubit(
-                                        labelingRepository: ctx
-                                            .read<LabelingRepository>(),
-                                        variantId: v.variantId,
-                                        variantName: v.name,
-                                        brandName: v.brandName,
-                                        defaultLocation: v.defaultLocation,
-                                        userId: userId,
-                                      ),
-                                      child: const LabelSetScreen(),
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: const Text('Label as Set'),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                // TODO: ambil userId dari AuthCubit atau model user yang kamu punya
-                                final userId =
-                                    'CURRENT_USER_ID'; // sementara hardcode, nanti ganti
+                            //     Navigator.of(context).push(
+                            //       MaterialPageRoute(
+                            //         builder: (_) => BlocProvider(
+                            //           create: (ctx) => LabelSetCubit(
+                            //             labelingRepository: ctx
+                            //                 .read<LabelingRepository>(),
+                            //             variantId: v.variantId,
+                            //             variantName: v.name,
+                            //             brandName: v.brandName,
+                            //             defaultLocation: v.defaultLocation,
+                            //             userId: userId,
+                            //           ),
+                            //           child: const LabelSetScreen(),
+                            //         ),
+                            //       ),
+                            //     );
+                            //   },
+                            //   child: const Text('Label as Set'),
+                            // ),
+                            // TextButton(
+                            //   onPressed: () {
+                            //     // TODO: ambil userId dari AuthCubit atau model user yang kamu punya
+                            //     final userId =
+                            //         'CURRENT_USER_ID'; // sementara hardcode, nanti ganti
 
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => BlocProvider(
-                                      create: (ctx) => LabelSetCubit(
-                                        labelingRepository: ctx
-                                            .read<LabelingRepository>(),
-                                        variantId: v.variantId,
-                                        variantName: v.name,
-                                        brandName: v.brandName,
-                                        defaultLocation: v.defaultLocation,
-                                        userId: userId,
-                                      ),
-                                      child: const LabelSetScreen(),
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: const Text('Label as Set'),
-                            ),
+                            //     Navigator.of(context).push(
+                            //       MaterialPageRoute(
+                            //         builder: (_) => BlocProvider(
+                            //           create: (ctx) => LabelSetCubit(
+                            //             labelingRepository: ctx
+                            //                 .read<LabelingRepository>(),
+                            //             variantId: v.variantId,
+                            //             variantName: v.name,
+                            //             brandName: v.brandName,
+                            //             defaultLocation: v.defaultLocation,
+                            //             userId: userId,
+                            //           ),
+                            //           child: const LabelSetScreen(),
+                            //         ),
+                            //       ),
+                            //     );
+                            //   },
+                            //   child: const Text('Label as Set'),
+                            // ),
                           ],
                         ),
                       ],

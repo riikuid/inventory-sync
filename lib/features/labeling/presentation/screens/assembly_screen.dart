@@ -1,9 +1,9 @@
-// lib/features/labeling/presentation/screens/assembly_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
 
+import '../../data/labeling_repository.dart';
 import '../../data/models/assembly_result.dart';
 import '../../data/models/scan_unit_result.dart';
 import '../bloc/assembly/assembly_cubit.dart';
@@ -13,10 +13,12 @@ class AssemblyScreen extends StatelessWidget {
   final String variantId;
   final String variantName;
   final String userId;
+  final List<String> componentIds;
 
   const AssemblyScreen({
     super.key,
     required this.variantId,
+    required this.componentIds,
     required this.variantName,
     required this.userId,
   });
@@ -25,9 +27,10 @@ class AssemblyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (ctx) => AssemblyCubit(
-        labelingRepository: ctx.read(),
+        labelingRepository: ctx.read<LabelingRepository>(),
         variantId: variantId,
         variantName: variantName,
+        componentIds: componentIds,
         userId: userId,
       ),
       child: const _AssemblyView(),
@@ -43,14 +46,12 @@ class _AssemblyView extends StatefulWidget {
 }
 
 class _AssemblyViewState extends State<_AssemblyView> {
-  final _qrAController = TextEditingController();
-  final _qrBController = TextEditingController();
+  final _qrController = TextEditingController();
   final _locationCtrl = TextEditingController();
 
   @override
   void dispose() {
-    _qrAController.dispose();
-    _qrBController.dispose();
+    _qrController.dispose();
     _locationCtrl.dispose();
     super.dispose();
   }
@@ -117,7 +118,8 @@ class _AssemblyViewState extends State<_AssemblyView> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Satukan beberapa unit komponen menjadi 1 unit set.',
+          'Satukan beberapa unit komponen menjadi 1 unit set.\n'
+          'Scan QR untuk setiap komponen yang menjadi bagian dari set ini.',
           style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
         ),
       ],
@@ -126,6 +128,8 @@ class _AssemblyViewState extends State<_AssemblyView> {
 
   Widget _buildScanSection(BuildContext context, AssemblyReady s) {
     final cubit = context.read<AssemblyCubit>();
+    final total = s.requiredComponentIds.length;
+    final scannedCount = s.scannedByComponentId.length;
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -138,92 +142,89 @@ class _AssemblyViewState extends State<_AssemblyView> {
               'Scan Komponen',
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Sudah discan: $scannedCount / $total komponen',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+            ),
             const SizedBox(height: 12),
-            // Component A
-            TextField(
-              controller: _qrAController,
-              decoration: InputDecoration(
-                labelText: 'QR Komponen A',
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.qr_code_scanner),
-                  onPressed: () async {
-                    // TODO: ganti dengan QR scanner beneran
-                    final qr = _qrAController.text.trim();
-                    if (qr.isNotEmpty) {
-                      await cubit.scanComponentA(qr);
-                    }
-                  },
-                ),
-                border: const OutlineInputBorder(),
-              ),
-              onSubmitted: (value) async {
-                final qr = value.trim();
-                if (qr.isNotEmpty) {
-                  await cubit.scanComponentA(qr);
-                }
+
+            // List status komponen
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: s.requiredComponentIds.length,
+              itemBuilder: (context, index) {
+                final compId = s.requiredComponentIds[index];
+                final scanned = s.scannedByComponentId[compId];
+
+                // Kalau unit hasil scan punya componentName, pakai itu
+                final title =
+                    scanned?.componentName != null &&
+                        scanned!.componentName!.isNotEmpty
+                    ? scanned.componentName!
+                    : 'Komponen ${index + 1}';
+
+                final subtitle = scanned != null
+                    ? 'QR: ${scanned.qrValue}'
+                    : 'Belum discan';
+
+                final color = scanned != null
+                    ? Colors.green.shade600
+                    : Colors.grey.shade500;
+
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    scanned != null
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    color: color,
+                  ),
+                  title: Text(title, style: const TextStyle(fontSize: 14)),
+                  subtitle: Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                );
               },
             ),
-            const SizedBox(height: 8),
-            if (s.componentA != null)
-              _buildComponentInfo('Komponen A', s.componentA!),
+
             const SizedBox(height: 16),
 
-            // Component B
+            // Input QR (sementara, nanti ganti scanner beneran)
             TextField(
-              controller: _qrBController,
+              controller: _qrController,
               decoration: InputDecoration(
-                labelText: 'QR Komponen B',
+                labelText: 'QR komponen',
+                hintText: 'Tempel hasil scan QR di sini',
+                border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.qr_code_scanner),
                   onPressed: () async {
-                    // TODO: ganti dengan QR scanner beneran
-                    final qr = _qrBController.text.trim();
+                    final qr = _qrController.text.trim();
                     if (qr.isNotEmpty) {
-                      await cubit.scanComponentB(qr);
+                      await cubit.scanComponent(qr);
+                      _qrController.clear();
                     }
                   },
                 ),
-                border: const OutlineInputBorder(),
               ),
               onSubmitted: (value) async {
                 final qr = value.trim();
                 if (qr.isNotEmpty) {
-                  await cubit.scanComponentB(qr);
+                  await cubit.scanComponent(qr);
+                  _qrController.clear();
                 }
               },
             ),
             const SizedBox(height: 8),
-            if (s.componentB != null)
-              _buildComponentInfo('Komponen B', s.componentB!),
+            Text(
+              'Scan satu per satu QR komponen sampai semua berstatus hijau.',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildComponentInfo(String label, ScanUnitResult u) {
-    return Container(
-      margin: const EdgeInsets.only(top: 4),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-          ),
-          const SizedBox(height: 2),
-          Text('QR: ${u.qrValue}', style: const TextStyle(fontSize: 12)),
-          if (u.componentName != null)
-            Text(
-              'Komponen: ${u.componentName}',
-              style: const TextStyle(fontSize: 12),
-            ),
-        ],
       ),
     );
   }
@@ -276,7 +277,11 @@ class _AssemblyViewState extends State<_AssemblyView> {
                         );
                       }
                     : null,
-                child: const Text('Generate Unit Set'),
+                child: Text(
+                  s.canAssemble
+                      ? 'Generate Unit Set'
+                      : 'Scan semua komponen dulu',
+                ),
               ),
             ),
             const SizedBox(height: 16),

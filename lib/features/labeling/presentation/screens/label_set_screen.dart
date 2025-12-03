@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
+import 'package:pretty_qr_code/pretty_qr_code.dart';
 
 import '../bloc/label_set/label_set_state.dart';
 import '../bloc/label_set/label_state_cubit.dart';
@@ -149,11 +150,20 @@ class _LabelSetBody extends StatelessWidget {
               alignment: Alignment.center,
               padding: const EdgeInsets.all(16),
               // Di sini nanti kamu bisa ganti pakai qr_flutter
-              child: Text(
-                state.qrValue!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12),
+              child: PrettyQrView.data(
+                data: state.qrValue!,
+                decoration: const PrettyQrDecoration(
+                  // image: PrettyQrDecorationImage(
+                  //   image: AssetImage('images/flutter.png'),
+                  // ),
+                  quietZone: PrettyQrQuietZone.standart,
+                ),
               ),
+              // child: Text(
+              //   state.qrValue!,
+              //   textAlign: TextAlign.center,
+              //   style: const TextStyle(fontSize: 12),
+              // ),
             ),
           ),
           const SizedBox(height: 12),
