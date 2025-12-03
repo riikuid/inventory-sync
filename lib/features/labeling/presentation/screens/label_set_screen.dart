@@ -228,26 +228,62 @@ class _LabelSetBody extends StatelessWidget {
         ] else ...[
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('Scan & Confirm'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.print),
+                    label: const Text('Cetak QR'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () async {
+                      // TODO: Integrasikan dengan library scanner beneran (mobile_scanner, qr_code_scanner, dll)
+                      // sementara untuk testing bisa manual:
+                      // final scanned = await _mockScanDialog(
+                      //   context,
+                      //   state.qrValue,
+                      // );
+                      // if (scanned != null) {
+                      //   cubit.confirmScan(scanned);
+                      // }
+                    },
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: const Text('Scan & Confirm'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () async {
+                      // TODO: Integrasikan dengan library scanner beneran (mobile_scanner, qr_code_scanner, dll)
+                      // sementara untuk testing bisa manual:
+                      final scanned = await _mockScanDialog(
+                        context,
+                        state.qrValue,
+                      );
+                      if (scanned != null) {
+                        cubit.confirmScan(scanned);
+                      }
+                    },
+                  ),
                 ),
-              ),
-              onPressed: () async {
-                // TODO: Integrasikan dengan library scanner beneran (mobile_scanner, qr_code_scanner, dll)
-                // sementara untuk testing bisa manual:
-                final scanned = await _mockScanDialog(context, state.qrValue);
-                if (scanned != null) {
-                  cubit.confirmScan(scanned);
-                }
-              },
+              ],
             ),
           ),
           const SizedBox(height: 8),

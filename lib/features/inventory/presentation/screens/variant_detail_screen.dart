@@ -382,7 +382,7 @@ class _VariantDetailView extends StatelessWidget {
                 );
               },
               child: Text(
-                'Label as Set',
+                d.isSet ? 'Label as Set' : 'Label Item',
                 style: TextStyle(
                   fontSize: 14,
                   color: AppColors.onSurface,
@@ -390,83 +390,85 @@ class _VariantDetailView extends StatelessWidget {
                 ),
               ),
             ),
-            Row(
-              children: [
-                Expanded(
-                  child: CustomButton(
-                    height: 40,
-                    elevation: 0,
-                    color: AppColors.surface,
-                    borderColor: AppColors.primary,
-                    onPressed: d.components.isEmpty
-                        ? null
-                        : () async {
-                            // pilih komponen dulu baru masuk LabelComponentScreen
-                            final comp = await _pickComponentForLabel(
-                              context,
-                              d,
-                            );
-                            if (comp == null) return;
+            d.isSet
+                ? Row(
+                    children: [
+                      Expanded(
+                        child: CustomButton(
+                          height: 40,
+                          elevation: 0,
+                          color: AppColors.surface,
+                          borderColor: AppColors.primary,
+                          onPressed: d.components.isEmpty
+                              ? null
+                              : () async {
+                                  // pilih komponen dulu baru masuk LabelComponentScreen
+                                  final comp = await _pickComponentForLabel(
+                                    context,
+                                    d,
+                                  );
+                                  if (comp == null) return;
 
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => LabelComponentScreen(
-                                  variantId: d.variantId,
-                                  variantName: d.name,
-                                  componentId: comp.componentId,
-                                  componentName: comp.name,
-                                  defaultLocation: d.defaultLocation,
-                                  userId: userId,
-                                ),
-                              ),
-                            );
-                          },
-                    child: Text(
-                      'Label Component',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w500,
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => LabelComponentScreen(
+                                        variantId: d.variantId,
+                                        variantName: d.name,
+                                        componentId: comp.componentId,
+                                        componentName: comp.name,
+                                        defaultLocation: d.defaultLocation,
+                                        userId: userId,
+                                      ),
+                                    ),
+                                  );
+                                },
+                          child: Text(
+                            'Label Component',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
 
-                const SizedBox(width: 10),
-                Expanded(
-                  child: CustomButton(
-                    height: 40,
-                    elevation: 0,
-                    color: AppColors.surface,
-                    borderColor: AppColors.primary,
-                    onPressed: d.components.length < 2
-                        ? null
-                        : () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => AssemblyScreen(
-                                  variantId: d.variantId,
-                                  variantName: d.name,
-                                  componentIds: d.components
-                                      .map((c) => c.componentId)
-                                      .toList(),
-                                  userId: userId,
-                                ),
-                              ),
-                            );
-                          },
-                    child: Text(
-                      'Gabungkan',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w500,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: CustomButton(
+                          height: 40,
+                          elevation: 0,
+                          color: AppColors.surface,
+                          borderColor: AppColors.primary,
+                          onPressed: d.components.length < 2
+                              ? null
+                              : () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => AssemblyScreen(
+                                        variantId: d.variantId,
+                                        variantName: d.name,
+                                        componentIds: d.components
+                                            .map((c) => c.componentId)
+                                            .toList(),
+                                        userId: userId,
+                                      ),
+                                    ),
+                                  );
+                                },
+                          child: Text(
+                            'Gabungkan',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
           ],
         ),
       ),
