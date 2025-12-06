@@ -136,13 +136,13 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
         companyItemId: ci.id,
         productId: p.id,
         name: variant.name,
+        uom: variant.uom,
         brandId: variant.brandId,
         brandName: b?.name,
         companyCode: ci.companyCode,
-        isSet: ci.isSet ?? false,
-        hasComponents: ci.hasComponents ?? false,
-        defaultLocation: variant.defaultLocation,
-        specSummary: variant.specJson, // sementara full string
+        rackId: variant.rackId,
+        rackName: null, // You might want to fetch this from somewhere
+        specification: variant.specification,
         totalUnits: totalUnits,
         components: comps,
       );
@@ -162,7 +162,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
     String? brandId,
     required String name,
     String? manufCode,
-    String? specJson,
+    String? specification,
   }) async {
     final companion = ComponentsCompanion.insert(
       id: Uuid().v4(), // kalau pakai uuid manual, isi Value(uuid)
@@ -170,10 +170,9 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       brandId: Value(brandId),
       name: name,
       manufCode: Value(manufCode),
-      specJson: Value(specJson),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      lastModifiedAt: DateTime.now(),
+      specification: Value(specification),
     );
 
     return into(components).insertReturning(companion);
@@ -190,7 +189,6 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       componentId: componentId,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      lastModifiedAt: DateTime.now(),
     );
 
     await into(variantComponents).insertOnConflictUpdate(insertable);
@@ -236,13 +234,13 @@ class VariantDetailRow {
   final String companyItemId;
   final String productId;
   final String name;
+  final String uom;
+  final String? specification;
+  final String? rackId;
+  final String? rackName;
   final String? brandId;
   final String? brandName;
   final String companyCode;
-  final bool isSet;
-  final bool hasComponents;
-  final String? defaultLocation;
-  final String? specSummary;
   final int totalUnits; // semua unit ACTIVE untuk variant ini
   final List<VariantComponentRow> components;
 
@@ -251,13 +249,13 @@ class VariantDetailRow {
     required this.companyItemId,
     required this.productId,
     required this.name,
+    required this.uom,
     this.brandId,
     this.brandName,
+    this.rackId,
+    this.rackName,
+    this.specification,
     required this.companyCode,
-    required this.isSet,
-    required this.hasComponents,
-    this.defaultLocation,
-    this.specSummary,
     required this.totalUnits,
     required this.components,
   });

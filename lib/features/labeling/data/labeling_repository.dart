@@ -1,6 +1,5 @@
 import 'package:drift/drift.dart';
 import 'package:inventory_sync_apps/core/db/app_database.dart';
-import 'package:inventory_sync_apps/features/labeling/data/models/label_component_result.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/db/daos/company_item_dao.dart';
@@ -26,14 +25,12 @@ class LabelingRepository {
   UnitDao get _unitDao => db.unitDao;
 
   /// Setup company_item (is_set, has_components) + create/update 1 variant + photos.
-  Future<void> setupCompanyItem({
+  Future<void> createVariant({
     required String companyItemId,
-    required bool isSet,
-    required bool hasComponents,
     required String? brandId,
     required String variantName,
-    String? defaultLocation,
-    String? specJson,
+    required String rackId,
+    String? specification,
     required List<String> photoLocalPaths, // minimal 3
     required String userId,
   }) async {
@@ -52,13 +49,7 @@ class LabelingRepository {
         throw Exception('Company item not found');
       }
 
-      await _companyItemDao.updateCompanyItem(
-        companyItemId,
-        isSet: isSet,
-        hasComponents: hasComponents,
-        initializedAt: now,
-        initializedBy: userId,
-      );
+      await _companyItemDao.updateCompanyItem(companyItemId);
 
       // 2. create variant baru (untuk iterasi ini, kita buat 1 variant)
       final variantId = _uuid.v4();
@@ -68,11 +59,8 @@ class LabelingRepository {
         companyItemId: Value(companyItemId),
         brandId: Value(brandId),
         name: Value(variantName),
-        defaultLocation: Value(defaultLocation),
-        specJson: Value(specJson),
-        initializedAt: Value(now),
-        initializedBy: Value(userId),
-        isActive: const Value(true),
+        rackId: Value(rackId),
+        specification: Value(specification),
         createdAt: Value(now),
         updatedAt: Value(now),
         lastModifiedAt: Value(now),
@@ -91,7 +79,7 @@ class LabelingRepository {
             variantId: Value(variantId),
             localPath: Value(photoLocalPaths[i]),
             remoteUrl: const Value(null),
-            position: Value(i),
+            sortOrder: Value(i),
             createdAt: Value(now),
             updatedAt: Value(now),
             lastModifiedAt: Value(now),
@@ -104,70 +92,70 @@ class LabelingRepository {
   }
 
   /// Add or select components untuk 1 variant (dipanggil di Setup wizard)
-  Future<void> configureComponentsForVariant({
-    required String variantId,
-    required String productId,
-    required String? brandId,
-    required List<ComponentInput> newComponents,
-    required List<String> selectedComponentIds,
-  }) async {
-    final now = DateTime.now();
+  // Future<void> configureComponentsForVariant({
+  //   required String variantId,
+  //   required String productId,
+  //   required String? brandId,
+  //   required List<ComponentInput> newComponents,
+  //   required List<String> selectedComponentIds,
+  // }) async {
+  //   final now = DateTime.now();
 
-    await db.transaction(() async {
-      final componentIds = <String>[];
+  //   await db.transaction(() async {
+  //     final componentIds = <String>[];
 
-      // 1. insert component baru (kalau ada)
-      for (final c in newComponents) {
-        final compId = _uuid.v4();
-        final comp = ComponentsCompanion(
-          id: Value(compId),
-          productId: Value(productId),
-          name: Value(c.name),
-          brandId: Value(brandId),
-          manufCode: Value(c.manufCode),
-          specJson: Value(c.specJson),
-          isActive: const Value(true),
-          createdAt: Value(now),
-          updatedAt: Value(now),
-          deletedAt: const Value(null),
-          lastModifiedAt: Value(now),
-          needSync: const Value(true),
-        );
-        await _componentDao.upsertComponents([comp]);
-        componentIds.add(compId);
-      }
+  //     // 1. insert component baru (kalau ada)
+  //     for (final c in newComponents) {
+  //       final compId = _uuid.v4();
+  //       final comp = ComponentsCompanion(
+  //         id: Value(compId),
+  //         productId: Value(productId),
+  //         name: Value(c.name),
+  //         brandId: Value(brandId),
+  //         manufCode: Value(c.manufCode),
+  //         specJson: Value(c.specJson),
+  //         isActive: const Value(true),
+  //         createdAt: Value(now),
+  //         updatedAt: Value(now),
+  //         deletedAt: const Value(null),
+  //         lastModifiedAt: Value(now),
+  //         needSync: const Value(true),
+  //       );
+  //       await _componentDao.upsertComponents([comp]);
+  //       componentIds.add(compId);
+  //     }
 
-      // 2. plus component yang dipilih dari list existing
-      componentIds.addAll(selectedComponentIds);
+  //     // 2. plus component yang dipilih dari list existing
+  //     componentIds.addAll(selectedComponentIds);
 
-      // 3. hapus relasi variant_components lama, lalu buat baru
-      await _variantComponentDao.deleteByVariant(variantId);
+  //     // 3. hapus relasi variant_components lama, lalu buat baru
+  //     await _variantComponentDao.deleteByVariant(variantId);
 
-      final rels = <VariantComponentsCompanion>[];
-      for (final compId in componentIds) {
-        final id = _uuid.v4();
-        rels.add(
-          VariantComponentsCompanion(
-            id: Value(id),
-            variantId: Value(variantId),
-            componentId: Value(compId),
-            quantity: const Value(1),
-            createdAt: Value(now),
-            updatedAt: Value(now),
-            lastModifiedAt: Value(now),
-            needSync: const Value(true),
-          ),
-        );
-      }
-      await _variantComponentDao.upsertVariantComponents(rels);
-    });
-  }
+  //     final rels = <VariantComponentsCompanion>[];
+  //     for (final compId in componentIds) {
+  //       final id = _uuid.v4();
+  //       rels.add(
+  //         VariantComponentsCompanion(
+  //           id: Value(id),
+  //           variantId: Value(variantId),
+  //           componentId: Value(compId),
+  //           quantity: const Value(1),
+  //           createdAt: Value(now),
+  //           updatedAt: Value(now),
+  //           lastModifiedAt: Value(now),
+  //           needSync: const Value(true),
+  //         ),
+  //       );
+  //     }
+  //     await _variantComponentDao.upsertVariantComponents(rels);
+  //   });
+  // }
 
   /// Membuat 1 unit SET untuk variant (label as set).
   /// qrValue didapat dari proses generate di Cubit/Screen.
   Future<String> createSetUnit({
     required String variantId,
-    String? location,
+    String? rackId,
     required String qrValue,
     required String userId,
   }) async {
@@ -181,7 +169,7 @@ class LabelingRepository {
       parentUnitId: const Value(null),
       qrValue: Value(qrValue),
       status: const Value('ACTIVE'),
-      location: Value(location),
+      rackId: Value(rackId),
       // quantity default 1 (di schema kamu)
       printCount: const Value(1),
       lastPrintedAt: Value(now),
@@ -200,56 +188,56 @@ class LabelingRepository {
     return unitId;
   }
 
-  @override
-  Future<LabelComponentResult> createComponentUnits({
-    required String variantId,
-    required String componentId,
-    required int quantity,
-    String? location,
-    required String userId,
-  }) async {
-    final now = DateTime.now();
-    final uuid = const Uuid();
+  // @override
+  // Future<LabelComponentResult> createComponentUnits({
+  //   required String variantId,
+  //   required String componentId,
+  //   required int quantity,
+  //   String? location,
+  //   required String userId,
+  // }) async {
+  //   final now = DateTime.now();
+  //   final uuid = const Uuid();
 
-    final List<String> generatedQr = [];
-    final List<UnitsCompanion> entries = [];
+  //   final List<String> generatedQr = [];
+  //   final List<UnitsCompanion> entries = [];
 
-    for (int i = 0; i < quantity; i++) {
-      final unitId = uuid.v4();
-      // Sementara format QR simple; nanti bisa kamu ganti pakai skema final
-      final qr = 'U-$unitId';
-      generatedQr.add(qr);
+  //   for (int i = 0; i < quantity; i++) {
+  //     final unitId = uuid.v4();
+  //     // Sementara format QR simple; nanti bisa kamu ganti pakai skema final
+  //     final qr = 'U-$unitId';
+  //     generatedQr.add(qr);
 
-      entries.add(
-        UnitsCompanion(
-          id: Value(unitId),
-          variantId: Value(variantId),
-          componentId: Value(componentId),
-          parentUnitId: const Value(null),
-          qrValue: Value(qr),
-          status: const Value('ACTIVE'),
-          location: Value(location),
-          printCount: const Value(0),
-          lastPrintedAt: const Value(null),
-          createdBy: Value(userId),
-          updatedBy: Value(userId),
-          lastPrintedBy: const Value(null),
-          syncedAt: const Value(null),
-          lastModifiedAt: Value(now),
-          needSync: const Value(true),
-          createdAt: Value(now),
-          updatedAt: Value(now),
-        ),
-      );
-    }
+  //     entries.add(
+  //       UnitsCompanion(
+  //         id: Value(unitId),
+  //         variantId: Value(variantId),
+  //         componentId: Value(componentId),
+  //         parentUnitId: const Value(null),
+  //         qrValue: Value(qr),
+  //         status: const Value('ACTIVE'),
+  //         location: Value(location),
+  //         printCount: const Value(0),
+  //         lastPrintedAt: const Value(null),
+  //         createdBy: Value(userId),
+  //         updatedBy: Value(userId),
+  //         lastPrintedBy: const Value(null),
+  //         syncedAt: const Value(null),
+  //         lastModifiedAt: Value(now),
+  //         needSync: const Value(true),
+  //         createdAt: Value(now),
+  //         updatedAt: Value(now),
+  //       ),
+  //     );
+  //   }
 
-    await _unitDao.insertUnits(entries);
+  //   await _unitDao.insertUnits(entries);
 
-    return LabelComponentResult(
-      generatedCount: quantity,
-      sampleQrValue: generatedQr.isNotEmpty ? generatedQr.first : null,
-    );
-  }
+  //   return LabelComponentResult(
+  //     generatedCount: quantity,
+  //     sampleQrValue: generatedQr.isNotEmpty ? generatedQr.first : null,
+  //   );
+  // }
 
   @override
   Future<ScanUnitResult?> scanUnitByQr(String qrValue) async {
@@ -298,7 +286,7 @@ class LabelingRepository {
         parentUnitId: const Value(null),
         qrValue: Value(parentQr),
         status: const Value('ACTIVE'),
-        location: Value(location),
+        rackId: Value(location),
         printCount: const Value(0),
         lastPrintedAt: const Value(null),
         createdBy: Value(userId),

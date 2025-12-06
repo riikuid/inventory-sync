@@ -6,7 +6,7 @@ import '../tables.dart'; // ini yg nge-export tables + generated
 
 part 'company_item_dao.g.dart';
 
-@DriftAccessor(tables: [CompanyItems, Products, Variants, Units, Brands])
+@DriftAccessor(tables: [CompanyItems, Products, Variants, Units, Brands, Racks])
 class CompanyItemDao extends DatabaseAccessor<AppDatabase>
     with _$CompanyItemDaoMixin {
   CompanyItemDao(super.db);
@@ -104,6 +104,7 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
         final v = row.readTable(variants);
         final b = row.readTableOrNull(brands);
         final u = row.readTableOrNull(units);
+        final r = row.readTableOrNull(racks);
 
         map.putIfAbsent(
           v.id,
@@ -111,7 +112,7 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
             variantId: v.id,
             name: v.name,
             brandName: b?.name,
-            defaultLocation: v.defaultLocation,
+            rackName: r?.name,
             stock: 0,
           ),
         );
@@ -132,22 +133,9 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
     )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
-  Future<void> updateCompanyItem(
-    String id, {
-    required bool isSet,
-    required bool hasComponents,
-    required DateTime initializedAt,
-    required String initializedBy,
-  }) async {
+  Future<void> updateCompanyItem(String id) async {
     await (update(companyItems)..where((t) => t.id.equals(id))).write(
-      CompanyItemsCompanion(
-        isSet: Value(isSet),
-        hasComponents: Value(hasComponents),
-        initializedAt: Value(initializedAt),
-        initializedBy: Value(initializedBy),
-        lastModifiedAt: Value(initializedAt),
-        needSync: const Value(true),
-      ),
+      CompanyItemsCompanion(needSync: const Value(true)),
     );
   }
 
@@ -181,14 +169,14 @@ class CompanyItemVariantRow {
   final String variantId;
   final String name;
   final String? brandName;
-  final String? defaultLocation;
+  final String? rackName;
   final int stock;
 
   CompanyItemVariantRow({
     required this.variantId,
     required this.name,
     this.brandName,
-    this.defaultLocation,
+    this.rackName,
     required this.stock,
   });
 
@@ -197,7 +185,7 @@ class CompanyItemVariantRow {
       variantId: variantId,
       name: name,
       brandName: brandName,
-      defaultLocation: defaultLocation,
+      rackName: rackName,
       stock: stock ?? this.stock,
     );
   }

@@ -1,8 +1,10 @@
 import 'package:drift/drift.dart' hide Component;
 import 'package:inventory_sync_apps/core/db/app_database.dart';
 
+import '../../../core/db/daos/category_dao.dart';
 import '../../../core/db/daos/company_item_dao.dart';
 import '../../../core/db/daos/variant_dao.dart';
+import 'model/inventory_search_item.dart';
 
 class InventoryRepository {
   final AppDatabase db;
@@ -11,10 +13,16 @@ class InventoryRepository {
 
   CompanyItemDao get _companyItemDao => db.companyItemDao;
   VariantDao get _variantDao => db.variantDao;
+  CategoryDao get _categoryDao => db.categoryDao;
   // UnitDao get _unitDao => db.unitDao;
 
   Future<List<Brand>> getAllBrands() async {
     return db.brandDao.getAll(); // atau sesuai DAO mu
+  }
+
+  /// Dipakai di section "KATEGORI" di home
+  Stream<List<CategorySummary>> watchRootCategories() {
+    return _categoryDao.watchRootCategoriesWithItemCount();
   }
 
   Future<List<ProductSummary>> getProductList({String? search}) async {
@@ -89,6 +97,13 @@ class InventoryRepository {
       final variants = await (db.select(
         db.variants,
       )..where((v) => v.companyItemId.equals(ci.id))).get();
+      final product = await (db.select(
+        db.products,
+      )..where((p) => p.id.equals(ci.productId))).getSingleOrNull();
+      final category =
+          await (db.select(db.categories)
+                ..where((c) => c.id.equals(product?.categoryId ?? '')))
+              .getSingleOrNull();
       final variantIds = variants.map((v) => v.id).toList();
 
       int stock = 0;
@@ -104,6 +119,10 @@ class InventoryRepository {
 
       result.add(
         CompanyItemSummary(
+          productId: ci.productId,
+          productName: product?.name ?? '',
+          categoryId: product?.categoryId ?? '',
+          categoryName: category?.name ?? '',
           companyItemId: ci.id,
           companyCode: ci.companyCode,
           stock: stock,
@@ -118,6 +137,7 @@ class InventoryRepository {
   }
 
   /// Model hasil search sederhana
+  /// Model hasil search sederhana (group by company_item, plus info kategori)
   Future<List<InventorySearchItem>> searchItems(String query) async {
     if (query.trim().isEmpty) {
       return [];
@@ -125,13 +145,16 @@ class InventoryRepository {
 
     final rows = await _companyItemDao.searchByQuery(query);
 
-    // Untuk iterasi ini: stok = count unit ACTIVE per company_item (di semua variant).
+    // Cache kategori biar nggak query berulang
+    final Map<String, String> _categoryNameCache = {};
+
     final results = <InventorySearchItem>[];
 
     for (final row in rows) {
       final companyItemId = row.item.id;
+      final product = row.product;
 
-      // ambil semua variant untuk company_item ini
+      // --- 1. Hitung stok aktif untuk company_item ini (semua variant) ---
       final variants = await (db.select(
         db.variants,
       )..where((v) => v.companyItemId.equals(companyItemId))).get();
@@ -149,11 +172,33 @@ class InventoryRepository {
         activeStock = unitsList.length;
       }
 
+      // --- 2. Ambil kategori utama dari product.categoryId ---
+      String? categoryId = product.categoryId;
+      String? categoryName;
+
+      if (categoryId != null) {
+        if (_categoryNameCache.containsKey(categoryId)) {
+          categoryName = _categoryNameCache[categoryId];
+        } else {
+          final category = await (db.select(
+            db.categories,
+          )..where((c) => c.id.equals(categoryId))).getSingleOrNull();
+          categoryName = category?.name;
+          if (categoryName != null) {
+            _categoryNameCache[categoryId] = categoryName;
+          }
+        }
+      }
+
       results.add(
         InventorySearchItem(
           companyItemId: companyItemId,
           companyCode: row.item.companyCode,
-          productName: row.product.name,
+          productName: product.name,
+          categoryId: categoryId,
+          categoryName: categoryName,
+          rackName: null, // nanti kalau mau diisi lokasi fisik, bisa dilengkapi
+          warehouseName: null,
           activeStock: activeStock,
         ),
       );
@@ -197,12 +242,20 @@ class InventoryRepository {
         brandName = brand?.name;
       }
 
+      String? rackName;
+      if (v.rackId != null) {
+        final rack = await (db.select(
+          db.racks,
+        )..where((r) => r.id.equals(v.rackId!))).getSingleOrNull();
+        rackName = rack?.name;
+      }
+
       variantSummaries.add(
         VariantSummary(
           variantId: v.id,
           name: v.name,
           brandName: brandName,
-          defaultLocation: v.defaultLocation,
+          rackName: rackName,
           stock: stock,
         ),
       );
@@ -210,8 +263,6 @@ class InventoryRepository {
 
     return CompanyItemDetail(
       companyItemId: item.id,
-      isSet: item.isSet,
-      hasComponents: item.hasComponents,
       companyCode: item.companyCode,
       productId: item.productId,
       productName: product?.name ?? '-',
@@ -242,14 +293,14 @@ class InventoryRepository {
     required String? brandId,
     required String name,
     String? manufCode,
-    String? specJson,
+    String? specification,
   }) {
     return _variantDao.createComponentForProduct(
       productId: productId,
       brandId: brandId,
       name: name,
       manufCode: manufCode,
-      specJson: specJson,
+      specification: specification,
     );
   }
 
@@ -295,27 +346,24 @@ class ProductSummary {
 class CompanyItemSummary {
   final String companyItemId;
   final String companyCode;
+  final String productId;
+  final String productName;
+  final String categoryId;
+  final String categoryName;
+  final String? rackName;
+  final String? warehouseName;
   final int stock;
 
   CompanyItemSummary({
     required this.companyItemId,
     required this.companyCode,
-    required this.stock,
-  });
-}
-
-/// DTO untuk list hasil search
-class InventorySearchItem {
-  final String companyItemId;
-  final String companyCode;
-  final String productName;
-  final int activeStock;
-
-  InventorySearchItem({
-    required this.companyItemId,
-    required this.companyCode,
+    required this.productId,
     required this.productName,
-    required this.activeStock,
+    required this.categoryId,
+    required this.categoryName,
+    this.rackName,
+    this.warehouseName,
+    required this.stock,
   });
 }
 
@@ -325,8 +373,6 @@ class CompanyItemDetail {
   final String companyCode;
   final String productId;
   final String productName;
-  final bool? isSet;
-  final bool? hasComponents;
   final List<VariantSummary> variants;
 
   CompanyItemDetail({
@@ -335,8 +381,6 @@ class CompanyItemDetail {
     required this.productId,
     required this.productName,
     required this.variants,
-    required this.isSet,
-    required this.hasComponents,
   });
 
   CompanyItemDetail copyWith({List<VariantSummary>? variants}) {
@@ -345,8 +389,6 @@ class CompanyItemDetail {
       companyCode: companyCode,
       productId: productId,
       productName: productName,
-      isSet: isSet,
-      hasComponents: hasComponents,
       variants: variants ?? this.variants,
     );
   }
@@ -358,7 +400,9 @@ class VariantSummary {
   final String name;
   final String? brandName;
   final String? brandId;
-  final String? defaultLocation;
+  final String? rackId;
+  final String? rackName;
+  final String? warehouseName;
   final int stock;
 
   VariantSummary({
@@ -366,7 +410,9 @@ class VariantSummary {
     required this.name,
     this.brandName,
     this.brandId,
-    this.defaultLocation,
+    this.rackId,
+    this.rackName,
+    this.warehouseName,
     required this.stock,
   });
 
@@ -374,7 +420,9 @@ class VariantSummary {
     String? name,
     String? brandName,
     String? brandId,
-    String? defaultLocation,
+    String? rackId,
+    String? rackName,
+    String? warehouseName,
     int? stock,
   }) {
     return VariantSummary(
@@ -382,7 +430,9 @@ class VariantSummary {
       name: name ?? this.name,
       brandName: brandName ?? this.brandName,
       brandId: brandId ?? this.brandId,
-      defaultLocation: defaultLocation ?? this.defaultLocation,
+      rackId: rackId ?? this.rackId,
+      rackName: rackName ?? this.rackName,
+      warehouseName: warehouseName ?? this.warehouseName,
       stock: stock ?? this.stock,
     );
   }

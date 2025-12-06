@@ -70,28 +70,119 @@ class SyncRepository {
     final pendingComponents = await db.componentDao.getPendingComponents();
     final pendingVariantComponents = await db.variantComponentDao
         .getPendingVariantComponents();
-    final pendingPhotos = await db.variantPhotoDao.getPendingPhotos();
-    final pendingUnits = await db.unitDao.getPendingUnits();
-    // nanti: variant_components, buffer_stocks, dst
 
+    final pendingVariantPhotos = await db.variantPhotoDao.getPendingPhotos();
+    final pendingComponentPhotos = await db.componentPhotoDao
+        .getPendingPhotos();
+
+    final pendingUnits = await db.unitDao.getPendingUnits();
+
+    // 🔧: include componentPhotos juga di pengecekan kosong
     if (pendingProducts.isEmpty &&
         pendingCompanyItems.isEmpty &&
         pendingVariants.isEmpty &&
         pendingComponents.isEmpty &&
-        pendingPhotos.isEmpty &&
+        pendingVariantPhotos.isEmpty &&
+        pendingComponentPhotos.isEmpty &&
         pendingVariantComponents.isEmpty &&
         pendingUnits.isEmpty) {
       return const Result.success(null);
     }
 
+    // =========== Upload file dulu ==========
+    // 🔧: siapkan pencatatan upload
+    final failedUploads = <String, String>{}; // photoId -> error
+    var uploadTriedCount = 0;
+
+    // --- Variant photos ---
+    for (final p in pendingVariantPhotos.where(
+      (p) => p.remoteUrl == null && p.localPath != null,
+    )) {
+      uploadTriedCount++;
+
+      final uploadRes = await api.uploadPhoto(
+        id: p.id,
+        type: 'variant',
+        filePath: p.localPath!,
+      );
+
+      if (!uploadRes.isSuccess) {
+        // 🔧: JANGAN langsung return, tapi kumpulkan error
+        failedUploads[p.id] =
+            uploadRes.errorMessage ?? 'Failed to upload variant photo ${p.id}';
+        continue;
+      }
+
+      final resp = uploadRes.resultValue;
+      await db.variantPhotoDao.markUploaded(
+        id: p.id,
+        uploadedUrl: resp?.filePath ?? '',
+        lastModifiedAt: DateTime.now(),
+      );
+    }
+
+    // --- Component photos ---
+    for (final p in pendingComponentPhotos.where(
+      (p) => p.remoteUrl == null && p.localPath != null,
+    )) {
+      uploadTriedCount++;
+
+      final uploadRes = await api.uploadPhoto(
+        id: p.id,
+        type: 'component',
+        filePath: p.localPath!,
+      );
+
+      if (!uploadRes.isSuccess) {
+        // 🔧: lagi-lagi kumpulkan, bukan return
+        failedUploads[p.id] =
+            uploadRes.errorMessage ??
+            'Failed to upload component photo ${p.id}';
+        continue;
+      }
+
+      final resp = uploadRes.resultValue;
+      await db.componentPhotoDao.markUploaded(
+        id: p.id,
+        uploadedUrl: resp?.filePath ?? '',
+        lastModifiedAt: DateTime.now(),
+      );
+    }
+
+    // 🔧: keputusan setelah percobaan upload foto
+    if (uploadTriedCount > 0 && failedUploads.length == uploadTriedCount) {
+      // Artinya semua upload foto gagal → percuma lanjut push
+      final firstError = failedUploads.values.first;
+      return Result.failed(
+        'Failed to upload all photos (${failedUploads.length}). '
+        'Example error: $firstError',
+      );
+    }
+
+    // 🔧: re-fetch pending photos setelah markUploaded,
+    // supaya remoteUrl terbaru ikut terpakai
+    final updatedVariantPhotos = await db.variantPhotoDao.getPendingPhotos();
+    final updatedComponentPhotos = await db.componentPhotoDao
+        .getPendingPhotos();
+
+    // 🔧: hanya foto yang SUDAH punya remoteUrl yang ikut di-push
+    final variantPhotosForPush = updatedVariantPhotos
+        .where((p) => p.remoteUrl != null && p.deletedAt == null)
+        .toList();
+
+    final componentPhotosForPush = updatedComponentPhotos
+        .where((p) => p.remoteUrl != null && p.deletedAt == null)
+        .toList();
+
+    // =========== Build payload non-file ==========
     final productsPayload = pendingProducts
         .map(
           (p) => {
             'id': p.id,
             'name': p.name,
             'category_id': p.categoryId,
+            'machine_purchase': p.machinePurchase,
             'description': p.description,
-            'is_active': p.isActive,
             'created_at': p.createdAt.toIso8601String(),
             'updated_at': p.updatedAt.toIso8601String(),
           },
@@ -102,12 +193,10 @@ class SyncRepository {
         .map(
           (ci) => {
             'id': ci.id,
+            'default_rack_id': ci.defaultRackId,
             'product_id': ci.productId,
             'company_code': ci.companyCode,
-            'is_set': ci.isSet,
-            'has_components': ci.hasComponents,
-            'initialized_at': ci.initializedAt?.toIso8601String(),
-            'initialized_by': ci.initializedBy,
+            'specification': ci.specification,
             'notes': ci.notes,
             'created_at': ci.createdAt.toIso8601String(),
             'updated_at': ci.updatedAt.toIso8601String(),
@@ -116,19 +205,16 @@ class SyncRepository {
         )
         .toList();
 
-    // 2. Bentuk payload sesuai yang backendmu expect
     final variantsPayload = pendingVariants
         .map(
           (v) => {
             'id': v.id,
             'company_item_id': v.companyItemId,
+            'rack_id': v.rackId,
             'brand_id': v.brandId,
             'name': v.name,
-            'default_location': v.defaultLocation,
-            'spec_json': v.specJson,
-            'initialized_at': v.initializedAt?.toIso8601String(),
-            'initialized_by': v.initializedBy,
-            'is_active': v.isActive,
+            'uom': v.uom,
+            'specification': v.specification,
             'created_at': v.createdAt.toIso8601String(),
             'updated_at': v.updatedAt.toIso8601String(),
             'deleted_at': v.deletedAt?.toIso8601String(),
@@ -136,18 +222,17 @@ class SyncRepository {
         )
         .toList();
 
-    final photosPayload = pendingPhotos
+    // 🔧: pakai variantPhotosForPush, bukan updatedVariantPhotos mentah
+    final variantPhotosPayload = variantPhotosForPush
         .map(
           (p) => {
             'id': p.id,
             'variant_id': p.variantId,
-            'local_path': p.localPath,
-            'remote_url': p.remoteUrl,
-            'position': p.position,
+            'file_path': p.remoteUrl, // hasil uploadPhoto
+            'sort_order': p.sortOrder,
             'created_at': p.createdAt.toIso8601String(),
             'updated_at': p.updatedAt.toIso8601String(),
             'deleted_at': p.deletedAt?.toIso8601String(),
-            'last_modified_at': p.lastModifiedAt.toIso8601String(),
           },
         )
         .toList();
@@ -160,11 +245,25 @@ class SyncRepository {
             'name': c.name,
             'brand_id': c.brandId,
             'manuf_code': c.manufCode,
-            'spec_json': c.specJson,
-            'is_active': c.isActive,
+            'specification': c.specification,
             'created_at': c.createdAt.toIso8601String(),
             'updated_at': c.updatedAt.toIso8601String(),
             'deleted_at': c.deletedAt?.toIso8601String(),
+          },
+        )
+        .toList();
+
+    // 🔧: pakai componentPhotosForPush
+    final componentPhotosPayload = componentPhotosForPush
+        .map(
+          (p) => {
+            'id': p.id,
+            'component_id': p.componentId,
+            'file_path': p.remoteUrl,
+            'sort_order': p.sortOrder,
+            'created_at': p.createdAt.toIso8601String(),
+            'updated_at': p.updatedAt.toIso8601String(),
+            'deleted_at': p.deletedAt?.toIso8601String(),
           },
         )
         .toList();
@@ -175,7 +274,7 @@ class SyncRepository {
             'id': vc.id,
             'variant_id': vc.variantId,
             'component_id': vc.componentId,
-            'quantity': vc.quantity,
+            'quantity_needed': vc.quantityNeeded,
             'created_at': vc.createdAt.toIso8601String(),
             'updated_at': vc.updatedAt.toIso8601String(),
           },
@@ -191,14 +290,13 @@ class SyncRepository {
             'parent_unit_id': u.parentUnitId,
             'qr_value': u.qrValue,
             'status': u.status,
-            'location': u.location,
+            'rack_id': u.rackId,
             'print_count': u.printCount,
             'last_printed_at': u.lastPrintedAt?.toIso8601String(),
+            'last_printed_by': u.lastPrintedBy,
             'created_by': u.createdBy,
             'updated_by': u.updatedBy,
-            'last_printed_by': u.lastPrintedBy,
             'synced_at': u.syncedAt?.toIso8601String(),
-            'last_modified_at': u.lastModifiedAt.toIso8601String(),
             'created_at': u.createdAt.toIso8601String(),
             'updated_at': u.updatedAt.toIso8601String(),
             'deleted_at': u.deletedAt?.toIso8601String(),
@@ -210,11 +308,11 @@ class SyncRepository {
       'products': productsPayload,
       'company_items': companyItemsPayload,
       'variants': variantsPayload,
-      'variant_photos': photosPayload,
+      'variant_photos': variantPhotosPayload,
       'components': componentsPayload,
+      'component_photos': componentPhotosPayload,
       'variant_components': variantComponentsPayload,
       'units': unitsPayload,
-      // nanti: 'variant_components': ..., 'buffer_stocks': ...
     };
 
     final res = await api.push(payload);
@@ -230,7 +328,6 @@ class SyncRepository {
     await db.companyItemDao.markCompanyItemsSynced(
       pendingCompanyItems.map((ci) => ci.id).toList(),
     );
-
     await db.variantDao.markVariantsSynced(
       pendingVariants.map((v) => v.id).toList(),
     );
@@ -241,70 +338,21 @@ class SyncRepository {
       pendingVariantComponents.map((vc) => vc.id).toList(),
     );
 
+    // 🔧: hanya foto yang ikut di-push yang di-mark synced
     await db.variantPhotoDao.markPhotosSynced(
-      pendingPhotos.map((p) => p.id).toList(),
+      variantPhotosForPush.map((p) => p.id).toList(),
     );
+    await db.componentPhotoDao.markPhotosSynced(
+      componentPhotosForPush.map((p) => p.id).toList(),
+    );
+
     await db.unitDao.markUnitsSynced(
       pendingUnits.map((u) => u.id).toList(),
       DateTime.now(),
     );
+
     return const Result.success(null);
   }
-
-  /// Push pending changes (untuk iterasi awal: fokus units dulu).
-  // Future<Result<void>> pushPendingUnits() async {
-  //   final pendingUnits = await db.unitDao.getPendingUnits();
-
-  //   if (pendingUnits.isEmpty) {
-  //     return const Result.success(null);
-  //   }
-
-  //   final unitsPayload = pendingUnits.map((u) {
-  //     return {
-  //       'id': u.id,
-  //       'variant_id': u.variantId,
-  //       'component_id': u.componentId,
-  //       'parent_unit_id': u.parentUnitId,
-  //       'qr_value': u.qrValue,
-  //       'status': u.status,
-  //       'location': u.location,
-  //       'print_count': u.printCount,
-  //       'last_printed_at': u.lastPrintedAt?.toIso8601String(),
-  //       'created_by': u.createdBy,
-  //       'updated_by': u.updatedBy,
-  //       'last_printed_by': u.lastPrintedBy,
-  //       'synced_at': u.syncedAt?.toIso8601String(),
-  //       'last_modified_at': u.lastModifiedAt.toIso8601String(),
-  //       'created_at': u.createdAt.toIso8601String(),
-  //       'updated_at': u.updatedAt.toIso8601String(),
-  //       'deleted_at': u.deletedAt?.toIso8601String(),
-  //     };
-  //   }).toList();
-
-  //   final payload = {
-  //     'units': unitsPayload,
-  //     // nanti bisa ditambah 'variants', 'components', dst kalau mau push juga
-  //   };
-
-  //   final res = await api.push(payload);
-
-  //   if (!res.isSuccess) {
-  //     return Result.failed(res.errorMessage ?? 'Failed to push units');
-  //   }
-
-  //   // kalau server sukses, kita tandai units sebagai sudah tersync
-  //   final serverTimeIso = res.resultValue?['server_time'] as String?;
-  //   final serverTime = serverTimeIso != null
-  //       ? DateTime.parse(serverTimeIso)
-  //       : DateTime.now();
-
-  //   await db.unitDao.markUnitsSynced(
-  //     pendingUnits.map((u) => u.id).toList(),
-  //     serverTime,
-  //   );
-
-  //   return const Result.success(null);
-  // }
 
   /// Full sync sekali jalan: push dulu, lalu pull delta.
   Future<Result<void>> fullSync() async {
@@ -419,6 +467,18 @@ class SyncRepository {
       }
 
       // variant_components
+      if (data['component_photos'] is List) {
+        final list = (data['component_photos'] as List)
+            .cast<Map<String, dynamic>>()
+            .map(componentPhotoFromJson)
+            .toList();
+
+        await db.batch((batch) {
+          batch.insertAllOnConflictUpdate(db.componentPhotos, list);
+        });
+      }
+
+      // variant_components
       if (data['variant_components'] is List) {
         final list = (data['variant_components'] as List)
             .cast<Map<String, dynamic>>()
@@ -426,17 +486,6 @@ class SyncRepository {
             .toList();
         await db.batch((batch) {
           batch.insertAllOnConflictUpdate(db.variantComponents, list);
-        });
-      }
-
-      // buffer_stocks
-      if (data['buffer_stocks'] is List) {
-        final list = (data['buffer_stocks'] as List)
-            .cast<Map<String, dynamic>>()
-            .map(bufferStockFromJson)
-            .toList();
-        await db.batch((batch) {
-          batch.insertAllOnConflictUpdate(db.bufferStocks, list);
         });
       }
 

@@ -9,4 +9,5 @@ mixin _$CompanyItemDaoMixin on DatabaseAccessor<AppDatabase> {
   $VariantsTable get variants => attachedDatabase.variants;
   $UnitsTable get units => attachedDatabase.units;
   $BrandsTable get brands => attachedDatabase.brands;
+  $RacksTable get racks => attachedDatabase.racks;
 }

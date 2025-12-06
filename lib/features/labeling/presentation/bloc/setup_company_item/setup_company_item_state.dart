@@ -1,133 +1,125 @@
-// lib/features/labeling/presentation/cubit/setup_company_item_cubit.dart
-part of 'setup_company_item_cubit.dart';
+// // lib/features/labeling/presentation/cubit/setup_company_item_cubit.dart
+// part of 'setup_company_item_cubit.dart';
 
-abstract class SetupCompanyItemState extends Equatable {
-  const SetupCompanyItemState();
+// abstract class SetupCompanyItemState extends Equatable {
+//   const SetupCompanyItemState();
 
-  @override
-  List<Object?> get props => [];
-}
+//   @override
+//   List<Object?> get props => [];
+// }
 
-class SetupCompanyItemInitial extends SetupCompanyItemState {}
+// class SetupCompanyItemInitial extends SetupCompanyItemState {}
 
-class SetupCompanyItemLoading extends SetupCompanyItemState {}
+// class SetupCompanyItemLoading extends SetupCompanyItemState {}
 
-class SetupCompanyItemSuccess extends SetupCompanyItemState {}
+// class SetupCompanyItemSuccess extends SetupCompanyItemState {}
 
-class SetupCompanyItemError extends SetupCompanyItemState {
-  final String message;
-  const SetupCompanyItemError(this.message);
+// class SetupCompanyItemError extends SetupCompanyItemState {
+//   final String message;
+//   const SetupCompanyItemError(this.message);
 
-  @override
-  List<Object?> get props => [message];
-}
+//   @override
+//   List<Object?> get props => [message];
+// }
 
-/// State utama yang dipakai UI.
-/// Di sini kita simpan semua field + flag [isSaving].
-class SetupCompanyItemLoaded extends SetupCompanyItemState {
-  final String companyItemId;
-  final String productName;
-  final String companyCode;
+// /// State utama yang dipakai UI.
+// /// Di sini kita simpan semua field + flag [isSaving].
+// class SetupCompanyItemLoaded extends SetupCompanyItemState {
+//   final String companyItemId;
+//   final String productName;
+//   final String companyCode;
 
-  final bool? isSet;
-  final bool? hasComponents;
+//   final String? brandId;
+//   final String? brandName;
+//   final String variantName;
+//   final String? defaultRackId;
+//   final String? defaultRackName;
+//   final String? specification;
 
-  final String? brandId;
-  final String? brandName;
-  final String variantName;
-  final String? defaultLocation;
-  final String? specJson;
+//   final List<String> photoLocalPaths;
+//   final List<ComponentInput> newComponents;
+//   final List<String> selectedExistingComponentIds;
 
-  final List<String> photoLocalPaths;
-  final List<ComponentInput> newComponents;
-  final List<String> selectedExistingComponentIds;
+//   final List<BrandOption> brands;
 
-  final List<BrandOption> brands;
+//   /// NEW: brand apa saja yang sudah punya variant
+//   final List<String> usedBrandIds;
 
-  /// NEW: apakah user boleh mengubah tipe item (set/single)
-  final bool canEditType;
+//   final bool hasVariants;
+//   final bool isSaving;
 
-  /// NEW: brand apa saja yang sudah punya variant
-  final List<String> usedBrandIds;
+//   const SetupCompanyItemLoaded({
+//     required this.companyItemId,
+//     required this.productName,
+//     required this.companyCode,
+//     required this.brandId,
+//     required this.brandName,
+//     required this.variantName,
+//     required this.defaultRackId,
+//     required this.defaultRackName,
+//     required this.specification,
+//     required this.photoLocalPaths,
+//     required this.newComponents,
+//     required this.selectedExistingComponentIds,
+//     required this.brands,
+//     required this.hasVariants,
+//     required this.usedBrandIds, // NEW
+//     this.isSaving = false,
+//   });
 
-  final bool isSaving;
+//   SetupCompanyItemLoaded copyWith({
+//     String? brandId,
+//     String? brandName,
+//     String? variantName,
+//     String? defaultRackId,
+//     String? defaultRackName,
+//     String? specification,
+//     List<String>? photoLocalPaths,
+//     List<ComponentInput>? newComponents,
+//     List<String>? selectedExistingComponentIds,
+//     List<BrandOption>? brands,
+//     bool? hasVariants,
+//     List<String>? usedBrandIds,
+//     bool? isSaving,
+//   }) {
+//     return SetupCompanyItemLoaded(
+//       companyItemId: companyItemId,
+//       productName: productName,
+//       companyCode: companyCode,
+//       brandId: brandId ?? this.brandId,
+//       brandName: brandName ?? this.brandName,
+//       variantName: variantName ?? this.variantName,
+//       defaultRackId: defaultRackId ?? this.defaultRackId,
+//       defaultRackName: defaultRackName ?? this.defaultRackName,
+//       specification: specification ?? this.specification,
+//       photoLocalPaths: photoLocalPaths ?? this.photoLocalPaths,
+//       newComponents: newComponents ?? this.newComponents,
+//       selectedExistingComponentIds:
+//           selectedExistingComponentIds ?? this.selectedExistingComponentIds,
+//       brands: brands ?? this.brands,
+//       usedBrandIds: usedBrandIds ?? this.usedBrandIds,
+//       hasVariants: hasVariants ?? this.hasVariants,
+//       isSaving: isSaving ?? this.isSaving,
+//     );
+//   }
 
-  const SetupCompanyItemLoaded({
-    required this.companyItemId,
-    required this.productName,
-    required this.companyCode,
-    required this.isSet,
-    required this.hasComponents,
-    required this.brandId,
-    required this.brandName,
-    required this.variantName,
-    required this.defaultLocation,
-    required this.specJson,
-    required this.photoLocalPaths,
-    required this.newComponents,
-    required this.selectedExistingComponentIds,
-    required this.brands,
-    required this.canEditType, // NEW
-    required this.usedBrandIds, // NEW
-    this.isSaving = false,
-  });
-
-  SetupCompanyItemLoaded copyWith({
-    bool? isSet,
-    bool? hasComponents,
-    String? brandId,
-    String? brandName,
-    String? variantName,
-    String? defaultLocation,
-    String? specJson,
-    List<String>? photoLocalPaths,
-    List<ComponentInput>? newComponents,
-    List<String>? selectedExistingComponentIds,
-    List<BrandOption>? brands,
-    bool? canEditType,
-    List<String>? usedBrandIds,
-    bool? isSaving,
-  }) {
-    return SetupCompanyItemLoaded(
-      companyItemId: companyItemId,
-      productName: productName,
-      companyCode: companyCode,
-      isSet: isSet ?? this.isSet,
-      hasComponents: hasComponents ?? this.hasComponents,
-      brandId: brandId ?? this.brandId,
-      brandName: brandName ?? this.brandName,
-      variantName: variantName ?? this.variantName,
-      defaultLocation: defaultLocation ?? this.defaultLocation,
-      specJson: specJson ?? this.specJson,
-      photoLocalPaths: photoLocalPaths ?? this.photoLocalPaths,
-      newComponents: newComponents ?? this.newComponents,
-      selectedExistingComponentIds:
-          selectedExistingComponentIds ?? this.selectedExistingComponentIds,
-      brands: brands ?? this.brands,
-      canEditType: canEditType ?? this.canEditType,
-      usedBrandIds: usedBrandIds ?? this.usedBrandIds,
-      isSaving: isSaving ?? this.isSaving,
-    );
-  }
-
-  @override
-  List<Object?> get props => [
-    companyItemId,
-    productName,
-    companyCode,
-    isSet,
-    hasComponents,
-    brandId,
-    brandName,
-    variantName,
-    defaultLocation,
-    specJson,
-    photoLocalPaths,
-    newComponents,
-    selectedExistingComponentIds,
-    brands,
-    canEditType,
-    usedBrandIds,
-    isSaving,
-  ];
-}
+//   @override
+//   List<Object?> get props => [
+//     companyItemId,
+//     productName,
+//     companyCode,
+//     brandId,
+//     brandName,
+//     variantName,
+//     defaultRackId,
+//     defaultRackName,
+//     specification,
+//     photoLocalPaths,
+//     newComponents,
+//     selectedExistingComponentIds,
+//     brands,
+//     usedBrandIds,
+//     hasVariants,
+//     isSaving,
+//   ];
+// }

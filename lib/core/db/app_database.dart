@@ -5,8 +5,10 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'daos/brand_dao.dart';
+import 'daos/category_dao.dart';
 import 'daos/company_item_dao.dart';
 import 'daos/component_dao.dart';
+import 'daos/component_photo_dao.dart';
 import 'daos/product_dao.dart';
 import 'daos/unit_dao.dart';
 import 'daos/variant_component_dao.dart';
@@ -18,6 +20,11 @@ part 'app_database.g.dart';
 
 @DriftDatabase(
   tables: [
+    Departments,
+    Sections,
+    Warehouses,
+    SectionWarehouses,
+    Racks,
     Categories,
     Brands,
     Products,
@@ -25,18 +32,20 @@ part 'app_database.g.dart';
     Variants,
     VariantPhotos,
     Components,
+    ComponentPhotos,
     VariantComponents,
-    BufferStocks,
     Units,
     SyncMetadata,
   ],
   daos: [
     BrandDao,
+    CategoryDao,
     ProductDao,
     CompanyItemDao,
     VariantDao,
     VariantPhotoDao,
     ComponentDao,
+    ComponentPhotoDao,
     VariantComponentDao,
     UnitDao,
   ],

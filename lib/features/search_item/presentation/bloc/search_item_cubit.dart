@@ -1,7 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 
-import '../../../data/inventory_repository.dart';
+import '../../../inventory/data/inventory_repository.dart';
+import '../../../inventory/data/model/inventory_search_item.dart';
 
 part 'search_item_state.dart';
 

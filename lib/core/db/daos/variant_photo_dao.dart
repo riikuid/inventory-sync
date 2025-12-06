@@ -19,7 +19,7 @@ class VariantPhotoDao extends DatabaseAccessor<AppDatabase>
   Future<List<VariantPhoto>> getByVariant(String variantId) {
     return (select(variantPhotos)
           ..where((p) => p.variantId.equals(variantId))
-          ..orderBy([(p) => OrderingTerm(expression: p.position)]))
+          ..orderBy([(p) => OrderingTerm(expression: p.sortOrder)]))
         .get();
   }
 
@@ -31,6 +31,20 @@ class VariantPhotoDao extends DatabaseAccessor<AppDatabase>
     if (ids.isEmpty) return;
     await (update(variantPhotos)..where((p) => p.id.isIn(ids))).write(
       const VariantPhotosCompanion(needSync: Value(false)),
+    );
+  }
+
+  Future<void> markUploaded({
+    required String id,
+    required String uploadedUrl,
+    required DateTime lastModifiedAt,
+  }) async {
+    await (update(variantPhotos)..where((p) => p.id.equals(id))).write(
+      VariantPhotosCompanion(
+        remoteUrl: Value(uploadedUrl),
+        needSync: const Value(true),
+        lastModifiedAt: Value(lastModifiedAt),
+      ),
     );
   }
 }

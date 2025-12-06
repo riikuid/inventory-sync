@@ -5,47 +5,83 @@ import 'package:meta/meta.dart';
 
 import '../../../../../core/response_code.dart';
 import '../../../../../core/token.dart';
+import '../../../../../core/user_storage.dart';
+import '../../../../sync/data/sync_repository.dart';
 import '../../../models/user.dart';
 import '../../../usecases/get_user.dart';
 
 part 'auth_state.dart';
 
+// auth_cubit.dart
 class AuthCubit extends Cubit<AuthState> {
-  AuthCubit() : super(AuthInitial());
+  final SyncRepository _syncRepository;
 
-  // final String _headRole = 'head_manager';
-  // final String _outsourceSupervisorRole = 'outsource_supervisor';
+  AuthCubit(this._syncRepository) : super(AuthInitial());
 
   User? _user;
-
   User? get user => _user;
 
-  Future<void> authCheck() async {
-    String? token = await Token.getSanctumToken();
-    if (token == null) return emit(UnAuthorized());
+  /// Dipanggil sekali di AppRoot.initState()
+  Future<void> checkAuthAndStartup() async {
+    emit(AuthLoading('Memeriksa sesi login...'));
 
-    GetUser getUser = GetUser();
-    await getUser(null).then((result) async {
-      if (result.isSuccess) {
-        _user = result.resultValue;
-        emit(Authorized(user: result.resultValue!));
-      } else {
-        if (result.statusCode == ResponseCode.unAuthorized) {
-          await Token.removeSanctumToken();
-          _user = null;
-          return emit(UnAuthorized());
-        }
-        emit(AuthError());
+    final token = await Token.getSanctumToken();
+    if (token == null) {
+      return emit(UnAuthorized());
+    }
+
+    // Coba ambil user dari cache local (SharedPreferences)
+    final cachedUser = await UserStorage.getUser();
+    if (cachedUser != null) {
+      _user = cachedUser;
+    }
+
+    // 1. Coba /auth/me ke server
+    final result = await GetUser()(null);
+
+    if (result.isSuccess) {
+      final user = result.resultValue!;
+      _user = user;
+
+      // Simpan ke cache lokal
+      await UserStorage.saveUser(user);
+
+      // 2. Coba sync pull
+      emit(AuthLoading('Menyinkronkan data...'));
+      try {
+        await _syncRepository.pullSinceLast();
+        emit(Authorized(user: user, offline: false));
+      } catch (_) {
+        // Sync gagal, tapi auth berhasil → tetap masuk, tapi offline mode
+        emit(Authorized(user: user, offline: true));
       }
-    });
+      return;
+    }
+
+    // === Gagal /auth/me ===
+    if (result.statusCode == ResponseCode.unAuthorized) {
+      await Token.removeSanctumToken();
+      await UserStorage.clearUser();
+      _user = null;
+      return emit(UnAuthorized());
+    }
+
+    // Error lain: koneksi / server error
+    if (cachedUser != null) {
+      // kita punya user lokal → izinkan offline
+      _user = cachedUser;
+      return emit(Authorized(user: cachedUser, offline: true));
+    }
+
+    // Nggak ada user lokal dan nggak bisa ke server → bener-bener mentok
+    emit(AuthError('Tidak bisa terhubung ke server dan tidak ada data lokal.'));
   }
 
-  // bool isHead() =>
-  //     user?.role == _headRole || user?.role == _outsourceSupervisorRole;
-
-  // void setUnAuthorized() async {
-  //   await Token.removeSanctumToken();
-  //   _user = null;
-  //   emit(UnAuthorized());
-  // }
+  /// Logout
+  Future<void> logout() async {
+    await Token.removeSanctumToken();
+    await UserStorage.clearUser();
+    _user = null;
+    emit(UnAuthorized());
+  }
 }

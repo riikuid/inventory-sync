@@ -118,7 +118,7 @@ class _CompanyItemDetailView extends StatelessWidget {
   }
 
   Widget _buildSetupBanner(BuildContext context, CompanyItemDetail detail) {
-    final isInitialized = detail.isSet != null && detail.hasComponents != null;
+    final isInitialized = detail.variants.isNotEmpty;
 
     if (isInitialized && detail.variants.isNotEmpty) {
       // Sudah ada konfigurasi + minimal 1 variant
@@ -126,7 +126,7 @@ class _CompanyItemDetailView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            detail.isSet == true ? 'Item ini tipe SET' : 'Item ini tipe SINGLE',
+            'SET ITEM',
             style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
           ),
           TextButton.icon(
@@ -368,7 +368,7 @@ class _CompanyItemDetailView extends StatelessWidget {
                                 ),
                               ),
                             ],
-                            if (v.defaultLocation != null) ...[
+                            if (v.rackName != null) ...[
                               const SizedBox(width: 12),
                               Icon(
                                 Icons.location_on_outlined,
@@ -377,7 +377,7 @@ class _CompanyItemDetailView extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                v.defaultLocation!,
+                                v.rackName!,
                                 style: TextStyle(
                                   color: Colors.grey.shade700,
                                   fontSize: 12,
