@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_sync_apps/core/styles/text_theme.dart';
 
 import '../../../../core/db/daos/company_item_dao.dart';
+import '../../../../core/styles/app_style.dart';
 import '../../../../core/styles/color_scheme.dart';
+import '../../../inventory/presentation/screens/company_item_detail_screen.dart';
 
 class CompanyItemCard extends StatelessWidget {
   final CompanyItemListRow row;
@@ -17,9 +20,13 @@ class CompanyItemCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(24),
       onTap: () {
         // TODO: sambungkan ke detail company item
-        // Navigator.push(context, MaterialPageRoute(
-        //   builder: (_) => CompanyItemDetailScreen(companyItemId: row.companyItemId),
-        // ));
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                CompanyItemDetailScreen(companyItemId: row.companyItemId),
+          ),
+        );
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -43,10 +50,11 @@ class CompanyItemCard extends StatelessWidget {
                 children: [
                   Text(
                     row.companyCode,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                    style: AppStyle.monoTextStyle.copyWith(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                       letterSpacing: 1.0,
+                      color: AppColors.primaryDark,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -54,7 +62,7 @@ class CompanyItemCard extends StatelessWidget {
                     row.productName,
                     style: const TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                   const SizedBox(height: 4),

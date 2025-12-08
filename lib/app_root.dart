@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_sync_apps/shared/widgets/error_screen.dart';
-import 'package:inventory_sync_apps/shared/widgets/forbidden_screen.dart';
+import 'package:inventory_sync_apps/shared/presentation/widgets/error_screen.dart';
+import 'package:inventory_sync_apps/shared/presentation/widgets/forbidden_screen.dart';
 
 import 'features/auth/presentations/blocs/auth_cubit/auth_cubit.dart';
 import 'features/auth/presentations/screens/login_screen.dart';

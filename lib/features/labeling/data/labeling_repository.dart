@@ -29,8 +29,10 @@ class LabelingRepository {
     required String companyItemId,
     required String? brandId,
     required String variantName,
+    required String uom,
     required String rackId,
     String? specification,
+    String? manufCode,
     required List<String> photoLocalPaths, // minimal 3
     required String userId,
   }) async {
@@ -59,8 +61,10 @@ class LabelingRepository {
         companyItemId: Value(companyItemId),
         brandId: Value(brandId),
         name: Value(variantName),
+        uom: Value(uom),
         rackId: Value(rackId),
         specification: Value(specification),
+        manufCode: Value(manufCode),
         createdAt: Value(now),
         updatedAt: Value(now),
         lastModifiedAt: Value(now),

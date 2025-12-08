@@ -53,12 +53,14 @@ class Warehouses extends Table {
 }
 
 class SectionWarehouses extends Table {
+  // TextColumn get sectionId => text().references(Sections, #id)();
+  // TextColumn get warehouseId => text().references(Warehouses, #id)();
   TextColumn get id => text()(); // UUID
   TextColumn get sectionId => text()();
   TextColumn get warehouseId => text()();
 
   @override
-  Set<Column> get primaryKey => {id};
+  Set<Column> get primaryKey => {sectionId, warehouseId};
 }
 
 class Racks extends Table {
@@ -117,6 +119,7 @@ class Variants extends Table {
   TextColumn get brandId => text().nullable()(); // FK -> Brands.id
   TextColumn get name => text()(); // "Bearing 043 Timken"
   TextColumn get uom => text()();
+  TextColumn get manufCode => text().nullable()();
   TextColumn get specification => text().nullable()(); // JSON string
 
   DateTimeColumn get createdAt => dateTime()();

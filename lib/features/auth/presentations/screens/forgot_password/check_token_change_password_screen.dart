@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_sync_apps/shared/widgets/primary_button.dart';
+import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timer_count_down/timer_controller.dart';
@@ -11,7 +11,7 @@ import 'package:timer_count_down/timer_count_down.dart';
 import '../../../../../core/routes/route_names.dart';
 import '../../../../../core/utils/custom_toast.dart';
 import '../../../../../core/utils/loading_overlay.dart';
-import '../../../../../shared/widgets/text_field_widget.dart';
+import '../../../../../shared/presentation/widgets/text_field_widget.dart';
 import '../../../usecases/send_email_change_password.dart';
 
 class CheckTokenChangePasswordScreen extends StatefulWidget {

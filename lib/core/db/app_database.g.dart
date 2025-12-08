@@ -904,7 +904,7 @@ class $SectionWarehousesTable extends SectionWarehouses
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {id};
+  Set<GeneratedColumn> get $primaryKey => {sectionId, warehouseId};
   @override
   SectionWarehouse map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -3303,6 +3303,17 @@ class $VariantsTable extends Variants with TableInfo<$VariantsTable, Variant> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _manufCodeMeta = const VerificationMeta(
+    'manufCode',
+  );
+  @override
+  late final GeneratedColumn<String> manufCode = GeneratedColumn<String>(
+    'manuf_code',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _specificationMeta = const VerificationMeta(
     'specification',
   );
@@ -3383,6 +3394,7 @@ class $VariantsTable extends Variants with TableInfo<$VariantsTable, Variant> {
     brandId,
     name,
     uom,
+    manufCode,
     specification,
     createdAt,
     updatedAt,
@@ -3445,6 +3457,12 @@ class $VariantsTable extends Variants with TableInfo<$VariantsTable, Variant> {
       );
     } else if (isInserting) {
       context.missing(_uomMeta);
+    }
+    if (data.containsKey('manuf_code')) {
+      context.handle(
+        _manufCodeMeta,
+        manufCode.isAcceptableOrUnknown(data['manuf_code']!, _manufCodeMeta),
+      );
     }
     if (data.containsKey('specification')) {
       context.handle(
@@ -3525,6 +3543,10 @@ class $VariantsTable extends Variants with TableInfo<$VariantsTable, Variant> {
         DriftSqlType.string,
         data['${effectivePrefix}uom'],
       )!,
+      manufCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}manuf_code'],
+      ),
       specification: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}specification'],
@@ -3565,6 +3587,7 @@ class Variant extends DataClass implements Insertable<Variant> {
   final String? brandId;
   final String name;
   final String uom;
+  final String? manufCode;
   final String? specification;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -3578,6 +3601,7 @@ class Variant extends DataClass implements Insertable<Variant> {
     this.brandId,
     required this.name,
     required this.uom,
+    this.manufCode,
     this.specification,
     required this.createdAt,
     required this.updatedAt,
@@ -3598,6 +3622,9 @@ class Variant extends DataClass implements Insertable<Variant> {
     }
     map['name'] = Variable<String>(name);
     map['uom'] = Variable<String>(uom);
+    if (!nullToAbsent || manufCode != null) {
+      map['manuf_code'] = Variable<String>(manufCode);
+    }
     if (!nullToAbsent || specification != null) {
       map['specification'] = Variable<String>(specification);
     }
@@ -3623,6 +3650,9 @@ class Variant extends DataClass implements Insertable<Variant> {
           : Value(brandId),
       name: Value(name),
       uom: Value(uom),
+      manufCode: manufCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(manufCode),
       specification: specification == null && nullToAbsent
           ? const Value.absent()
           : Value(specification),
@@ -3648,6 +3678,7 @@ class Variant extends DataClass implements Insertable<Variant> {
       brandId: serializer.fromJson<String?>(json['brandId']),
       name: serializer.fromJson<String>(json['name']),
       uom: serializer.fromJson<String>(json['uom']),
+      manufCode: serializer.fromJson<String?>(json['manufCode']),
       specification: serializer.fromJson<String?>(json['specification']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -3666,6 +3697,7 @@ class Variant extends DataClass implements Insertable<Variant> {
       'brandId': serializer.toJson<String?>(brandId),
       'name': serializer.toJson<String>(name),
       'uom': serializer.toJson<String>(uom),
+      'manufCode': serializer.toJson<String?>(manufCode),
       'specification': serializer.toJson<String?>(specification),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -3682,6 +3714,7 @@ class Variant extends DataClass implements Insertable<Variant> {
     Value<String?> brandId = const Value.absent(),
     String? name,
     String? uom,
+    Value<String?> manufCode = const Value.absent(),
     Value<String?> specification = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -3695,6 +3728,7 @@ class Variant extends DataClass implements Insertable<Variant> {
     brandId: brandId.present ? brandId.value : this.brandId,
     name: name ?? this.name,
     uom: uom ?? this.uom,
+    manufCode: manufCode.present ? manufCode.value : this.manufCode,
     specification: specification.present
         ? specification.value
         : this.specification,
@@ -3714,6 +3748,7 @@ class Variant extends DataClass implements Insertable<Variant> {
       brandId: data.brandId.present ? data.brandId.value : this.brandId,
       name: data.name.present ? data.name.value : this.name,
       uom: data.uom.present ? data.uom.value : this.uom,
+      manufCode: data.manufCode.present ? data.manufCode.value : this.manufCode,
       specification: data.specification.present
           ? data.specification.value
           : this.specification,
@@ -3736,6 +3771,7 @@ class Variant extends DataClass implements Insertable<Variant> {
           ..write('brandId: $brandId, ')
           ..write('name: $name, ')
           ..write('uom: $uom, ')
+          ..write('manufCode: $manufCode, ')
           ..write('specification: $specification, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -3754,6 +3790,7 @@ class Variant extends DataClass implements Insertable<Variant> {
     brandId,
     name,
     uom,
+    manufCode,
     specification,
     createdAt,
     updatedAt,
@@ -3771,6 +3808,7 @@ class Variant extends DataClass implements Insertable<Variant> {
           other.brandId == this.brandId &&
           other.name == this.name &&
           other.uom == this.uom &&
+          other.manufCode == this.manufCode &&
           other.specification == this.specification &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -3786,6 +3824,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
   final Value<String?> brandId;
   final Value<String> name;
   final Value<String> uom;
+  final Value<String?> manufCode;
   final Value<String?> specification;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -3800,6 +3839,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
     this.brandId = const Value.absent(),
     this.name = const Value.absent(),
     this.uom = const Value.absent(),
+    this.manufCode = const Value.absent(),
     this.specification = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -3815,6 +3855,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
     this.brandId = const Value.absent(),
     required String name,
     required String uom,
+    this.manufCode = const Value.absent(),
     this.specification = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -3835,6 +3876,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
     Expression<String>? brandId,
     Expression<String>? name,
     Expression<String>? uom,
+    Expression<String>? manufCode,
     Expression<String>? specification,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -3850,6 +3892,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
       if (brandId != null) 'brand_id': brandId,
       if (name != null) 'name': name,
       if (uom != null) 'uom': uom,
+      if (manufCode != null) 'manuf_code': manufCode,
       if (specification != null) 'specification': specification,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -3867,6 +3910,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
     Value<String?>? brandId,
     Value<String>? name,
     Value<String>? uom,
+    Value<String?>? manufCode,
     Value<String?>? specification,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -3882,6 +3926,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
       brandId: brandId ?? this.brandId,
       name: name ?? this.name,
       uom: uom ?? this.uom,
+      manufCode: manufCode ?? this.manufCode,
       specification: specification ?? this.specification,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -3912,6 +3957,9 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
     }
     if (uom.present) {
       map['uom'] = Variable<String>(uom.value);
+    }
+    if (manufCode.present) {
+      map['manuf_code'] = Variable<String>(manufCode.value);
     }
     if (specification.present) {
       map['specification'] = Variable<String>(specification.value);
@@ -3946,6 +3994,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
           ..write('brandId: $brandId, ')
           ..write('name: $name, ')
           ..write('uom: $uom, ')
+          ..write('manufCode: $manufCode, ')
           ..write('specification: $specification, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -7691,6 +7740,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $UnitsTable units = $UnitsTable(this);
   late final $SyncMetadataTable syncMetadata = $SyncMetadataTable(this);
   late final BrandDao brandDao = BrandDao(this as AppDatabase);
+  late final RackDao rackDao = RackDao(this as AppDatabase);
   late final CategoryDao categoryDao = CategoryDao(this as AppDatabase);
   late final ProductDao productDao = ProductDao(this as AppDatabase);
   late final CompanyItemDao companyItemDao = CompanyItemDao(
@@ -9521,6 +9571,7 @@ typedef $$VariantsTableCreateCompanionBuilder =
       Value<String?> brandId,
       required String name,
       required String uom,
+      Value<String?> manufCode,
       Value<String?> specification,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -9537,6 +9588,7 @@ typedef $$VariantsTableUpdateCompanionBuilder =
       Value<String?> brandId,
       Value<String> name,
       Value<String> uom,
+      Value<String?> manufCode,
       Value<String?> specification,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -9582,6 +9634,11 @@ class $$VariantsTableFilterComposer
 
   ColumnFilters<String> get uom => $composableBuilder(
     column: $table.uom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get manufCode => $composableBuilder(
+    column: $table.manufCode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9655,6 +9712,11 @@ class $$VariantsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get manufCode => $composableBuilder(
+    column: $table.manufCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get specification => $composableBuilder(
     column: $table.specification,
     builder: (column) => ColumnOrderings(column),
@@ -9715,6 +9777,9 @@ class $$VariantsTableAnnotationComposer
   GeneratedColumn<String> get uom =>
       $composableBuilder(column: $table.uom, builder: (column) => column);
 
+  GeneratedColumn<String> get manufCode =>
+      $composableBuilder(column: $table.manufCode, builder: (column) => column);
+
   GeneratedColumn<String> get specification => $composableBuilder(
     column: $table.specification,
     builder: (column) => column,
@@ -9772,6 +9837,7 @@ class $$VariantsTableTableManager
                 Value<String?> brandId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> uom = const Value.absent(),
+                Value<String?> manufCode = const Value.absent(),
                 Value<String?> specification = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -9786,6 +9852,7 @@ class $$VariantsTableTableManager
                 brandId: brandId,
                 name: name,
                 uom: uom,
+                manufCode: manufCode,
                 specification: specification,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -9802,6 +9869,7 @@ class $$VariantsTableTableManager
                 Value<String?> brandId = const Value.absent(),
                 required String name,
                 required String uom,
+                Value<String?> manufCode = const Value.absent(),
                 Value<String?> specification = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -9816,6 +9884,7 @@ class $$VariantsTableTableManager
                 brandId: brandId,
                 name: name,
                 uom: uom,
+                manufCode: manufCode,
                 specification: specification,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

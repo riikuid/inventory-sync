@@ -254,6 +254,7 @@ class InventoryRepository {
         VariantSummary(
           variantId: v.id,
           name: v.name,
+          manufCode: v.manufCode,
           brandName: brandName,
           rackName: rackName,
           stock: stock,
@@ -352,6 +353,7 @@ class CompanyItemSummary {
   final String categoryName;
   final String? rackName;
   final String? warehouseName;
+  final String? specification;
   final int stock;
 
   CompanyItemSummary({
@@ -363,6 +365,7 @@ class CompanyItemSummary {
     required this.categoryName,
     this.rackName,
     this.warehouseName,
+    this.specification,
     required this.stock,
   });
 }
@@ -399,40 +402,48 @@ class VariantSummary {
   final String variantId;
   final String name;
   final String? brandName;
+  final String? manufCode;
   final String? brandId;
   final String? rackId;
   final String? rackName;
   final String? warehouseName;
+  final String? specification;
   final int stock;
 
   VariantSummary({
     required this.variantId,
     required this.name,
     this.brandName,
+    this.manufCode,
     this.brandId,
     this.rackId,
     this.rackName,
     this.warehouseName,
+    this.specification,
     required this.stock,
   });
 
   VariantSummary copyWith({
     String? name,
     String? brandName,
+    String? manufCode,
     String? brandId,
     String? rackId,
     String? rackName,
     String? warehouseName,
+    String? specification,
     int? stock,
   }) {
     return VariantSummary(
       variantId: variantId,
       name: name ?? this.name,
       brandName: brandName ?? this.brandName,
+      manufCode: manufCode ?? this.manufCode,
       brandId: brandId ?? this.brandId,
       rackId: rackId ?? this.rackId,
       rackName: rackName ?? this.rackName,
       warehouseName: warehouseName ?? this.warehouseName,
+      specification: specification ?? this.specification,
       stock: stock ?? this.stock,
     );
   }

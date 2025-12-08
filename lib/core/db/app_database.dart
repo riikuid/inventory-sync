@@ -10,6 +10,7 @@ import 'daos/company_item_dao.dart';
 import 'daos/component_dao.dart';
 import 'daos/component_photo_dao.dart';
 import 'daos/product_dao.dart';
+import 'daos/rack_dao.dart';
 import 'daos/unit_dao.dart';
 import 'daos/variant_component_dao.dart';
 import 'daos/variant_dao.dart';
@@ -39,6 +40,7 @@ part 'app_database.g.dart';
   ],
   daos: [
     BrandDao,
+    RackDao,
     CategoryDao,
     ProductDao,
     CompanyItemDao,

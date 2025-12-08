@@ -4,14 +4,14 @@ class AppColors {
   /// CORE BRAND COLORS
   static const Color primary = Color(0xffC9A227); // Gold Matte
   static const Color primaryDark = Color(0xff5C4A11); // Dark Gold Brown
-  static const Color primaryLight = Color(0xffF3E9C3); // Light Gold
+  static const Color primaryLight = Color(0xffF2EFE8); // Light Gold
 
   static const Color secondary = Color(0xff1E1E1E); // Almost Black / Coffee
   static const Color secondaryLight = Color(0xff2C2C2C);
   static const Color secondaryDark = Color(0xff000000);
 
   /// BACKGROUND
-  static const Color background = Color(0xffFAF7F2); // Cream Warm
+  static const Color background = Color(0xffF4F3F1); // Cream Warm
   static const Color surface = Color(0xffffffff);
 
   /// SUPPORTING

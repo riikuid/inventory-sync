@@ -1,157 +1,277 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_sync_apps/core/styles/app_style.dart';
 
 import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
-import 'package:inventory_sync_apps/features/auth/presentations/blocs/auth_cubit/auth_cubit.dart';
+import 'package:inventory_sync_apps/core/styles/text_theme.dart';
 import 'package:inventory_sync_apps/features/inventory/data/inventory_repository.dart';
-
-import '../../../labeling/data/labeling_repository.dart';
-import '../../../labeling/presentation/bloc/label_set/label_state_cubit.dart';
-import '../../../labeling/presentation/bloc/setup_company_item/setup_company_item_cubit.dart';
-import '../../../labeling/presentation/screens/label_set_screen.dart';
-import '../../../labeling/presentation/screens/set_up_company_item_screen.dart';
+import '../../../variant/presentation/screen/create_variant_screen.dart';
 import '../bloc/company_item_detail/company_item_detail_cubit.dart';
-import 'variant_detail_screen.dart';
 
-class CompanyItemDetailScreen extends StatelessWidget {
+class CompanyItemDetailScreen extends StatefulWidget {
   final String companyItemId;
 
   const CompanyItemDetailScreen({super.key, required this.companyItemId});
 
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) {
-        final repo = RepositoryProvider.of<InventoryRepository>(context);
-        final cubit = CompanyItemDetailCubit(repo);
-        cubit.watchDetail(companyItemId);
-        return cubit;
-      },
-      child: const _CompanyItemDetailView(),
-    );
-  }
+  State<CompanyItemDetailScreen> createState() =>
+      _CompanyItemDetailScreenState();
 }
 
-class _CompanyItemDetailView extends StatelessWidget {
-  const _CompanyItemDetailView();
+class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
+  late final CompanyItemDetailCubit _cubit;
+
+  @override
+  void initState() {
+    super.initState();
+    final repo = context.read<InventoryRepository>();
+    _cubit = CompanyItemDetailCubit(repo);
+    // start watching immediately
+    _cubit.watchDetail(widget.companyItemId);
+  }
+
+  @override
+  void dispose() {
+    _cubit.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    int? userID = ((context.read<AuthCubit>().state is Authorized)
-        ? (context.read<AuthCubit>().state as Authorized).user.id ?? 0
-        : 0);
+    final cs = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
+    return BlocProvider.value(
+      value: _cubit,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          iconTheme: IconThemeData(color: AppColors.onSurface),
+          leading: IconButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            icon: Icon(
+              Icons.arrow_back_ios_rounded,
+              weight: 260,
+              color: AppColors.onSurface,
+            ),
+          ),
+          backgroundColor: AppColors.background,
+          foregroundColor: Colors.transparent,
+          elevation: 0.5,
+
+          title: BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
+            builder: (context, state) {
+              if (state is CompanyItemDetailLoaded) {
+                return Text(
+                  '${state.detail.companyCode} • ${state.detail.productName}',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.onSurface,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                );
+              }
+              return const Text('Item Detail');
+            },
+          ),
+        ),
+        body: BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
           builder: (context, state) {
-            if (state is CompanyItemDetailLoaded) {
-              return Text(
-                '${state.detail.companyCode} • ${state.detail.productName}',
-                overflow: TextOverflow.ellipsis,
+            if (state is CompanyItemDetailLoading ||
+                state is CompanyItemDetailInitial) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (state is CompanyItemDetailError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Terjadi kesalahan:\n${state.message}',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: () =>
+                            _cubit.watchDetail(widget.companyItemId),
+                        child: const Text('Coba lagi'),
+                      ),
+                    ],
+                  ),
+                ),
               );
             }
-            return const Text('Item Detail');
+
+            if (state is CompanyItemDetailLoaded) {
+              final detail = state.detail;
+              return RefreshIndicator(
+                onRefresh: () => _cubit.loadDetail(widget.companyItemId),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      16,
+                      16,
+                      16,
+                      96,
+                    ), // bottom padding for FAB
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeaderCard(detail),
+                        const SizedBox(height: 12),
+                        _buildSetupBanner(detail),
+                        const SizedBox(height: 16),
+                        _buildSectionTitle(
+                          'Daftar Variant',
+                          '${detail.variants.length} variant',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildVariantList(detail),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return const SizedBox.shrink();
           },
         ),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
-        builder: (context, state) {
-          if (state is CompanyItemDetailLoading ||
-              state is CompanyItemDetailInitial) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is CompanyItemDetailError) {
-            return Center(child: Text('Error: ${state.message}'));
-          } else if (state is CompanyItemDetailLoaded) {
-            final detail = state.detail;
-            return _buildLoaded(context, detail); // ⬅️ pakai ini
-          }
-          return const SizedBox.shrink();
-        },
+        floatingActionButton: _buildAddVariantFab(),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
   }
 
-  Widget _buildLoaded(BuildContext context, CompanyItemDetail detail) {
-    return RefreshIndicator(
-      onRefresh: () => context.read<CompanyItemDetailCubit>().loadDetail(
-        detail.companyItemId,
+  Widget _buildHeaderCard(CompanyItemDetail detail) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.onError,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [AppStyle.defaultBoxShadow],
       ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      // elevation: 1,
+      // shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // top row: badge + title + rack
+            Row(
               children: [
-                _buildHeader(detail),
-                const SizedBox(height: 12),
-                _buildSetupBanner(context, detail),
-                const SizedBox(height: 12),
+                Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    // show last segment or short code from companyCode
+                    detail.companyCode.split('-').last,
+                    style: AppStyle.monoTextStyle.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        detail.productName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              detail.variants.isNotEmpty &&
+                                      detail.variants.first.rackName != null
+                                  ? detail.variants.first.rackName!
+                                  : 'Tidak ada lokasi',
+                              style: TextStyle(color: Colors.grey.shade700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildVariantList(detail),
-            ),
-          ),
-        ],
+            // const SizedBox(height: 12),
+            // info box (description / specification)
+            if (detail.variants.isNotEmpty &&
+                detail.variants.first.specification != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(top: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.grey.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        detail.variants.first.specification ?? '',
+                        style: TextStyle(color: Colors.grey.shade800),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeader(CompanyItemDetail detail) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${detail.companyCode} — ${detail.productName}',
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
-        ),
-        const SizedBox(height: 4),
-      ],
-    );
-  }
-
-  Widget _buildSetupBanner(BuildContext context, CompanyItemDetail detail) {
+  Widget _buildSetupBanner(CompanyItemDetail detail) {
     final isInitialized = detail.variants.isNotEmpty;
-
-    if (isInitialized && detail.variants.isNotEmpty) {
-      // Sudah ada konfigurasi + minimal 1 variant
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'SET ITEM',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-          ),
-          TextButton.icon(
-            onPressed: () => _openSetupAddVariant(context, detail),
-            icon: const Icon(Icons.add),
-            label: const Text('Tambah Variant'),
-          ),
-        ],
-      );
+    if (isInitialized) {
+      return const SizedBox.shrink();
     }
 
-    // Belum di-setup → banner warning + tombol Setup pertama kali
     return Card(
-      color: Colors.orange.shade50,
+      color: AppColors.primaryLight.withOpacity(0.6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            Icon(Icons.info_outline, color: Colors.orange.shade700),
+            Icon(Icons.info_outline, color: AppColors.primaryDark),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Item ini belum di-setup.\nTentukan tipe (set/single), brand, dan foto sebelum labeling.',
-                style: TextStyle(fontSize: 13, color: Colors.orange.shade800),
+                'Item ini belum di-setup. Tentukan tipe, brand, lokasi, dan foto agar bisa dilabel.',
+                style: TextStyle(color: AppColors.primaryDark.withOpacity(0.9)),
               ),
             ),
             const SizedBox(width: 8),
@@ -160,608 +280,244 @@ class _CompanyItemDetailView extends StatelessWidget {
                 backgroundColor: AppColors.primary,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
-                  vertical: 8,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed: () => _openSetupFirstTime(context, detail),
-              child: const Text(
-                'Setup',
-                style: TextStyle(fontSize: 13, color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _openSetupFirstTime(
-    BuildContext context,
-    CompanyItemDetail detail,
-  ) async {
-    final userId = 'CURRENT_USER_ID'; // TODO: dari AuthCubit
-
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => BlocProvider(
-          create: (ctx) => SetupCompanyItemCubit(
-            inventoryRepo: ctx.read<InventoryRepository>(),
-            labelingRepo: ctx.read<LabelingRepository>(),
-          )..loadInitial(detail.companyItemId),
-          child: SetupCompanyItemScreen(
-            companyItemId: detail.companyItemId,
-            productId: detail.productId,
-            userId: userId,
-          ),
-        ),
-      ),
-    );
-
-    if (result == true) {
-      // ignore: use_build_context_synchronously
-      context.read<CompanyItemDetailCubit>().loadDetail(detail.companyItemId);
-    }
-  }
-
-  void _openSetupAddVariant(
-    BuildContext context,
-    CompanyItemDetail detail,
-  ) async {
-    final userId = 'CURRENT_USER_ID'; // TODO: dari AuthCubit
-
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => BlocProvider(
-          create: (ctx) => SetupCompanyItemCubit(
-            inventoryRepo: ctx.read<InventoryRepository>(),
-            labelingRepo: ctx.read<LabelingRepository>(),
-          )..loadInitial(detail.companyItemId),
-          child: SetupCompanyItemScreen(
-            companyItemId: detail.companyItemId,
-            productId: detail.productId,
-            userId: userId,
-          ),
-        ),
-      ),
-    );
-
-    if (result == true) {
-      // setelah nambah variant baru, reload detail
-      // ignore: use_build_context_synchronously
-      context.read<CompanyItemDetailCubit>().loadDetail(detail.companyItemId);
-    }
-  }
-
-  void _openSetup(BuildContext context, CompanyItemDetail detail) async {
-    // TODO: ambil userId dari AuthCubit
-    final userId = 'CURRENT_USER_ID'; // sementara
-
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => BlocProvider(
-          create: (ctx) => SetupCompanyItemCubit(
-            inventoryRepo: ctx.read<InventoryRepository>(),
-            labelingRepo: ctx.read<LabelingRepository>(),
-          )..loadInitial(detail.companyItemId),
-          child: SetupCompanyItemScreen(
-            companyItemId: detail.companyItemId,
-            productId: detail.productId,
-            userId: userId,
-          ),
-        ),
-      ),
-    );
-
-    if (result == true) {
-      // setelah selesai setup, reload detail
-      // ignore: use_build_context_synchronously
-      context.read<CompanyItemDetailCubit>().loadDetail(detail.companyItemId);
-    }
-  }
-
-  Widget _buildSummaryCard(CompanyItemDetail detail, BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Theme.of(
+              onPressed: () => {
+                Navigator.push(
                   context,
-                ).colorScheme.secondary.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                detail.companyCode,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+                  MaterialPageRoute(
+                    builder: (context) => CreateVariantScreen(
+                      companyItemId: detail.companyItemId,
+                      userId: 'SDWDSD',
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                detail.productName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
+              },
+              // onPressed: () => _openSetupScreen(),
+              child: const Text('Setup', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, String subtitle) {
+    return Row(
+      children: [
+        Text(
+          title.toUpperCase(),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          subtitle,
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+        ),
+      ],
     );
   }
 
   Widget _buildVariantList(CompanyItemDetail detail) {
     if (detail.variants.isEmpty) {
-      return const Center(child: Text('Belum ada variant untuk item ini.'));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 36),
+          child: Text(
+            'Belum ada variant untuk item ini.',
+            style: TextStyle(color: Colors.grey.shade700),
+          ),
+        ),
+      );
     }
 
-    return ListView.separated(
-      itemCount: detail.variants.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final v = detail.variants[index];
-        return GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => VariantDetailScreen(
-                variantId: v.variantId,
-                userId: 'USER_ID'.toString(),
-              ),
-            ),
-          ),
-          child: Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      color: v.stock > 0
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey.shade400,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          v.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            if (v.brandName != null) ...[
-                              Icon(
-                                Icons.sell_outlined,
-                                size: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                v.brandName!,
-                                style: TextStyle(
-                                  color: Colors.grey.shade700,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                            if (v.rackName != null) ...[
-                              const SizedBox(width: 12),
-                              Icon(
-                                Icons.location_on_outlined,
-                                size: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                v.rackName!,
-                                style: TextStyle(
-                                  color: Colors.grey.shade700,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                            // TextButton(
-                            //   onPressed: () {
-                            //     // TODO: ambil userId dari AuthCubit atau model user yang kamu punya
-                            //     final userId =
-                            //         'CURRENT_USER_ID'; // sementara hardcode, nanti ganti
-
-                            //     Navigator.of(context).push(
-                            //       MaterialPageRoute(
-                            //         builder: (_) => BlocProvider(
-                            //           create: (ctx) => LabelSetCubit(
-                            //             labelingRepository: ctx
-                            //                 .read<LabelingRepository>(),
-                            //             variantId: v.variantId,
-                            //             variantName: v.name,
-                            //             brandName: v.brandName,
-                            //             defaultLocation: v.defaultLocation,
-                            //             userId: userId,
-                            //           ),
-                            //           child: const LabelSetScreen(),
-                            //         ),
-                            //       ),
-                            //     );
-                            //   },
-                            //   child: const Text('Label as Set'),
-                            // ),
-                            // TextButton(
-                            //   onPressed: () {
-                            //     // TODO: ambil userId dari AuthCubit atau model user yang kamu punya
-                            //     final userId =
-                            //         'CURRENT_USER_ID'; // sementara hardcode, nanti ganti
-
-                            //     Navigator.of(context).push(
-                            //       MaterialPageRoute(
-                            //         builder: (_) => BlocProvider(
-                            //           create: (ctx) => LabelSetCubit(
-                            //             labelingRepository: ctx
-                            //                 .read<LabelingRepository>(),
-                            //             variantId: v.variantId,
-                            //             variantName: v.name,
-                            //             brandName: v.brandName,
-                            //             defaultLocation: v.defaultLocation,
-                            //             userId: userId,
-                            //           ),
-                            //           child: const LabelSetScreen(),
-                            //         ),
-                            //       ),
-                            //     );
-                            //   },
-                            //   child: const Text('Label as Set'),
-                            // ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Row(
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            v.stock.toString(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            'unit',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 8),
-                      // PopupMenuButton<String>(
-                      //   onSelected: (value) {
-                      //     if (value == 'duplicate_brand') {
-                      //       _duplicateVariantToOtherBrand(context, v);
-                      //     }
-                      //   },
-                      //   itemBuilder: (ctx) => [
-                      //     const PopupMenuItem(
-                      //       value: 'duplicate_brand',
-                      //       child: Text('Duplikat ke Brand lain'),
-                      //     ),
-                      //   ],
-                      // ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+    return Column(
+      children: detail.variants.map((v) => _buildVariantCard(v)).toList(),
     );
   }
 
-  // void _duplicateVariantToOtherBrand(
-  //   BuildContext context,
-  //   VariantSummary v,
-  // ) async {
-  //   final inventoryRepo = context.read<InventoryRepository>();
-  //   final labelingRepo = context.read<LabelingRepository>();
-  //   final userId = 'CURRENT_USER_ID'; // TODO: dari AuthCubit
-
-  //   // ambil list brand
-  //   final brandRows = await inventoryRepo.getAllBrands();
-  //   final brands = brandRows
-  //       .map((b) => BrandOption(id: b.id, name: b.name))
-  //       .toList();
-
-  //   final selectedBrand = await _showBrandPicker(context, brands, null);
-
-  //   if (selectedBrand == null) return;
-
-  //   // panggil repo untuk duplikat
-  //   try {
-  //     await labelingRepo.duplicateVariantToBrand(
-  //       sourceVariantId: v.variantId,
-  //       targetBrandId: selectedBrand.id,
-  //       userId: userId,
-  //     );
-
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text(
-  //           'Variant berhasil diduplikasi ke brand ${selectedBrand.name}',
-  //         ),
-  //       ),
-  //     );
-
-  //     // reload detail
-  //     // ignore: use_build_context_synchronously
-  //     final detailCubit = context.read<CompanyItemDetailCubit>();
-  //     final currentState = detailCubit.state;
-  //     if (currentState is CompanyItemDetailLoaded) {
-  //       detailCubit.loadDetail(currentState.detail.companyItemId);
-  //     }
-  //   } catch (e) {
-  //     ScaffoldMessenger.of(
-  //       context,
-  //     ).showSnackBar(SnackBar(content: Text('Gagal duplikat variant: $e')));
-  //   }
-  // }
-
-  Future<BrandOption?> _showBrandPicker(
-    BuildContext context,
-    List<BrandOption> brands,
-    String? currentId,
-  ) async {
-    final controller = TextEditingController();
-    BrandOption? selected = brands.firstWhere(
-      (b) => b.id == currentId,
-      orElse: () =>
-          brands.isNotEmpty ? brands.first : BrandOption(id: '', name: ''),
-    );
-
-    return showModalBottomSheet<BrandOption>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) {
-        List<BrandOption> filtered = List.from(brands);
-
-        void applyFilter(String query) {
-          filtered = brands
-              .where((b) => b.name.toLowerCase().contains(query.toLowerCase()))
-              .toList();
-        }
-
-        applyFilter('');
-
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom,
-              ),
-              child: SizedBox(
-                height: 400,
+  Widget _buildVariantCard(VariantSummary v) {
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [AppStyle.defaultBoxShadow],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          // buka detail variant (jika ada)
+          // Navigator.of(context).push(
+          //   MaterialPageRoute(
+          //     builder: (_) => VariantDetailScreen(variantId: v.variantId),
+          //   ),
+          // );
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Text(
-                        'Pilih Brand',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
+                    Text(
+                      v.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      child: TextField(
-                        controller: controller,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          hintText: 'Cari brand...',
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            applyFilter(value);
-                          });
-                        },
-                      ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        if (v.manufCode != null) ...[
+                          Text(
+                            v.manufCode!,
+                            style: TextStyle(color: Colors.grey.shade700),
+                          ),
+                        ],
+                        if ((v.rackName != null) && (v.manufCode != null)) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '•',
+                            style: TextStyle(color: Colors.grey.shade700),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        if (v.rackName != null) ...[
+                          Text(
+                            v.rackName!,
+                            style: TextStyle(color: Colors.grey.shade700),
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: filtered.length,
-                        itemBuilder: (ctx, index) {
-                          final b = filtered[index];
-                          final isSelected = b.id == currentId;
-                          return ListTile(
-                            title: Text(b.name),
-                            trailing: isSelected
-                                ? const Icon(Icons.check, color: Colors.green)
-                                : null,
-                            onTap: () {
-                              Navigator.of(ctx).pop(b);
-                            },
-                          );
-                        },
+                    SizedBox(height: 3),
+                    Text(
+                      '${v.stock.toString()} unit aktif',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
                       ),
                     ),
                   ],
                 ),
               ),
-            );
-          },
-        );
-      },
+
+              const SizedBox(width: 8),
+              Column(
+                children: [
+                  if (v.brandName != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '${v.brandName}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                    ),
+                  ],
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      // TODO: implement print action
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Print action')),
+                      );
+                    },
+                    icon: const Icon(Icons.print, size: 16),
+                    label: const Text('Print'),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      side: BorderSide(color: Colors.grey.shade300),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  // Widget _buildVariantList(CompanyItemDetail detail) {
-  //   if (detail.variants.isEmpty) {
-  //     return const Expanded(
-  //       child: Center(child: Text('Belum ada variant untuk item ini.')),
-  //     );
-  //   }
+  Widget _buildAddVariantFab() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ElevatedButton.icon(
+        onPressed: () => {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CreateVariantScreen(
+                companyItemId: widget.companyItemId,
+                userId: 'SDWDSD',
+              ),
+            ),
+          ),
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Tambah Variant'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.onPrimary,
+          minimumSize: const Size(double.infinity, 56),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+    );
+  }
 
-  //   return Expanded(
-  //     child: ListView.separated(
-  //       itemCount: detail.variants.length,
-  //       separatorBuilder: (_, __) => const SizedBox(height: 8),
-  //       itemBuilder: (context, index) {
-  //         final v = detail.variants[index];
-  //         return Card(
-  //           shape: RoundedRectangleBorder(
-  //             borderRadius: BorderRadius.circular(12),
-  //           ),
-  //           child: Padding(
-  //             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-  //             child: Row(
-  //               children: [
-  //                 // indicator stok
-  //                 Container(
-  //                   width: 10,
-  //                   height: 48,
-  //                   decoration: BoxDecoration(
-  //                     borderRadius: BorderRadius.circular(4),
-  //                     color: v.stock > 0
-  //                         ? Theme.of(context).colorScheme.primary
-  //                         : Colors.grey.shade400,
-  //                   ),
-  //                 ),
-  //                 const SizedBox(width: 12),
-  //                 Expanded(
-  //                   child: Column(
-  //                     crossAxisAlignment: CrossAxisAlignment.start,
-  //                     children: [
-  //                       Text(
-  //                         v.name,
-  //                         style: const TextStyle(
-  //                           fontWeight: FontWeight.w600,
-  //                           fontSize: 15,
-  //                         ),
-  //                       ),
-  //                       const SizedBox(height: 4),
-  //                       Row(
-  //                         children: [
-  //                           if (v.brandName != null) ...[
-  //                             Icon(
-  //                               Icons.sell_outlined,
-  //                               size: 14,
-  //                               color: Colors.grey.shade600,
-  //                             ),
-  //                             const SizedBox(width: 4),
-  //                             Text(
-  //                               v.brandName!,
-  //                               style: TextStyle(
-  //                                 color: Colors.grey.shade700,
-  //                                 fontSize: 12,
-  //                               ),
-  //                             ),
-  //                           ],
-  //                           if (v.defaultLocation != null) ...[
-  //                             const SizedBox(width: 12),
-  //                             Icon(
-  //                               Icons.location_on_outlined,
-  //                               size: 14,
-  //                               color: Colors.grey.shade600,
-  //                             ),
-  //                             const SizedBox(width: 4),
-  //                             Text(
-  //                               v.defaultLocation!,
-  //                               style: TextStyle(
-  //                                 color: Colors.grey.shade700,
-  //                                 fontSize: 12,
-  //                               ),
-  //                             ),
-  //                             TextButton(
-  //                               onPressed: () {
-  //                                 // TODO: ambil userId dari AuthCubit atau model user yang kamu punya
-  //                                 final userId =
-  //                                     'CURRENT_USER_ID'; // sementara hardcode, nanti ganti
+  // void _openSetupScreen() async {
+  //   // open existing SetupCompanyItemScreen using SetupCompanyItemCubit
+  //   final inventoryRepo = context.read<InventoryRepository>();
+  //   final labelingRepo = context.read<LabelingRepository>();
 
-  //                                 Navigator.of(context).push(
-  //                                   MaterialPageRoute(
-  //                                     builder: (_) => BlocProvider(
-  //                                       create: (ctx) => LabelSetCubit(
-  //                                         labelingRepository: ctx
-  //                                             .read<LabelingRepository>(),
-  //                                         variantId: v.variantId,
-  //                                         variantName: v.name,
-  //                                         brandName: v.brandName,
-  //                                         defaultLocation: v.defaultLocation,
-  //                                         userId: userId,
-  //                                       ),
-  //                                       child: const LabelSetScreen(),
-  //                                     ),
-  //                                   ),
-  //                                 );
-  //                               },
-  //                               child: const Text('Label as Set'),
-  //                             ),
-  //                           ],
-  //                         ],
-  //                       ),
-  //                     ],
-  //                   ),
-  //                 ),
-  //                 const SizedBox(width: 12),
-  //                 Column(
-  //                   crossAxisAlignment: CrossAxisAlignment.end,
-  //                   children: [
-  //                     Text(
-  //                       v.stock.toString(),
-  //                       style: const TextStyle(
-  //                         fontWeight: FontWeight.bold,
-  //                         fontSize: 16,
-  //                       ),
-  //                     ),
-  //                     Text(
-  //                       'unit',
-  //                       style: TextStyle(
-  //                         color: Colors.grey.shade600,
-  //                         fontSize: 12,
-  //                       ),
-  //                     ),
-  //                   ],
-  //                 ),
-  //               ],
-  //             ),
-  //           ),
-  //         );
-  //       },
+  //   final result = await Navigator.of(context).push<bool>(
+  //     MaterialPageRoute(
+  //       builder: (_) => BlocProvider(
+  //         create: (ctx) => SetupCompanyItemCubit(
+  //           inventoryRepo: inventoryRepo,
+  //           labelingRepo: labelingRepo,
+  //         )..loadInitial(widget.companyItemId),
+  //         child: SetupCompanyItemScreen(
+  //           companyItemId: widget.companyItemId,
+  //           productId: '', // repo.getCompanyItemDetail provides productId, but Setup screen also fetches from cubit
+  //           userId: 'CURRENT_USER', // replace with real user id from AuthCubit when available
+  //         ),
+  //       ),
   //     ),
   //   );
+
+  //   // jika berhasil menambah variant (screen pop true), reload detail
+  //   if (result == true) {
+  //     _cubit.loadDetail(widget.companyItemId);
+  //   }
   // }
 }

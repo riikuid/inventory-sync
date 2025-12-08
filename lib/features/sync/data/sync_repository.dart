@@ -1,4 +1,6 @@
 // lib/features/sync/data/sync_repository.dart
+import 'dart:developer' as dev;
+
 import 'package:drift/drift.dart';
 import 'package:inventory_sync_apps/core/db/app_database.dart';
 import 'package:inventory_sync_apps/core/result.dart';
@@ -45,6 +47,7 @@ class SyncRepository {
     final res = await api.pull(sinceIso: sinceIso);
 
     if (!res.isSuccess) {
+      dev.log('SYNC ERROR:\n${res.errorMessage}');
       return Result.failed(
         res.errorMessage ?? 'Failed to pull incremental data',
       );
@@ -57,6 +60,17 @@ class SyncRepository {
     if (serverTimeIso != null) {
       await _setLastPullAt(DateTime.parse(serverTimeIso));
     }
+
+    // Quick debug: print counts
+    final productCount = await db.select(db.products).get();
+    final companyItemCount = await db.select(db.companyItems).get();
+    final categoryCount = await db.select(db.categories).get();
+    final variantCount = await db.select(db.variants).get();
+    final unitsCount = await db.select(db.units).get();
+
+    dev.log(
+      'DB after sync: products=${productCount.length}, company_items=${companyItemCount.length}, categories=${categoryCount.length}, variants=${variantCount.length}, units=${unitsCount.length}',
+    );
 
     return const Result.success(null);
   }
@@ -214,6 +228,7 @@ class SyncRepository {
             'brand_id': v.brandId,
             'name': v.name,
             'uom': v.uom,
+            'manuf_code': v.manufCode,
             'specification': v.specification,
             'created_at': v.createdAt.toIso8601String(),
             'updated_at': v.updatedAt.toIso8601String(),
@@ -397,6 +412,61 @@ class SyncRepository {
             .toList();
         await db.batch((batch) {
           batch.insertAllOnConflictUpdate(db.categories, list);
+        });
+      }
+
+      // departments
+      if (data['departments'] is List) {
+        final list = (data['departments'] as List)
+            .cast<Map<String, dynamic>>()
+            .map(departmentFromJson)
+            .toList();
+        await db.batch((batch) {
+          batch.insertAllOnConflictUpdate(db.departments, list);
+        });
+      }
+
+      // sections
+      if (data['sections'] is List) {
+        final list = (data['sections'] as List)
+            .cast<Map<String, dynamic>>()
+            .map(sectionFromJson)
+            .toList();
+        await db.batch((batch) {
+          batch.insertAllOnConflictUpdate(db.sections, list);
+        });
+      }
+
+      // warehouses
+      if (data['warehouses'] is List) {
+        final list = (data['warehouses'] as List)
+            .cast<Map<String, dynamic>>()
+            .map(warehouseFromJson)
+            .toList();
+        await db.batch((batch) {
+          batch.insertAllOnConflictUpdate(db.warehouses, list);
+        });
+      }
+
+      // warehouses
+      if (data['section_warehouses'] is List) {
+        final list = (data['section_warehouses'] as List)
+            .cast<Map<String, dynamic>>()
+            .map(sectionWarehouseFromJson)
+            .toList();
+        await db.batch((batch) {
+          batch.insertAllOnConflictUpdate(db.sectionWarehouses, list);
+        });
+      }
+
+      // racks
+      if (data['racks'] is List) {
+        final list = (data['racks'] as List)
+            .cast<Map<String, dynamic>>()
+            .map(rackFromJson)
+            .toList();
+        await db.batch((batch) {
+          batch.insertAllOnConflictUpdate(db.racks, list);
         });
       }
 

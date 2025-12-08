@@ -26,6 +26,7 @@ CategoriesCompanion categoryFromJson(Map<String, dynamic> json) {
   return CategoriesCompanion(
     id: Value(json['id'] as String),
     name: Value(json['name'] as String),
+    code: Value(json['code'] as String),
     categoryParentId: Value(toStr(json['category_parent_id'])),
   );
 }
@@ -35,9 +36,6 @@ BrandsCompanion brandFromJson(Map<String, dynamic> json) {
   return BrandsCompanion(
     id: Value(json['id'] as String),
     name: Value(json['name'] as String),
-    lastModifiedAt: Value(
-      _parseDate(json['last_modified_at']) ?? DateTime.now(),
-    ),
     needSync: const Value(false),
   );
 }
@@ -134,6 +132,7 @@ VariantsCompanion variantFromJson(Map<String, dynamic> json) {
     name: Value(json['name'] as String),
     uom: Value(json['uom'] as String),
     specification: Value(toStr(json['specification'])),
+    manufCode: Value(toStr(json['manuf_code'])),
     createdAt: Value(_parseDate(json['created_at']) ?? DateTime.now()),
     updatedAt: Value(_parseDate(json['updated_at']) ?? DateTime.now()),
     deletedAt: Value(_parseDate(json['deleted_at'])),

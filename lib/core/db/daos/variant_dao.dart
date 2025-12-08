@@ -172,7 +172,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       manufCode: Value(manufCode),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      specification: Value(specification),
+      specification: Value(specification), type: 'SEPARATE',
     );
 
     return into(components).insertReturning(companion);

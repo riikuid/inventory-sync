@@ -15,17 +15,16 @@ final lightThemeData = ThemeData(
   textTheme: customTextTheme,
   useMaterial3: true,
 );
-
 // Dark Theme
-final darkThemeData = ThemeData(
-  dialogTheme: DialogThemeData().copyWith(
-    titleTextStyle: TextStyle(
-      fontSize: 16.0,
-      fontWeight: FontWeight.bold,
-      color: Colors.black,
-    ),
-  ),
-  colorScheme: darkColorScheme,
-  textTheme: customTextTheme,
-  useMaterial3: true,
-);
+// final darkThemeData = ThemeData(
+//   dialogTheme: DialogThemeData().copyWith(
+//     titleTextStyle: TextStyle(
+//       fontSize: 16.0,
+//       fontWeight: FontWeight.bold,
+//       color: Colors.black,
+//     ),
+//   ),
+//   colorScheme: darkColorScheme,
+//   textTheme: customTextTheme,
+//   useMaterial3: true,
+// );

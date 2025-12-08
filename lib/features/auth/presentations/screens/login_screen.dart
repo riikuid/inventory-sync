@@ -12,7 +12,7 @@ import '../../../../core/styles/sizes.dart';
 import '../../../../core/utils/app_screen.dart';
 import '../../../../core/utils/custom_toast.dart';
 import '../../../../core/utils/loading_overlay.dart';
-import '../../../../shared/widgets/text_field_widget.dart';
+import '../../../../shared/presentation/widgets/text_field_widget.dart';
 import '../../usecases/login_with_email_password/login_with_email_password.dart';
 import '../blocs/auth_cubit/auth_cubit.dart';
 
@@ -174,8 +174,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (result.isSuccess) {
         await _authCubit.checkAuthAndStartup();
         LoadingOverlay.hide();
-        CustomToast.success(context, description: result.resultValue?.message);
-        context.pushReplacement(RouteName.layoutScreen);
+        // CustomToast.success(context, description: result.resultValue?.message);
+        // context.pushReplacement(RouteName.layoutScreen);
       } else {
         LoadingOverlay.hide();
 

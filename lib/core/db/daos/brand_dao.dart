@@ -16,6 +16,15 @@ class BrandDao extends DatabaseAccessor<AppDatabase> with _$BrandDaoMixin {
     });
   }
 
+  Stream<List<Brand>> watchBrands({String? search}) {
+    final query = select(brands)
+      ..orderBy([(b) => OrderingTerm(expression: b.name)]);
+    if (search != null && search.isNotEmpty) {
+      query.where((r) => r.name.like("%$search%"));
+    }
+    return query.watch();
+  }
+
   /// Ambil 1 brand by id
   Future<Brand?> getById(String id) {
     return (select(brands)..where((b) => b.id.equals(id))).getSingleOrNull();

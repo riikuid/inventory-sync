@@ -1,53 +1,55 @@
 import 'dart:async';
 
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/inventory_repository.dart';
 
 part 'company_item_detail_state.dart';
 
+/// Cubit yang robust: ketika ada update pada variants, kita reload
+/// keseluruhan CompanyItemDetail snapshot dari repository supaya UI selalu sinkron.
 class CompanyItemDetailCubit extends Cubit<CompanyItemDetailState> {
   final InventoryRepository repo;
-  StreamSubscription? _variantSub;
+  StreamSubscription? _watchSub;
 
   CompanyItemDetailCubit(this.repo) : super(CompanyItemDetailInitial());
 
+  /// watchDetail: emit initial snapshot, lalu subscribe ke perubahan varian.
   Future<void> watchDetail(String companyItemId) async {
     emit(CompanyItemDetailLoading());
+    _watchSub?.cancel();
 
     try {
-      // 1) Ambil snapshot awal untuk header (company code, product name, dll)
-      final baseDetail = await repo.getCompanyItemDetail(companyItemId);
+      // 1) ambil snapshot awal dan emit
+      final snapshot = await repo.getCompanyItemDetail(companyItemId);
+      if (snapshot == null) {
+        emit(const CompanyItemDetailError('Item tidak ditemukan'));
+        return;
+      }
+      emit(CompanyItemDetailLoaded(snapshot));
 
-      // Emit dulu dengan stok awal
-      emit(CompanyItemDetailLoaded(baseDetail!));
-
-      // 2) Subscribe ke perubahan stok varian
-      _variantSub?.cancel();
-      _variantSub = repo
+      // 2) subscribe ke perubahan varian untuk kode ini
+      //    ketika ada perubahan, ambil ulang snapshot lengkap
+      _watchSub = repo
           .watchVariantsWithStockForItem(companyItemId)
           .listen(
-            (variants) {
-              final current = state;
-              if (current is CompanyItemDetailLoaded) {
-                // Asumsikan CompanyItemDetail punya field variants
-                final updated = current.detail.copyWith(
-                  variants: variants.map((v) {
-                    // mapping dari CompanyItemVariantRow ke model varian yang kamu pakai di UI
-                    return current.detail.variants
-                        .firstWhere(
-                          (old) => old.variantId == v.variantId,
-                          // orElse: () => /* bikin baru dari v */,
-                        )
-                        .copyWith(
-                          stock: v.stock,
-                          // kalau mau update brandName/defaultLocation juga bisa
-                        );
-                  }).toList(),
+            (event) async {
+              try {
+                final refreshed = await repo.getCompanyItemDetail(
+                  companyItemId,
                 );
-
-                emit(CompanyItemDetailLoaded(updated));
+                if (refreshed == null) {
+                  emit(
+                    const CompanyItemDetailError(
+                      'Item tidak ditemukan (refresh)',
+                    ),
+                  );
+                } else {
+                  emit(CompanyItemDetailLoaded(refreshed));
+                }
+              } catch (e) {
+                emit(CompanyItemDetailError(e.toString()));
               }
             },
             onError: (e) {
@@ -59,23 +61,24 @@ class CompanyItemDetailCubit extends Cubit<CompanyItemDetailState> {
     }
   }
 
-  @override
-  Future<void> close() {
-    _variantSub?.cancel();
-    return super.close();
-  }
-
+  /// manual reload (dipakai RefreshIndicator)
   Future<void> loadDetail(String companyItemId) async {
     emit(CompanyItemDetailLoading());
     try {
       final detail = await repo.getCompanyItemDetail(companyItemId);
       if (detail == null) {
-        emit(const CompanyItemDetailError('Item not found'));
+        emit(const CompanyItemDetailError('Item tidak ditemukan'));
       } else {
         emit(CompanyItemDetailLoaded(detail));
       }
     } catch (e) {
       emit(CompanyItemDetailError(e.toString()));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _watchSub?.cancel();
+    return super.close();
   }
 }
