@@ -1,9 +1,9 @@
 // lib/features/inventory/presentation/bloc/variant_detail/variant_detail_state.dart
-import 'package:equatable/equatable.dart';
-
-import '../../../../../core/db/daos/variant_dao.dart';
+part of 'variant_detail_cubit.dart';
 
 abstract class VariantDetailState extends Equatable {
+  const VariantDetailState();
+
   @override
   List<Object?> get props => [];
 }
@@ -17,7 +17,7 @@ class VariantDetailLoaded extends VariantDetailState {
   final bool isBusy;
   final String? errorMessage;
 
-  VariantDetailLoaded({
+  const VariantDetailLoaded({
     required this.detail,
     this.isBusy = false,
     this.errorMessage,
@@ -41,7 +41,7 @@ class VariantDetailLoaded extends VariantDetailState {
 
 class VariantDetailError extends VariantDetailState {
   final String message;
-  VariantDetailError(this.message);
+  const VariantDetailError(this.message);
 
   @override
   List<Object?> get props => [message];

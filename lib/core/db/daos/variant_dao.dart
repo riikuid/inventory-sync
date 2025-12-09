@@ -16,6 +16,8 @@ part 'variant_dao.g.dart';
     Components,
     VariantComponents,
     Units,
+    Racks, // <- tambahkan Racks agar bisa query nama rak
+    Warehouses, // <- tambahkan Warehouses agar bisa query nama warehouse
   ],
 )
 class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
@@ -50,7 +52,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       leftOuterJoin(brands, brands.id.equalsExp(variants.brandId)),
     ])..where(variants.id.equals(variantId));
 
-    // Stream pertama: info variant + stok total per variant
+    // Stream pertama: info variant + stok total per variant (unit yang component_id IS NULL)
     final variantStream = base.watchSingleOrNull().asyncMap((row) async {
       if (row == null) return null;
 
@@ -59,13 +61,30 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       final p = row.readTable(products);
       final b = row.readTableOrNull(brands);
 
-      // hitung total unit ACTIVE untuk variant ini
+      // hitung total unit ACTIVE untuk variant ini, hanya untuk unit yang merupakan parent (component_id IS NULL)
       final unitsCount =
           await (select(units)..where(
-                (u) => u.variantId.equals(v.id) & u.status.equals('ACTIVE'),
+                (u) =>
+                    u.variantId.equals(v.id) &
+                    u.componentId.isNull() &
+                    u.status.equals('ACTIVE'),
               ))
               .get()
               .then((list) => list.length);
+
+      // ambil rack name jika ada
+      String? rackName;
+      if (v.rackId != null) {
+        final r = await (select(
+          racks,
+        )..where((rk) => rk.id.equals(v.rackId!))).getSingleOrNull();
+        if (r != null) {
+          final w = await (select(
+            warehouses,
+          )..where((w) => w.id.equals(r.warehouseId))).getSingleOrNull();
+          rackName = '${r.name} - ${w?.name}';
+        }
+      }
 
       return {
         'variant': v,
@@ -73,10 +92,11 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
         'product': p,
         'brand': b,
         'totalUnits': unitsCount,
+        'rackName': rackName,
       };
     });
 
-    // Stream kedua: list komponen + stok per komponen
+    // Stream kedua: list komponen + stok per komponen + type (IN_BOX / SEPARATE)
     final componentsStream =
         (select(variantComponents)
               ..where((vc) => vc.variantId.equals(variantId)))
@@ -112,6 +132,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
                     manufCode: c.manufCode,
                     brandName: b?.name,
                     totalUnits: unitsCount,
+                    type: c.type, // ambil type dari kolom components.type
                   ),
                 );
               }
@@ -130,7 +151,9 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       final p = a['product'] as Product;
       final b = a['brand'] as Brand?;
       final totalUnits = a['totalUnits'] as int;
+      final rackName = a['rackName'] as String?;
 
+      // Pada saat mengembalikan komponen, kita bisa serahkan semuanya dan UI nanti memfilter berdasarkan VariantComponentRow.type
       return VariantDetailRow(
         variantId: variant.id,
         companyItemId: ci.id,
@@ -139,13 +162,136 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
         uom: variant.uom,
         brandId: variant.brandId,
         brandName: b?.name,
-        companyCode: ci.companyCode,
         rackId: variant.rackId,
-        rackName: null, // You might want to fetch this from somewhere
+        rackName: rackName,
         specification: variant.specification,
+        companyCode: ci.companyCode,
         totalUnits: totalUnits,
         components: comps,
       );
+    });
+  }
+
+  Future<Component> createComponentForProduct({
+    required String productId,
+    String? brandId,
+    required String name,
+    String? manufCode,
+    String? specification,
+    String type = 'SEPARATE', // default SEPARATE
+  }) async {
+    final companion = ComponentsCompanion.insert(
+      id: Uuid().v4(),
+      productId: productId,
+      brandId: Value(brandId),
+      name: name,
+      manufCode: Value(manufCode),
+      specification: Value(specification),
+      type: type,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    return into(components).insertReturning(companion);
+  }
+
+  /// Ambil list komponen untuk product tertentu dan type tertentu (non-stream)
+  Future<List<Component>> getComponentsByProductAndType({
+    required String productId,
+    required String type, // 'IN_BOX' atau 'SEPARATE'
+  }) {
+    return (select(
+      components,
+    )..where((c) => c.productId.equals(productId) & c.type.equals(type))).get();
+  }
+
+  /// Watch komponen untuk product + type (stream) — dipakai UI yang butuh realtime
+  Stream<List<Component>> watchComponentsByProductAndType({
+    required String productId,
+    required String type,
+  }) {
+    return (select(components)
+          ..where((c) => c.productId.equals(productId) & c.type.equals(type)))
+        .watch();
+  }
+
+  /// Watch variant_components (join) tapi hanya yang komponen type == given type
+  Stream<List<VariantComponentRow>> watchVariantComponentsByType({
+    required String variantId,
+    required String type, // 'IN_BOX' atau 'SEPARATE'
+  }) {
+    final q =
+        (select(
+          variantComponents,
+        )..where((vc) => vc.variantId.equals(variantId))).join([
+          innerJoin(
+            components,
+            components.id.equalsExp(variantComponents.componentId),
+          ),
+          leftOuterJoin(brands, brands.id.equalsExp(components.brandId)),
+        ]);
+
+    return q.watch().asyncMap((rows) async {
+      final List<VariantComponentRow> res = [];
+      for (final row in rows) {
+        final c = row.readTable(components);
+        if (c.type != type) continue; // filter by type
+        final b = row.readTableOrNull(brands);
+
+        final count =
+            await (select(units)..where(
+                  (u) => u.componentId.equals(c.id) & u.status.equals('ACTIVE'),
+                ))
+                .get()
+                .then((l) => l.length);
+
+        res.add(
+          VariantComponentRow(
+            componentId: c.id,
+            name: c.name,
+            manufCode: c.manufCode,
+            brandName: b?.name,
+            totalUnits: count,
+            type: c.type,
+          ),
+        );
+      }
+      return res;
+    });
+  }
+
+  /// Create in-box component AND attach to variant in ONE transaction.
+  /// Berguna untuk flow "create in-box part then register it for variant".
+  Future<Component> createInBoxPartAndAttach({
+    required String variantId,
+    required String productId,
+    String? brandId,
+    required String name,
+    String? manufCode,
+    String? specification,
+  }) async {
+    return transaction<Component>(() async {
+      // 1) buat komponen type IN_BOX
+      final comp = await createComponentForProduct(
+        productId: productId,
+        brandId: brandId,
+        name: name,
+        manufCode: manufCode,
+        specification: specification,
+        type: 'IN_BOX',
+      );
+
+      // 2) attach ke variant
+      final insertable = VariantComponentsCompanion.insert(
+        id: Uuid().v4(),
+        variantId: variantId,
+        componentId: comp.id,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await into(variantComponents).insertOnConflictUpdate(insertable);
+
+      return comp;
     });
   }
 
@@ -154,28 +300,6 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
     return (select(
       components,
     )..where((c) => c.productId.equals(productId))).get();
-  }
-
-  /// Buat komponen baru untuk product (brand default mengikuti variant)
-  Future<Component> createComponentForProduct({
-    required String productId,
-    String? brandId,
-    required String name,
-    String? manufCode,
-    String? specification,
-  }) async {
-    final companion = ComponentsCompanion.insert(
-      id: Uuid().v4(), // kalau pakai uuid manual, isi Value(uuid)
-      productId: productId,
-      brandId: Value(brandId),
-      name: name,
-      manufCode: Value(manufCode),
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      specification: Value(specification), type: 'SEPARATE',
-    );
-
-    return into(components).insertReturning(companion);
   }
 
   /// Hubungkan komponen ke variant (variant_components)
@@ -213,12 +337,14 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
   }
 }
 
+/// Per-barisan komponen yang dikembalikan ke UI
 class VariantComponentRow {
   final String componentId;
   final String name;
   final String? manufCode;
   final String? brandName;
   final int totalUnits; // unit ACTIVE untuk komponen ini
+  final String type; // 'IN_BOX' or 'SEPARATE'
 
   VariantComponentRow({
     required this.componentId,
@@ -226,9 +352,11 @@ class VariantComponentRow {
     this.manufCode,
     this.brandName,
     required this.totalUnits,
+    required this.type,
   });
 }
 
+/// DTO variant detail
 class VariantDetailRow {
   final String variantId;
   final String companyItemId;
@@ -241,7 +369,8 @@ class VariantDetailRow {
   final String? brandId;
   final String? brandName;
   final String companyCode;
-  final int totalUnits; // semua unit ACTIVE untuk variant ini
+  final int
+  totalUnits; // semua unit ACTIVE untuk variant ini (component_id IS NULL)
   final List<VariantComponentRow> components;
 
   VariantDetailRow({

@@ -12,4 +12,6 @@ mixin _$VariantDaoMixin on DatabaseAccessor<AppDatabase> {
   $VariantComponentsTable get variantComponents =>
       attachedDatabase.variantComponents;
   $UnitsTable get units => attachedDatabase.units;
+  $RacksTable get racks => attachedDatabase.racks;
+  $WarehousesTable get warehouses => attachedDatabase.warehouses;
 }

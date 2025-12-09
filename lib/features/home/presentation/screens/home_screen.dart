@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -5,7 +7,9 @@ import 'package:inventory_sync_apps/features/inventory/data/inventory_repository
 import 'package:inventory_sync_apps/core/db/daos/category_dao.dart';
 import 'package:inventory_sync_apps/core/db/daos/company_item_dao.dart';
 
+import '../../../inventory/presentation/screens/company_item_detail_screen.dart';
 import '../../../search_item/presentation/screen/search_item_screen.dart';
+import '../../../variant/presentation/screen/create_variant_screen.dart';
 import '../bloc/home_cubit.dart';
 import '../widget/category_card.dart';
 import '../widget/company_item_card.dart';
@@ -269,7 +273,34 @@ class _CompanyItemSection extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               final item = items[index];
-              return CompanyItemCard(row: item);
+              return CompanyItemCard(
+                row: item,
+                // onTap: () {
+                //   dev.log('TOTAL VARIANT: ${item.totalVariants}');
+                //   if (item.totalVariants == 0) {
+                //     Navigator.push(
+                //       context,
+                //       MaterialPageRoute(
+                //         builder: (context) => CreateVariantScreen(
+                //           companyItemId: item.companyItemId,
+                //           userId: 'SDWDSD',
+                //           productName: item.productName,
+                //           companyCode: item.companyCode,
+                //         ),
+                //       ),
+                //     );
+                //   } else {
+                //     Navigator.push(
+                //       context,
+                //       MaterialPageRoute(
+                //         builder: (_) => CompanyItemDetailScreen(
+                //           companyItemId: item.companyItemId,
+                //         ),
+                //       ),
+                //     );
+                //   }
+                // },
+              );
             },
           ),
       ],

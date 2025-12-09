@@ -1,5 +1,10 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../../../core/styles/color_scheme.dart';
 
 class TextFieldWidget extends StatelessWidget {
   final String? label;
@@ -10,7 +15,9 @@ class TextFieldWidget extends StatelessWidget {
   final bool readonly;
   final bool obscureText;
   final Widget? suffixIcon;
+  final Widget? prefixIcon;
   final TextStyle? errorStyle;
+  final TextStyle? hintStyle;
   final int? maxLines;
   final int? minLines;
   final FontWeight? fontWeight;
@@ -28,39 +35,49 @@ class TextFieldWidget extends StatelessWidget {
   final AutovalidateMode? autovalidateMode;
   final GlobalKey<FormFieldState>? formFieldKey;
   final GlobalKey? scrollAnchorKey;
+  final VoidCallback? onFieldTap;
+  final EdgeInsetsGeometry? contentPadding;
+  final String? requiredMark;
+  final TextInputAction? textInputAction;
   const TextFieldWidget({
     super.key,
-    this.controller,
+    this.label,
     this.hintText,
+    this.controller,
+    this.validator,
+    required this.required,
+    this.readonly = false,
+    this.obscureText = false,
+    this.suffixIcon,
+    this.errorStyle,
+    this.hintStyle,
+    this.maxLines = 1,
+    this.minLines,
     this.fontWeight,
+    this.color,
+    this.maxCharValidation,
+    this.minCharValidation,
+    this.fillColor,
     this.textAlign,
     this.labelColor,
-    this.errorStyle,
-    this.maxLines = 1,
-    this.maxCharValidation,
-    this.label,
-    this.fillColor,
     this.border,
-    this.validator,
-    this.focusNode,
     this.onChanged,
-    this.minLines,
-    this.readonly = false,
+    this.focusNode,
     this.inputFormatters,
-    this.suffixIcon,
     this.keyboardType,
-    this.color,
-    this.obscureText = false,
-    this.required = false,
-    this.minCharValidation,
+    this.autovalidateMode,
     this.formFieldKey,
     this.scrollAnchorKey,
-    this.autovalidateMode,
+    this.onFieldTap,
+    this.contentPadding,
+    this.requiredMark,
+    this.prefixIcon,
+    this.textInputAction,
   });
 
   @override
   Widget build(BuildContext context) {
-    Color defaultColor = Theme.of(context).colorScheme.primary;
+    Color defaultColor = AppColors.onSurface;
 
     // InputBorder? inputBorder = OutlineInputBorder(
     //   borderRadius: const BorderRadius.all(Radius.circular(15)),
@@ -80,12 +97,22 @@ class TextFieldWidget extends StatelessWidget {
           Container(
             key: scrollAnchorKey,
             margin: const EdgeInsets.only(bottom: 6),
-            child: Text(
-              '${label ?? ''}${required ? ' *' : ''}',
-              style: TextStyle(color: labelColor ?? defaultColor),
+            child: Row(
+              children: [
+                Text(
+                  label ?? '',
+                  style: TextStyle(color: labelColor ?? defaultColor),
+                ),
+                Text(
+                  requiredMark ?? (required ? ' *' : ''),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
             ),
           ),
         TextFormField(
+          textInputAction: textInputAction,
+          onTap: onFieldTap,
           key: formFieldKey,
           controller: controller,
           obscureText: obscureText,
@@ -103,17 +130,17 @@ class TextFieldWidget extends StatelessWidget {
                 final normalized = normalizeSpaces(value);
 
                 if (normalized.isEmpty && required) {
-                  return 'Kolom ${(label ?? 'input').toLowerCase()} wajib diisi.';
+                  return '${(label ?? 'input')} field is required.';
                 }
 
                 if (minCharValidation != null &&
                     normalized.length < minCharValidation!) {
-                  return 'Minimal $minCharValidation huruf.';
+                  return 'Must be at least $minCharValidation characters.';
                 }
 
                 if (maxCharValidation != null &&
                     normalized.length > maxCharValidation!) {
-                  return 'Tidak boleh lebih dari $maxCharValidation huruf.';
+                  return 'Must not exceed $maxCharValidation characters.';
                 }
 
                 return null;
@@ -124,13 +151,16 @@ class TextFieldWidget extends StatelessWidget {
             fontWeight: fontWeight ?? FontWeight.bold,
           ),
           decoration: InputDecoration(
+            contentPadding: contentPadding,
+
             isDense: true,
             suffixIcon: suffixIcon,
+            prefixIcon: prefixIcon,
             hintText: hintText,
             errorStyle: errorStyle,
             fillColor: fillColor ?? Colors.grey.shade200,
             filled: true,
-            hintStyle: TextStyle(color: Colors.grey.shade500),
+            hintStyle: hintStyle ?? TextStyle(color: Colors.grey.shade500),
             focusedBorder: inputBorder,
             errorBorder: inputBorder,
             focusedErrorBorder: inputBorder,

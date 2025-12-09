@@ -1,29 +1,36 @@
 // lib/features/inventory/presentation/bloc/variant_detail/variant_detail_cubit.dart
 import 'dart:async';
 
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../core/db/daos/variant_dao.dart';
 import '../../../data/inventory_repository.dart';
-import 'variant_detail_state.dart';
+import '../../../../labeling/data/labeling_repository.dart';
+
+part 'variant_detail_state.dart';
 
 class VariantDetailCubit extends Cubit<VariantDetailState> {
   final InventoryRepository repo;
-  StreamSubscription? _sub;
+  final LabelingRepository labelingRepo;
 
-  VariantDetailCubit(this.repo) : super(VariantDetailInitial());
+  StreamSubscription<VariantDetailRow?>? _sub;
 
+  VariantDetailCubit({required this.repo, required this.labelingRepo})
+    : super(VariantDetailInitial());
+
+  /// Start watching variant detail stream
   void watchDetail(String variantId) {
     emit(VariantDetailLoading());
-
     _sub?.cancel();
     _sub = repo
         .watchVariantDetail(variantId)
         .listen(
-          (detail) {
-            if (detail == null) {
-              emit(VariantDetailError('Variant tidak ditemukan'));
+          (row) {
+            if (row == null) {
+              emit(const VariantDetailError('Variant not found'));
             } else {
-              emit(VariantDetailLoaded(detail: detail));
+              emit(VariantDetailLoaded(detail: row, isBusy: false));
             }
           },
           onError: (e) {
@@ -32,62 +39,90 @@ class VariantDetailCubit extends Cubit<VariantDetailState> {
         );
   }
 
+  Future<void> refresh(String variantId) async {
+    emit(VariantDetailLoading());
+    try {
+      final row = await repo.watchVariantDetail(variantId).first;
+      if (row == null) {
+        emit(const VariantDetailError('Variant not found'));
+      } else {
+        emit(VariantDetailLoaded(detail: row, isBusy: false));
+      }
+    } catch (e) {
+      emit(VariantDetailError(e.toString()));
+    }
+  }
+
+  void setBusy(bool busy) {
+    final s = state;
+    if (s is VariantDetailLoaded) {
+      emit(s.copyWith(isBusy: busy));
+    }
+  }
+
+  /// Add component (existing) to variant (variant_components)
   Future<void> addComponentFromExisting({
     required String variantId,
     required String componentId,
   }) async {
-    final s = state;
-    if (s is! VariantDetailLoaded) return;
-
-    // CEK DUPLIKAT
-    final alreadyLinked = s.detail.components.any(
-      (c) => c.componentId == componentId,
-    );
-    if (alreadyLinked) {
-      // lempar error friendly
-      emit(s.copyWith(errorMessage: 'Komponen ini sudah terdaftar di set.'));
-      return;
-    }
-
-    emit(s.copyWith(isBusy: true, errorMessage: null));
     try {
+      setBusy(true);
       await repo.attachComponentToVariant(
         variantId: variantId,
         componentId: componentId,
       );
-      emit(s.copyWith(isBusy: false));
     } catch (e) {
-      emit(s.copyWith(isBusy: false, errorMessage: e.toString()));
+      final s = state;
+      if (s is VariantDetailLoaded) {
+        emit(s.copyWith(errorMessage: e.toString()));
+        emit(s.copyWith(errorMessage: null)); // clear quickly
+      } else {
+        emit(VariantDetailError(e.toString()));
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
+  /// Remove relation component <-> variant
   Future<void> detachComponent({
     required String variantId,
     required String componentId,
   }) async {
-    final s = state;
-    if (s is! VariantDetailLoaded) return;
-    emit(s.copyWith(isBusy: true, errorMessage: null));
     try {
+      setBusy(true);
       await repo.detachComponentFromVariant(
         variantId: variantId,
         componentId: componentId,
       );
-      emit(s.copyWith(isBusy: false));
     } catch (e) {
-      emit(s.copyWith(isBusy: false, errorMessage: e.toString()));
+      final s = state;
+      if (s is VariantDetailLoaded) {
+        emit(s.copyWith(errorMessage: e.toString()));
+        emit(s.copyWith(errorMessage: null));
+      } else {
+        emit(VariantDetailError(e.toString()));
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
+  /// Delete component (destructive) - be careful
   Future<void> deleteComponent({required String componentId}) async {
-    final s = state;
-    if (s is! VariantDetailLoaded) return;
-    emit(s.copyWith(isBusy: true, errorMessage: null));
     try {
+      setBusy(true);
       await repo.deleteComponent(componentId);
-      emit(s.copyWith(isBusy: false));
     } catch (e) {
-      emit(s.copyWith(isBusy: false, errorMessage: e.toString()));
+      final s = state;
+      if (s is VariantDetailLoaded) {
+        emit(s.copyWith(errorMessage: e.toString()));
+        emit(s.copyWith(errorMessage: null));
+      } else {
+        emit(VariantDetailError(e.toString()));
+      }
+    } finally {
+      setBusy(false);
     }
   }
 

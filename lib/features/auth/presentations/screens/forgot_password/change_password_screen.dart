@@ -59,6 +59,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   ),
                   const SizedBox(height: 10),
                   TextFieldWidget(
+                    required: false,
                     label: 'Konfirmasi Password',
                     controller: _confirmPasswordController,
                     obscureText: _isObscureConfirmPasssword,

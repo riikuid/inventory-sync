@@ -7,6 +7,7 @@ import 'package:inventory_sync_apps/core/styles/text_theme.dart';
 import 'package:inventory_sync_apps/features/inventory/data/inventory_repository.dart';
 import '../../../variant/presentation/screen/create_variant_screen.dart';
 import '../bloc/company_item_detail/company_item_detail_cubit.dart';
+import 'variant_detail_screen.dart';
 
 class CompanyItemDetailScreen extends StatefulWidget {
   final String companyItemId;
@@ -143,7 +144,18 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
             return const SizedBox.shrink();
           },
         ),
-        floatingActionButton: _buildAddVariantFab(),
+        floatingActionButton:
+            BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
+              builder: (context, state) {
+                if (state is! CompanyItemDetailLoaded) {
+                  return const SizedBox.shrink();
+                }
+                return _buildAddVariantFab(
+                  companyCode: state.detail.companyCode,
+                  productName: state.detail.productName,
+                );
+              },
+            ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
@@ -355,15 +367,17 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
         borderRadius: BorderRadius.circular(12),
         onTap: () {
           // buka detail variant (jika ada)
-          // Navigator.of(context).push(
-          //   MaterialPageRoute(
-          //     builder: (_) => VariantDetailScreen(variantId: v.variantId),
-          //   ),
-          // );
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  VariantDetailScreen(variantId: v.variantId, userId: 'USER'),
+            ),
+          );
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -412,52 +426,26 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                   ],
                 ),
               ),
-
-              const SizedBox(width: 8),
-              Column(
-                children: [
-                  if (v.brandName != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '${v.brandName}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryDark,
-                        ),
-                      ),
-                    ),
-                  ],
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      // TODO: implement print action
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Print action')),
-                      );
-                    },
-                    icon: const Icon(Icons.print, size: 16),
-                    label: const Text('Print'),
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      side: BorderSide(color: Colors.grey.shade300),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
+              if (v.brandName != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${v.brandName}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryDark,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ],
           ),
         ),
@@ -465,7 +453,10 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
     );
   }
 
-  Widget _buildAddVariantFab() {
+  Widget _buildAddVariantFab({
+    required String productName,
+    required String companyCode,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: ElevatedButton.icon(
@@ -476,6 +467,8 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
               builder: (context) => CreateVariantScreen(
                 companyItemId: widget.companyItemId,
                 userId: 'SDWDSD',
+                productName: productName,
+                companyCode: companyCode,
               ),
             ),
           ),

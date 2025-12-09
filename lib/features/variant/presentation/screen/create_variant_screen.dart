@@ -1,169 +1,246 @@
+// create_variant_screen.dart
 import 'dart:io';
 
+import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:inventory_sync_apps/core/styles/app_style.dart';
+import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.dart';
+import 'package:inventory_sync_apps/shared/presentation/widgets/text_field_widget.dart';
 
+import '../../../../core/styles/color_scheme.dart';
+import '../../../../core/utils/loading_overlay.dart';
 import '../../../../shared/models/selected_brand_result.dart';
 import '../../../../shared/models/selected_rack_result.dart';
 import '../../../../shared/presentation/screen/brand_picker_screen.dart';
 import '../../../../shared/presentation/screen/rack_picker_screen.dart';
 import '../bloc/create_variant/create_variant_cubit.dart';
 
-class CreateVariantScreen extends StatelessWidget {
+class CreateVariantScreen extends StatefulWidget {
   final String companyItemId;
   final String userId;
+  final String? companyCode;
+  final String? productName; // auto base (ex: "Bearing")
   final String? defaultRackId;
+  final String? defaultRackName;
 
   const CreateVariantScreen({
     super.key,
     required this.companyItemId,
     required this.userId,
+    this.companyCode,
+    this.productName,
     this.defaultRackId,
+    this.defaultRackName,
   });
+
+  @override
+  State<CreateVariantScreen> createState() => _CreateVariantScreenState();
+}
+
+class _CreateVariantScreenState extends State<CreateVariantScreen> {
+  late final TextEditingController _brandController;
+  late final TextEditingController _rackController;
+  late final TextEditingController _nameController;
+  late final TextEditingController _uomController;
+  bool _overlayShown = false;
+  bool _initialized = false;
+
+  final List<String> _uomOptions = const [
+    "pcs",
+    "box",
+    "unit",
+    "set",
+    "kg",
+    "roll",
+    "meter",
+    "pack",
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _brandController = TextEditingController();
+    _rackController = TextEditingController();
+    _nameController = TextEditingController();
+    _uomController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _brandController.dispose();
+    _rackController.dispose();
+    _nameController.dispose();
+    _uomController.dispose();
+    super.dispose();
+  }
+
+  void _maybeShowOverlay(bool show) {
+    if (show && !_overlayShown) {
+      LoadingOverlay.show(context);
+      _overlayShown = true;
+    } else if (!show && _overlayShown) {
+      LoadingOverlay.hide();
+      _overlayShown = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => CreateVariantCubit(
         labelingRepository: context.read(),
-        companyItemId: companyItemId,
-        userId: userId,
-        defaultRackId: defaultRackId,
+        companyItemId: widget.companyItemId,
+        userId: widget.userId,
+        defaultRackId: widget.defaultRackId,
       ),
       child: BlocConsumer<CreateVariantCubit, CreateVariantState>(
         listener: (context, state) {
+          // success -> pop with true
           if (state.status == CreateVariantStatus.success) {
-            Navigator.of(context).pop(true); // kembali ke company item detail
+            _maybeShowOverlay(false);
+            Navigator.of(context).pop(true);
+          }
+
+          // show/hide overlay based on loading state
+          if (state.status == CreateVariantStatus.loading) {
+            _maybeShowOverlay(true);
+          } else {
+            _maybeShowOverlay(false);
           }
         },
         builder: (context, state) {
           final cubit = context.read<CreateVariantCubit>();
 
+          // call initFor once after the first build to prefill autoBase, etc.
+          if (!_initialized) {
+            _initialized = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              // productName can be null -> initFor handles it
+              cubit.initFor(
+                productName: widget.productName ?? '',
+                defaultRackId: widget.defaultRackId,
+                defaultRackName: widget.defaultRackName,
+              );
+            });
+          }
+
+          // sinkronisasi safety: update controller saat build (menangani initial state)
+          // hindari overwrite bila user sedang mengetik: simple guard not implemented full,
+          // but builder-run updates only when contents differ.
+          if (_brandController.text != (state.brandName ?? '')) {
+            _brandController.text = state.brandName ?? '';
+          }
+          if (_rackController.text != (state.rackName ?? '')) {
+            _rackController.text = state.rackName ?? '';
+          }
+          if (_uomController.text != (state.uom ?? '')) {
+            _uomController.text = state.uom ?? '';
+          }
+
+          if (_nameController.text != (state.name)) {
+            _nameController.text = state.name;
+          }
+
           return Scaffold(
-            appBar: AppBar(title: const Text("Create Variant")),
+            backgroundColor: AppColors.background,
+            appBar: AppBar(
+              iconTheme: IconThemeData(color: AppColors.onSurface),
+              leading: IconButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                icon: Icon(
+                  Icons.arrow_back_ios_rounded,
+                  weight: 260,
+                  color: AppColors.onSurface,
+                ),
+              ),
+              backgroundColor: AppColors.background,
+              foregroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0.5,
+              toolbarHeight: 60,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tambah Variant ${widget.productName}',
+                    overflow: TextOverflow.ellipsis,
+                    style: AppStyle.poppinsTextSStyle.copyWith(
+                      color: AppColors.onSurface,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    '${widget.companyCode}',
+                    overflow: TextOverflow.ellipsis,
+                    style: AppStyle.monoTextStyle.copyWith(
+                      color: AppColors.primaryDark,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            bottomNavigationBar: Container(
+              padding: const EdgeInsets.all(16),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                border: Border(
+                  top: BorderSide(width: 0.3, color: AppColors.secondaryLight),
+                ),
+              ),
+              child: CustomButton(
+                elevation: 0,
+                radius: 40,
+                height: 50,
+                color: AppColors.primaryDark,
+                onPressed: state.status == CreateVariantStatus.loading
+                    ? null
+                    : (cubit.canSubmit ? cubit.submit : null),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.save_outlined, color: AppColors.surface),
+                    SizedBox(width: 8),
+                    Text(
+                      'Simpan Variant',
+                      style: AppStyle.poppinsTextSStyle.copyWith(
+                        color: AppColors.surface,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             body: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // RACK SELECT
-                  Text("Lokasi", style: TextStyle(fontWeight: FontWeight.bold)),
-                  GestureDetector(
-                    onTap: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const RackPickerScreen(),
-                        ),
-                      );
-
-                      String name =
-                          '${result?.name ?? ""} - ${result?.departmentName ?? ""} / ${result?.sectionName ?? ""} / ${result?.warehouseName ?? ""}';
-
-                      if (result is SelectedRackResult) {
-                        cubit.setRack(result.id, name);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade400),
-                        borderRadius: BorderRadius.circular(8),
+                  Row(
+                    children: [
+                      Text(
+                        'Foto Produk',
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
-                      child: Text(state.rackName ?? "Pilih Lokasi"),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // BRAND SELECT
-                  Text(
-                    "Brand (Opsional)",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  GestureDetector(
-                    onTap: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const BrandPickerScreen(),
+                      Text(
+                        ' *',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
                         ),
-                      );
-
-                      if (result is SelectedBrandResult) {
-                        cubit.setBrand(result.id, result.name);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade400),
-                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(state.brandName ?? "Tanpa Brand"),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // NAME
-                  TextField(
-                    decoration: const InputDecoration(
-                      labelText: "Variant Name",
-                    ),
-                    onChanged: cubit.setName,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // UOM
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: "Satuan UOM"),
-                    value: state.uom,
-                    items:
-                        const [
-                              "pcs",
-                              "box",
-                              "unit",
-                              "set",
-                              "kg",
-                              "roll",
-                              "meter",
-                              "pack",
-                            ]
-                            .map(
-                              (e) => DropdownMenuItem(value: e, child: Text(e)),
-                            )
-                            .toList(),
-                    onChanged: (v) => cubit.setUom(v!),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // SPEC
-                  TextField(
-                    decoration: const InputDecoration(
-                      labelText: "Kode Manufaktur (opsional)",
-                    ),
-                    minLines: 2,
-                    maxLines: 4,
-                    onChanged: cubit.setManufCode,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // SPEC
-                  TextField(
-                    decoration: const InputDecoration(
-                      labelText: "Spesifikasi (opsional)",
-                    ),
-                    minLines: 2,
-                    maxLines: 4,
-                    onChanged: cubit.setSpecification,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // PHOTOS
-                  Text(
-                    "Foto (min 3, maks 5)",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                      SizedBox(width: 5),
+                    ],
                   ),
                   const SizedBox(height: 8),
 
@@ -178,7 +255,7 @@ class CreateVariantScreen extends StatelessWidget {
                               width: 90,
                               height: 90,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(15),
                                 image: DecorationImage(
                                   image: FileImage(File(state.photos[i])),
                                   fit: BoxFit.cover,
@@ -199,35 +276,205 @@ class CreateVariantScreen extends StatelessWidget {
                       if (state.photos.length < 5)
                         GestureDetector(
                           onTap: () => _showAddPhotoMenu(context, cubit),
-                          child: Container(
-                            width: 90,
-                            height: 90,
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                              borderRadius: BorderRadius.circular(8),
+                          child: DottedBorder(
+                            options: RoundedRectDottedBorderOptions(
+                              radius: Radius.circular(15),
+                              dashPattern: [10, 5],
+                              strokeWidth: 2,
+                              color: AppColors.border,
+
+                              // padding: EdgeInsets.all(16),
                             ),
-                            child: const Icon(
-                              Icons.add_a_photo_rounded,
-                              size: 32,
+                            child: SizedBox(
+                              width: 90,
+                              height: 90,
+                              // decoration: BoxDecoration(
+                              //   border: Border.all(color: AppColors.border),
+                              //   borderRadius: BorderRadius.circular(15),
+                              // ),
+                              child: const Icon(
+                                Icons.add_a_photo_rounded,
+                                size: 32,
+                                color: AppColors.border,
+                              ),
                             ),
                           ),
                         ),
                     ],
                   ),
+                  SizedBox(height: 16),
+                  // Brand (readonly, tap to pick)
+                  TextFieldWidget(
+                    controller: _brandController,
+                    readonly: true,
+                    required: false,
+                    label: 'Brand/Merk',
+                    fillColor: Colors.transparent,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide(color: AppColors.border, width: 1),
+                    ),
+                    hintText: 'Pilih Brand',
+                    hintStyle: TextStyle(
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    onFieldTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const BrandPickerScreen(),
+                        ),
+                      );
+
+                      if (result is SelectedBrandResult) {
+                        // tampilkan nama segera di UI
+                        final displayName = result.name ?? 'Tanpa Brand';
+                        _brandController.text = displayName;
+
+                        // panggil onBrandSelected agar cubit auto-compose name
+                        // (ini akan menambahkan brand ke belakang autoBase bila perlu)
+                        cubit.onBrandSelected(result.id, result.name);
+                      }
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Rack (readonly, tap to pick)
+                  TextFieldWidget(
+                    controller: _rackController,
+                    readonly: true,
+                    required: true,
+                    label: 'Lokasi Rak',
+                    fillColor: Colors.transparent,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide(color: AppColors.border, width: 1),
+                    ),
+                    hintText: 'Pilih Lokasi Rak',
+                    hintStyle: TextStyle(
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    onFieldTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RackPickerScreen(),
+                        ),
+                      );
+
+                      if (result is SelectedRackResult) {
+                        String name =
+                            '${result.name ?? ""} - ${result.departmentName ?? ""} / ${result.sectionName ?? ""} / ${result.warehouseName ?? ""}';
+                        _rackController.text = name;
+                        cubit.setRack(result.id, name);
+                      }
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Variant name
+                  TextFieldWidget(
+                    controller: _nameController,
+                    required: true,
+                    label: 'Nama Variant',
+                    fillColor: Colors.transparent,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide(color: AppColors.border, width: 1),
+                    ),
+                    hintText: 'Contoh: Bearing Timken A',
+                    hintStyle: TextStyle(
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    onChanged: (value) => cubit.setName(value),
+                  ),
+                  SizedBox(height: 16),
+
+                  // UOM: use modal bottom sheet instead of dropdown
+                  TextFieldWidget(
+                    controller: _uomController,
+                    readonly: true,
+                    required: true,
+                    label: 'Satuan UOM',
+                    fillColor: Colors.transparent,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide(color: AppColors.border, width: 1),
+                    ),
+                    hintText: 'Pilih Satuan',
+                    hintStyle: TextStyle(
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    suffixIcon: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.primaryDark,
+                    ),
+                    onFieldTap: () async {
+                      final selected = await showModalBottomSheet<String>(
+                        context: context,
+                        builder: (ctx) {
+                          return SafeArea(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: _uomOptions.map((e) {
+                                return ListTile(
+                                  title: Text(e),
+                                  onTap: () => Navigator.of(ctx).pop(e),
+                                );
+                              }).toList(),
+                            ),
+                          );
+                        },
+                      );
+
+                      if (selected != null) {
+                        cubit.setUom(selected);
+                      }
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Kode Manufaktur
+                  TextFieldWidget(
+                    required: false,
+                    label: 'Kode Manufaktur',
+                    fillColor: Colors.transparent,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide(color: AppColors.border, width: 1),
+                    ),
+                    // maxLines: 4,
+                    hintText: 'Contoh: 31274/2322',
+                    hintStyle: TextStyle(
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    onChanged: (v) => cubit.setManufCode(v),
+                  ),
+                  SizedBox(height: 16),
+
+                  // Spesifikasi
+                  TextFieldWidget(
+                    required: false,
+                    label: 'Spesifikasi ',
+                    fillColor: Colors.transparent,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide(color: AppColors.border, width: 1),
+                    ),
+                    maxLines: 4,
+                    hintStyle: TextStyle(
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    onChanged: (v) => cubit.setSpecification(v),
+                  ),
 
                   const SizedBox(height: 24),
-
-                  // SUBMIT
-                  ElevatedButton(
-                    onPressed: state.status == CreateVariantStatus.loading
-                        ? null
-                        : cubit.canSubmit
-                        ? cubit.submit
-                        : null,
-                    child: state.status == CreateVariantStatus.loading
-                        ? const CircularProgressIndicator()
-                        : const Text("Simpan Variant"),
-                  ),
                 ],
               ),
             ),
@@ -267,3 +514,6 @@ class CreateVariantScreen extends StatelessWidget {
     );
   }
 }
+
+/// Small fallback LoadingOverlay util in case project doesn't have one.
+/// If you have your own LoadingOverlay, remove this and import yours instead.

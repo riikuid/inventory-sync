@@ -38,8 +38,8 @@ class LabelingRepository {
   }) async {
     final now = DateTime.now();
 
-    if (photoLocalPaths.length < 3) {
-      throw Exception('Photo minimal 3');
+    if (photoLocalPaths.isEmpty) {
+      throw Exception('Foto produk tidak boleh kosong');
     }
 
     await db.transaction(() async {

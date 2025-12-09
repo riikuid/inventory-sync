@@ -32,7 +32,7 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
   }
 
   Stream<List<CompanyItemListRow>> watchCompanyItemsWithStock({
-    String? productId, // optional, kalau mau filter per product
+    String? productId,
   }) {
     final base = select(companyItems).join([
       innerJoin(products, products.id.equalsExp(companyItems.productId)),
@@ -51,33 +51,49 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
     }
 
     return base.watch().map((rows) {
-      final map = <String, CompanyItemListRow>{};
+      // map companyItemId -> Map dengan agregat
+      final map = <String, Map<String, dynamic>>{};
 
       for (final row in rows) {
         final ci = row.readTable(companyItems);
         final p = row.readTable(products);
         final u = row.readTableOrNull(units);
+        final v = row.readTableOrNull(variants);
 
-        map.putIfAbsent(
-          ci.id,
-          () => CompanyItemListRow(
-            companyItemId: ci.id,
-            companyCode: ci.companyCode,
-            productName: p.name,
-            categoryName:
-                null, // atau ambil dari join category kalau kamu tambahkan
-            totalUnits: 0,
-          ),
-        );
+        final id = ci.id;
+        // jika belum ada, inisialisasi entri dengan struktur sederhana
+        map.putIfAbsent(id, () {
+          return {
+            'companyItemId': ci.id,
+            'companyCode': ci.companyCode,
+            'productName': p.name,
+            'totalUnits': 0,
+            'variantIds': <String>{}, // Set untuk hindari double-count
+          };
+        });
 
+        final entry = map[id]!;
         if (u != null) {
-          final current = map[ci.id]!;
-          map[ci.id] = current.copyWith(totalUnits: current.totalUnits + 1);
+          entry['totalUnits'] = (entry['totalUnits'] as int) + 1;
+        }
+        if (v != null) {
+          (entry['variantIds'] as Set<String>).add(v.id);
         }
       }
 
-      return map.values.toList()
-        ..sort((a, b) => a.companyCode.compareTo(b.companyCode));
+      final result = map.values.map((entry) {
+        final variantIds = entry['variantIds'] as Set<String>;
+        return CompanyItemListRow(
+          companyItemId: entry['companyItemId'] as String,
+          companyCode: entry['companyCode'] as String,
+          productName: entry['productName'] as String,
+          categoryName: null,
+          totalUnits: entry['totalUnits'] as int,
+          totalVariants: variantIds.length,
+        );
+      }).toList()..sort((a, b) => a.companyCode.compareTo(b.companyCode));
+
+      return result;
     });
   }
 
@@ -197,21 +213,24 @@ class CompanyItemListRow {
   final String productName;
   final String? categoryName; // kalau mau sekalian
   final int totalUnits; // total unit aktif untuk kode ini
+  final int totalVariants; // total unit aktif untuk kode ini
 
   CompanyItemListRow({
     required this.companyItemId,
     required this.companyCode,
     required this.productName,
     this.categoryName,
+    required this.totalVariants,
     required this.totalUnits,
   });
 
-  CompanyItemListRow copyWith({int? totalUnits}) {
+  CompanyItemListRow copyWith({int? totalUnits, int? totalVariants}) {
     return CompanyItemListRow(
       companyItemId: companyItemId,
       companyCode: companyCode,
       productName: productName,
       categoryName: categoryName,
+      totalVariants: totalVariants ?? this.totalVariants,
       totalUnits: totalUnits ?? this.totalUnits,
     );
   }

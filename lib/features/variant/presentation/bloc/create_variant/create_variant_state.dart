@@ -14,6 +14,9 @@ class CreateVariantState extends Equatable {
   final String? specification;
   final String? manufCode;
 
+  final String autoBase; // base otomatis (productName)
+  final bool userEdited; // apakah user sudah mengedit manual
+
   final List<String> photos;
 
   final CreateVariantStatus status;
@@ -31,21 +34,26 @@ class CreateVariantState extends Equatable {
     required this.photos,
     required this.status,
     required this.errorMessage,
+    required this.autoBase,
+    required this.userEdited,
   });
 
-  factory CreateVariantState.initial() => const CreateVariantState(
-    rackId: null,
-    rackName: null,
-    brandId: null,
-    brandName: "Tanpa Brand",
-    name: "",
-    uom: null,
-    specification: null,
-    manufCode: null,
-    photos: [],
-    status: CreateVariantStatus.initial,
-    errorMessage: null,
-  );
+  factory CreateVariantState.initial({String autoBase = ''}) =>
+      CreateVariantState(
+        rackId: null,
+        rackName: null,
+        brandId: null,
+        brandName: "Tanpa Brand",
+        name: "",
+        uom: null,
+        specification: null,
+        manufCode: null,
+        photos: [],
+        status: CreateVariantStatus.initial,
+        errorMessage: null,
+        autoBase: autoBase,
+        userEdited: false,
+      );
 
   CreateVariantState copyWith({
     String? rackId,
@@ -59,6 +67,8 @@ class CreateVariantState extends Equatable {
     List<String>? photos,
     CreateVariantStatus? status,
     String? errorMessage,
+    String? autoBase,
+    bool? userEdited,
   }) {
     return CreateVariantState(
       rackId: rackId ?? this.rackId,
@@ -72,6 +82,8 @@ class CreateVariantState extends Equatable {
       photos: photos ?? this.photos,
       status: status ?? this.status,
       errorMessage: errorMessage ?? this.errorMessage,
+      autoBase: autoBase ?? this.autoBase,
+      userEdited: userEdited ?? this.userEdited,
     );
   }
 
@@ -85,5 +97,7 @@ class CreateVariantState extends Equatable {
     manufCode,
     photos,
     status,
+    autoBase,
+    userEdited,
   ];
 }

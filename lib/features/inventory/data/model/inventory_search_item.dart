@@ -11,6 +11,7 @@ class InventorySearchItem {
   final String? rackName;
   final String? warehouseName;
   final int activeStock;
+  final int variantCount;
 
   InventorySearchItem({
     required this.companyItemId,
@@ -21,6 +22,6 @@ class InventorySearchItem {
     this.rackName,
     this.warehouseName,
     required this.activeStock,
+    required this.variantCount,
   });
 }
-

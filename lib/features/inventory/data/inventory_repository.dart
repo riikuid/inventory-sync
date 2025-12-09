@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+
 import 'package:drift/drift.dart' hide Component;
 import 'package:inventory_sync_apps/core/db/app_database.dart';
 
@@ -200,6 +202,7 @@ class InventoryRepository {
           rackName: null, // nanti kalau mau diisi lokasi fisik, bisa dilengkapi
           warehouseName: null,
           activeStock: activeStock,
+          variantCount: variants.length,
         ),
       );
     }
@@ -215,6 +218,8 @@ class InventoryRepository {
     final product = await (db.select(
       db.products,
     )..where((p) => p.id.equals(item.productId))).getSingleOrNull();
+
+    // dev.log('Product Selected: ${product?.name}', name: 'InventoryRepository');
 
     // ambil semua variant untuk company_item ini
     final variants = await (db.select(
@@ -285,6 +290,62 @@ class InventoryRepository {
     return _variantDao.watchVariantDetail(variantId);
   }
 
+  Future<Component> createComponentForProductWithType({
+    required String productId,
+    String? brandId,
+    required String name,
+    String? manufCode,
+    String? specification,
+    String type = 'SEPARATE',
+  }) {
+    return _variantDao.createComponentForProduct(
+      productId: productId,
+      brandId: brandId,
+      name: name,
+      manufCode: manufCode,
+      specification: specification,
+      type: type,
+    );
+  }
+
+  Future<Component> createInBoxPartAndAttach({
+    required String variantId,
+    required String productId,
+    String? brandId,
+    required String name,
+    String? manufCode,
+    String? specification,
+  }) {
+    return _variantDao.createInBoxPartAndAttach(
+      variantId: variantId,
+      productId: productId,
+      brandId: brandId,
+      name: name,
+      manufCode: manufCode,
+      specification: specification,
+    );
+  }
+
+  Future<List<Component>> getComponentsByProductAndType({
+    required String productId,
+    required String type,
+  }) {
+    return _variantDao.getComponentsByProductAndType(
+      productId: productId,
+      type: type,
+    );
+  }
+
+  Stream<List<VariantComponentRow>> watchVariantComponentsByType({
+    required String variantId,
+    required String type,
+  }) {
+    return _variantDao.watchVariantComponentsByType(
+      variantId: variantId,
+      type: type,
+    );
+  }
+
   Future<List<Component>> getComponentsForProduct(String productId) {
     return _variantDao.getComponentsByProduct(productId);
   }
@@ -295,6 +356,7 @@ class InventoryRepository {
     required String name,
     String? manufCode,
     String? specification,
+    String? type,
   }) {
     return _variantDao.createComponentForProduct(
       productId: productId,
@@ -302,6 +364,7 @@ class InventoryRepository {
       name: name,
       manufCode: manufCode,
       specification: specification,
+      type: type ?? 'SEPARATE',
     );
   }
 

@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,6 +11,7 @@ import 'package:inventory_sync_apps/core/db/daos/company_item_dao.dart';
 import '../../../home/presentation/widget/company_item_card.dart';
 import '../../../inventory/data/model/inventory_search_item.dart';
 import '../../../inventory/presentation/screens/company_item_detail_screen.dart';
+import '../../../variant/presentation/screen/create_variant_screen.dart';
 import '../bloc/search_item_cubit.dart';
 
 class SearchItemScreen extends StatelessWidget {
@@ -115,6 +117,10 @@ class _SearchItemViewState extends State<_SearchItemView> {
                             textInputAction: TextInputAction.search,
                             onSubmitted: _onSubmitted,
                             decoration: InputDecoration(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 12,
+                              ),
                               hintText:
                                   'Cari kode / nama barang (mis. 030, Bearing...)',
                               border: InputBorder.none,
@@ -250,20 +256,10 @@ class _SearchItemViewState extends State<_SearchItemView> {
                               productName: item.productName,
                               categoryName: item.categoryName,
                               totalUnits: item.activeStock,
+                              totalVariants: item.variantCount,
                             );
 
-                            return CompanyItemCard(
-                              row: row,
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => CompanyItemDetailScreen(
-                                      companyItemId: item.companyItemId,
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
+                            return CompanyItemCard(row: row);
                           },
                         ),
                         const SizedBox(height: 16),

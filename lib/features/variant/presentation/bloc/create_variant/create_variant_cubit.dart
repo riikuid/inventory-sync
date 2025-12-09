@@ -26,6 +26,65 @@ class CreateVariantCubit extends Cubit<CreateVariantState> {
     }
   }
 
+  // helper compose
+  String _composeAutoName(String autoBase, String? brandName) {
+    final base = autoBase.trim();
+    if (base.isEmpty) return brandName?.trim() ?? '';
+    if (brandName == null ||
+        brandName.trim().isEmpty ||
+        brandName == 'Tanpa Brand')
+      return base;
+    return '$base ${brandName.trim()}';
+  }
+
+  // contoh method: inisialisasi create flow
+  // panggil ini ketika open create variant screen
+  Future<void> initFor({
+    required String productName,
+    String? defaultRackId,
+    String? defaultRackName,
+  }) async {
+    final autoBase = productName;
+    // set initial state with autoBase and name=autoBase
+    emit(
+      CreateVariantState.initial(autoBase: autoBase).copyWith(
+        rackId: defaultRackId,
+        rackName: defaultRackName,
+        // brand default "Tanpa Brand" already set in factory
+      ),
+    );
+  }
+
+  // user mengetik di textfield
+  void updateName(String value) {
+    final s = state;
+    // if the typed value equals auto composed name, treat as not userEdited
+    final autoComposed = _composeAutoName(s.autoBase, s.brandName);
+    final isAuto = value.trim() == autoComposed.trim();
+    emit(s.copyWith(name: value, userEdited: !isAuto));
+  }
+
+  // user memilih brand dari picker
+  void onBrandSelected(String? brandId, String? brandName) {
+    final s = state;
+    // update brand fields
+    if (!s.userEdited) {
+      // override name only when user not manually edited
+      final newName = _composeAutoName(s.autoBase, brandName);
+      emit(
+        s.copyWith(
+          brandId: brandId,
+          brandName: brandName ?? 'Tanpa Brand',
+          name: newName,
+          userEdited: false, // still system-controlled
+        ),
+      );
+    } else {
+      // user has custom name -> don't override name
+      emit(s.copyWith(brandId: brandId, brandName: brandName ?? 'Tanpa Brand'));
+    }
+  }
+
   void setRack(String rackId, String rackName) {
     emit(state.copyWith(rackId: rackId, rackName: rackName));
   }
@@ -62,7 +121,7 @@ class CreateVariantCubit extends Cubit<CreateVariantState> {
       state.rackId != null &&
       state.name.trim().isNotEmpty &&
       state.uom != null &&
-      state.photos.length >= 3;
+      state.photos.isNotEmpty; // minimal 3
 
   Future<void> submit() async {
     if (!canSubmit) return;
