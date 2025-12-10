@@ -2,6 +2,10 @@ import 'dart:developer' as dev;
 
 import 'package:drift/drift.dart' hide Component;
 import 'package:inventory_sync_apps/core/db/app_database.dart';
+import 'package:inventory_sync_apps/core/db/daos/component_dao.dart';
+import 'package:inventory_sync_apps/core/db/daos/component_photo_dao.dart';
+import 'package:inventory_sync_apps/core/db/daos/variant_component_dao.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/db/daos/category_dao.dart';
 import '../../../core/db/daos/company_item_dao.dart';
@@ -10,11 +14,17 @@ import 'model/inventory_search_item.dart';
 
 class InventoryRepository {
   final AppDatabase db;
+  final _uuid = const Uuid();
 
   InventoryRepository(this.db);
 
   CompanyItemDao get _companyItemDao => db.companyItemDao;
   VariantDao get _variantDao => db.variantDao;
+  VariantComponentDao get _variantComponentDao => db.variantComponentDao;
+
+  ComponentDao get _componentDao => db.componentDao;
+  ComponentPhotoDao get _componentPhotoDao => db.componentPhotoDao;
+
   CategoryDao get _categoryDao => db.categoryDao;
   // UnitDao get _unitDao => db.unitDao;
 
@@ -308,22 +318,87 @@ class InventoryRepository {
     );
   }
 
-  Future<Component> createInBoxPartAndAttach({
+  // Future<Component> createInBoxPartAndAttach({
+  //   required String variantId,
+  //   required String productId,
+  //   String? brandId,
+  //   required String name,
+  //   String? manufCode,
+  //   String? specification,
+  //   required List<String> photos,
+  // }) {
+  //   return _variantDao.createInBoxPartAndAttach(
+  //     variantId: variantId,
+  //     productId: productId,
+  //     brandId: brandId,
+  //     name: name,
+  //     manufCode: manufCode,
+  //     specification: specification,
+  //   );
+  // }
+
+  Future<void> createComponentAndAttach({
     required String variantId,
     required String productId,
     String? brandId,
     required String name,
+    required String type,
     String? manufCode,
     String? specification,
-  }) {
-    return _variantDao.createInBoxPartAndAttach(
-      variantId: variantId,
-      productId: productId,
-      brandId: brandId,
-      name: name,
-      manufCode: manufCode,
-      specification: specification,
-    );
+    required List<String> photos,
+  }) async {
+    final now = DateTime.now();
+
+    if (photos.isEmpty) {
+      throw Exception('Foto komponen tidak boleh kosong');
+    }
+
+    await db.transaction(() async {
+      // 1. create component
+      final component = _uuid.v4();
+
+      final componentCompanion = ComponentsCompanion(
+        id: Value(component),
+        productId: Value(productId),
+        type: Value(type),
+        brandId: Value(brandId),
+        name: Value(name),
+        specification: Value(specification),
+        manufCode: Value(manufCode),
+        createdAt: Value(now),
+        updatedAt: Value(now),
+        lastModifiedAt: Value(now),
+        needSync: const Value(true),
+      );
+
+      await _componentDao.upsertComponents([componentCompanion]);
+
+      // 2. simpan photos
+      final photoCompanions = <ComponentPhotosCompanion>[];
+      for (var i = 0; i < photos.length; i++) {
+        final photoId = _uuid.v4();
+        photoCompanions.add(
+          ComponentPhotosCompanion(
+            id: Value(photoId),
+            componentId: Value(component),
+            localPath: Value(photos[i]),
+            remoteUrl: const Value(null),
+            sortOrder: Value(i),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+            lastModifiedAt: Value(now),
+            needSync: const Value(true),
+          ),
+        );
+      }
+      await _componentPhotoDao.upsertPhotos(photoCompanions);
+
+      // 3. attach ke variant
+      await _variantDao.attachComponentToVariant(
+        variantId: variantId,
+        componentId: component,
+      );
+    });
   }
 
   Future<List<Component>> getComponentsByProductAndType({

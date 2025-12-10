@@ -5,6 +5,7 @@ import 'package:inventory_sync_apps/core/styles/app_style.dart';
 import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
 import 'package:inventory_sync_apps/core/styles/text_theme.dart';
 import 'package:inventory_sync_apps/features/inventory/data/inventory_repository.dart';
+import '../../../../shared/presentation/widgets/primary_button.dart';
 import '../../../variant/presentation/screen/create_variant_screen.dart';
 import '../bloc/company_item_detail/company_item_detail_cubit.dart';
 import 'variant_detail_screen.dart';
@@ -47,19 +48,18 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
         backgroundColor: AppColors.background,
         appBar: AppBar(
           iconTheme: IconThemeData(color: AppColors.onSurface),
+          backgroundColor: AppColors.background,
           leading: IconButton(
             onPressed: () {
               Navigator.pop(context);
             },
             icon: Icon(
               Icons.arrow_back_ios_rounded,
+              size: 18,
               weight: 260,
               color: AppColors.onSurface,
             ),
           ),
-          backgroundColor: AppColors.background,
-          foregroundColor: Colors.transparent,
-          elevation: 0.5,
 
           title: BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
             builder: (context, state) {
@@ -67,10 +67,10 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                 return Text(
                   '${state.detail.companyCode} • ${state.detail.productName}',
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: AppStyle.monoTextStyle.copyWith(
                     color: AppColors.onSurface,
                     fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w900,
                   ),
                 );
               }
@@ -156,7 +156,6 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                 );
               },
             ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
   }
@@ -304,7 +303,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                   MaterialPageRoute(
                     builder: (context) => CreateVariantScreen(
                       companyItemId: detail.companyItemId,
-                      userId: 'SDWDSD',
+                      userId: 'USER-1',
                     ),
                   ),
                 ),
@@ -457,33 +456,30 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
     required String productName,
     required String companyCode,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: ElevatedButton.icon(
-        onPressed: () => {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CreateVariantScreen(
-                companyItemId: widget.companyItemId,
-                userId: 'SDWDSD',
-                productName: productName,
-                companyCode: companyCode,
-              ),
-            ),
-          ),
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah Variant'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.onPrimary,
-          minimumSize: const Size(double.infinity, 56),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+    return CustomButton(
+      radius: 1000,
+      color: AppColors.primaryDark,
+      width: 150,
+      child: Text(
+        '+  Tambah Variant',
+        style: AppStyle.poppinsTextSStyle.copyWith(
+          color: AppColors.surface,
+          fontWeight: FontWeight.w600,
         ),
       ),
+      onPressed: () => {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CreateVariantScreen(
+              companyItemId: widget.companyItemId,
+              userId: 'USER-1',
+              productName: productName,
+              companyCode: companyCode,
+            ),
+          ),
+        ),
+      },
     );
   }
 

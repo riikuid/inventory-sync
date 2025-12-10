@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
+import 'package:inventory_sync_apps/features/inventory/presentation/screens/component_picker_screen.dart';
+import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.dart';
 import '../../../../core/db/app_database.dart';
 import '../../../../core/db/daos/variant_dao.dart';
 import '../../../../core/styles/app_style.dart';
 import '../../../labeling/data/labeling_repository.dart';
-import '../../../labeling/presentation/bloc/label_set/label_state_cubit.dart';
-import '../../../labeling/presentation/screens/label_set_screen.dart';
-import '../../../labeling/presentation/screens/label_component_screen.dart';
-import '../../../labeling/presentation/screens/assembly_screen.dart';
 import '../../data/inventory_repository.dart';
+import '../../data/model/component_request.dart';
 import '../bloc/variant_detail/variant_detail_cubit.dart';
+import 'create_component_in_box_screen.dart';
 
 class VariantDetailScreen extends StatelessWidget {
   final String variantId;
@@ -75,9 +75,6 @@ class _VariantDetailView extends StatelessWidget {
         }
         if (state is VariantDetailLoaded) {
           final d = state.detail;
-          final isSet = d
-              .components
-              .isNotEmpty; // components list presence indicates set / in_box scenario maybe
           return Scaffold(
             backgroundColor: AppColors.background,
             appBar: AppBar(
@@ -89,6 +86,7 @@ class _VariantDetailView extends StatelessWidget {
                 },
                 icon: Icon(
                   Icons.arrow_back_ios_rounded,
+                  size: 18,
                   weight: 260,
                   color: AppColors.onSurface,
                 ),
@@ -96,9 +94,9 @@ class _VariantDetailView extends StatelessWidget {
               title: Text(
                 '${d.companyCode} • ${d.name}',
                 overflow: TextOverflow.ellipsis,
-                style: AppStyle.poppinsTextSStyle.copyWith(
+                style: AppStyle.monoTextStyle.copyWith(
                   color: AppColors.onSurface,
-                  fontSize: 15,
+                  fontSize: 16,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -263,10 +261,37 @@ class _VariantDetailView extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     side: BorderSide(color: Colors.grey.shade300),
                   ),
-                  onPressed: () {
-                    // action to add part / open picker for which section?
-                    // We'll open add-in-box sheet by default
-                    _openAddComponentSheet(context, d);
+                  onPressed: () async {
+                    // // action to add part / open picker for which section?
+                    // // We'll open add-in-box sheet by default
+                    // _openAddComponentSheet(context, d);
+                    final repo = context.read<InventoryRepository>();
+
+                    final result = await Navigator.push<ComponentRequest>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            CreateComponentInBoxScreen(variantDetailRow: d),
+                      ),
+                    );
+                    if (result != null) {
+                      await repo.createComponentAndAttach(
+                        type: 'IN_BOX',
+                        photos: result.pathPhotos,
+                        productId: d.productId,
+                        brandId: d.brandId,
+                        name: result.name.trim(),
+                        manufCode: result.manufCode?.trim(),
+                        specification: result.specification?.trim(),
+                        variantId: d.variantId,
+                        // type: 'IN_BOX',
+                      );
+
+                      // await cubit.addComponentFromExisting(
+                      //   variantId: d.variantId,
+                      //   componentId: comp.id,
+                      // );
+                    }
                   },
                   child: const Text(
                     '+ Isi',
@@ -283,7 +308,7 @@ class _VariantDetailView extends StatelessWidget {
 
   Widget _buildBoxSection(BuildContext context, VariantDetailRow d) {
     // Components that are IN_BOX -> treat as "Isi Dalam Box"
-    final inBox = d.components
+    final inBox = d.componentsInBox
         .where((c) => c != null)
         .where((c) => true)
         .toList()
@@ -291,7 +316,7 @@ class _VariantDetailView extends StatelessWidget {
         .toList(); // we assume VariantComponentRow has info type handled in repo
     // In your VariantDetailRow you don't have 'type', so repo must provide IN_BOX vs SEPARATE by filtering earlier.
     // For safety, show all components here (in real app filter by type).
-    final hasAny = d.components.isNotEmpty;
+    final hasAny = d.componentsInBox.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -309,7 +334,7 @@ class _VariantDetailView extends StatelessWidget {
                 ),
               ),
             ),
-            Text('${d.components.length}'),
+            Text('${d.componentsInBox.length}'),
           ],
         ),
         const SizedBox(height: 8),
@@ -319,64 +344,73 @@ class _VariantDetailView extends StatelessWidget {
             color: AppColors.secondary,
             borderRadius: BorderRadius.circular(24),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: hasAny
-                ? Column(
-                    children: d.components.map((c) {
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        child: ListTile(
-                          tileColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          title: Text(
-                            c.name,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (c.manufCode != null)
-                                Text(
-                                  c.manufCode!,
-                                  style: const TextStyle(fontSize: 12),
-                                ),
+          padding: const EdgeInsets.all(12),
+          child: hasAny
+              ? Column(
+                  spacing: 10,
+                  children: d.componentsInBox.map((c) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      // margin: EdgeInsets.only(bottom: 10),
+                      child: ListTile(
+                        tileColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        title: Text(
+                          c.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (c.manufCode != null)
                               Text(
-                                '${c.totalUnits} unit',
+                                c.manufCode!,
                                 style: const TextStyle(fontSize: 12),
                               ),
-                            ],
-                          ),
-                          trailing: Container(child: Text('${c.totalUnits}')),
+                          ],
                         ),
-                      );
-                    }).toList(),
-                  )
-                : SizedBox(
-                    height: 80,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.archive_outlined,
-                            size: 40,
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text('${c.totalUnits}'),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                )
+              : SizedBox(
+                  height: 80,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.archive_outlined,
+                          size: 40,
+                          color: const Color.fromARGB(255, 194, 194, 194),
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          'Belum ada isi',
+                          style: TextStyle(
                             color: const Color.fromARGB(255, 194, 194, 194),
                           ),
-                          SizedBox(height: 5),
-                          Text(
-                            'Belum ada isi',
-                            style: TextStyle(
-                              color: const Color.fromARGB(255, 194, 194, 194),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-          ),
+                ),
         ),
       ],
     );
@@ -388,7 +422,7 @@ class _VariantDetailView extends StatelessWidget {
   ) {
     // Ideally filter components by type == SEPARATE; repo currently returns components list
     // We'll display same components as sample; in real impl repo should split by type
-    final separate = d.components; // assume already filtered
+    final separate = d.componentsSeparate; // assume already filtered
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -407,14 +441,44 @@ class _VariantDetailView extends StatelessWidget {
               ),
             ),
             TextButton.icon(
-              onPressed: () => _openAddComponentSheet(context, d),
-              icon: const Icon(Icons.add),
-              label: const Text('Komponen'),
+              onPressed: () async {
+                final repo = context.read<InventoryRepository>();
+
+                // );
+
+                final result = await Navigator.push<String>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        ComponentPickerScreen(type: 'SEPARATE', variant: d),
+                  ),
+                );
+                if (result != null) {
+                  await repo.attachComponentToVariant(
+                    componentId: result,
+                    variantId: d.variantId,
+                    // type: 'IN_BOX',
+                  );
+                }
+              },
+              icon: const Icon(
+                Icons.add,
+                size: 14,
+                color: AppColors.primaryDark,
+              ),
+              label: Text(
+                'Komponen',
+                style: AppStyle.poppinsTextSStyle.copyWith(
+                  fontSize: 12,
+                  color: AppColors.primaryDark,
+                ),
+              ),
             ),
           ],
         ),
         // const SizedBox(height: 8),
         Column(
+          spacing: 10,
           children: separate.map((c) {
             return Container(
               decoration: BoxDecoration(
@@ -422,7 +486,7 @@ class _VariantDetailView extends StatelessWidget {
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(24),
               ),
-              margin: const EdgeInsets.only(bottom: 10),
+
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -445,11 +509,15 @@ class _VariantDetailView extends StatelessWidget {
                             c.name,
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
-                          if (c.manufCode != null)
+
+                          if ((c.brandName != null) ||
+                              (c.manufCode != null)) ...[
+                            SizedBox(height: 3),
                             Text(
-                              c.manufCode!,
+                              '${c.brandName}${c.manufCode != null && c.manufCode!.isNotEmpty ? '  •  ${c.manufCode}' : ''}',
                               style: TextStyle(color: Colors.grey.shade700),
                             ),
+                          ],
                         ],
                       ),
                     ),
@@ -460,13 +528,19 @@ class _VariantDetailView extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.secondary,
+                        color: AppColors.primary,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text('${c.totalUnits}'),
                     ),
                     const SizedBox(width: 8),
-                    FilledButton.tonal(
+                    CustomButton(
+                      elevation: 0.2,
+                      width: 30,
+                      radius: 15,
+                      color: AppColors.surface,
+                      borderColor: AppColors.border,
+
                       onPressed: () {
                         // label single component
                         // Navigator.of(context).push(
@@ -482,7 +556,25 @@ class _VariantDetailView extends StatelessWidget {
                         //   ),
                         // );
                       },
-                      child: const Text('Cetak'),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.print_outlined,
+                            size: 14,
+                            color: AppColors.onBackground,
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            'Cetak',
+                            style: AppStyle.poppinsTextSStyle.copyWith(
+                              fontSize: 11,
+
+                              color: AppColors.onBackground,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -492,11 +584,11 @@ class _VariantDetailView extends StatelessWidget {
         ),
         if (separate.isEmpty)
           Container(
-      decoration: BoxDecoration(
-        boxShadow: [AppStyle.defaultBoxShadow],
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-      ),
+            decoration: BoxDecoration(
+              boxShadow: [AppStyle.defaultBoxShadow],
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+            ),
             child: SizedBox(
               height: 120,
               child: Center(

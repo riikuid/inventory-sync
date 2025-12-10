@@ -8,7 +8,9 @@ mixin _$VariantDaoMixin on DatabaseAccessor<AppDatabase> {
   $ProductsTable get products => attachedDatabase.products;
   $CompanyItemsTable get companyItems => attachedDatabase.companyItems;
   $VariantsTable get variants => attachedDatabase.variants;
+  $VariantPhotosTable get variantPhotos => attachedDatabase.variantPhotos;
   $ComponentsTable get components => attachedDatabase.components;
+  $ComponentPhotosTable get componentPhotos => attachedDatabase.componentPhotos;
   $VariantComponentsTable get variantComponents =>
       attachedDatabase.variantComponents;
   $UnitsTable get units => attachedDatabase.units;

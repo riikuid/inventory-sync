@@ -7,6 +7,7 @@ import 'package:inventory_sync_apps/features/inventory/data/inventory_repository
 import 'package:inventory_sync_apps/core/db/daos/category_dao.dart';
 import 'package:inventory_sync_apps/core/db/daos/company_item_dao.dart';
 
+import '../../../../core/styles/color_scheme.dart';
 import '../../../inventory/presentation/screens/company_item_detail_screen.dart';
 import '../../../search_item/presentation/screen/search_item_screen.dart';
 import '../../../variant/presentation/screen/create_variant_screen.dart';
@@ -120,7 +121,7 @@ class _SearchBar extends StatelessWidget {
             ).push(MaterialPageRoute(builder: (_) => const SearchItemScreen()));
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: EdgeInsets.only(left: 6, right: 16, top: 4, bottom: 4),
             decoration: BoxDecoration(
               color: cs.surface,
               borderRadius: BorderRadius.circular(24),
@@ -134,9 +135,12 @@ class _SearchBar extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.search_rounded,
-                  color: cs.onSurface.withOpacity(0.5),
+                CircleAvatar(
+                  backgroundColor: AppColors.background,
+                  child: Icon(
+                    Icons.search_rounded,
+                    color: AppColors.onSurface.withOpacity(0.5),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(

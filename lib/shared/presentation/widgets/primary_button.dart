@@ -14,6 +14,7 @@ class CustomButton extends StatelessWidget {
   final Color? foregroundColor;
   final bool? reverseLoading;
   final double? radius;
+  final EdgeInsetsGeometry? padding;
   const CustomButton({
     super.key,
     required this.child,
@@ -27,6 +28,7 @@ class CustomButton extends StatelessWidget {
     this.elevation,
     this.borderColor,
     this.radius,
+    this.padding,
     this.foregroundColor,
   });
 
@@ -40,7 +42,7 @@ class CustomButton extends StatelessWidget {
           : () {},
       style: ElevatedButton.styleFrom(
         elevation: elevation ?? 1,
-        // padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: padding ?? EdgeInsets.symmetric(horizontal: 15),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(radius ?? 6)),
           side: borderColor != null

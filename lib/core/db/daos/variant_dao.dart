@@ -13,7 +13,9 @@ part 'variant_dao.g.dart';
     Products,
     CompanyItems,
     Variants,
+    VariantPhotos,
     Components,
+    ComponentPhotos,
     VariantComponents,
     Units,
     Racks, // <- tambahkan Racks agar bisa query nama rak
@@ -153,6 +155,9 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       final totalUnits = a['totalUnits'] as int;
       final rackName = a['rackName'] as String?;
 
+      final compsSeparate = comps.where((c) => c.type == 'SEPARATE').toList();
+      final compsInBox = comps.where((c) => c.type == 'IN_BOX').toList();
+
       // Pada saat mengembalikan komponen, kita bisa serahkan semuanya dan UI nanti memfilter berdasarkan VariantComponentRow.type
       return VariantDetailRow(
         variantId: variant.id,
@@ -167,7 +172,8 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
         specification: variant.specification,
         companyCode: ci.companyCode,
         totalUnits: totalUnits,
-        components: comps,
+        componentsSeparate: compsSeparate,
+        componentsInBox: compsInBox,
       );
     });
   }
@@ -203,16 +209,6 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
     return (select(
       components,
     )..where((c) => c.productId.equals(productId) & c.type.equals(type))).get();
-  }
-
-  /// Watch komponen untuk product + type (stream) — dipakai UI yang butuh realtime
-  Stream<List<Component>> watchComponentsByProductAndType({
-    required String productId,
-    required String type,
-  }) {
-    return (select(components)
-          ..where((c) => c.productId.equals(productId) & c.type.equals(type)))
-        .watch();
   }
 
   /// Watch variant_components (join) tapi hanya yang komponen type == given type
@@ -262,13 +258,14 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
 
   /// Create in-box component AND attach to variant in ONE transaction.
   /// Berguna untuk flow "create in-box part then register it for variant".
-  Future<Component> createInBoxPartAndAttach({
+  Future<Component> createComponentAndAttach({
     required String variantId,
     required String productId,
     String? brandId,
     required String name,
     String? manufCode,
     String? specification,
+    required List<String> photos,
   }) async {
     return transaction<Component>(() async {
       // 1) buat komponen type IN_BOX
@@ -280,6 +277,20 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
         specification: specification,
         type: 'IN_BOX',
       );
+
+      // 1.5) (optional) simpan photos ke tabel terpisah jika perlu
+      for (final path in photos) {
+        final photoCompanion = ComponentPhotosCompanion.insert(
+          id: Uuid().v4(),
+          componentId: comp.id,
+          localPath: Value(path),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+          needSync: const Value(true),
+          lastModifiedAt: Value(DateTime.now()),
+        );
+        await into(componentPhotos).insert(photoCompanion);
+      }
 
       // 2) attach ke variant
       final insertable = VariantComponentsCompanion.insert(
@@ -371,7 +382,8 @@ class VariantDetailRow {
   final String companyCode;
   final int
   totalUnits; // semua unit ACTIVE untuk variant ini (component_id IS NULL)
-  final List<VariantComponentRow> components;
+  final List<VariantComponentRow> componentsInBox;
+  final List<VariantComponentRow> componentsSeparate;
 
   VariantDetailRow({
     required this.variantId,
@@ -386,6 +398,7 @@ class VariantDetailRow {
     this.specification,
     required this.companyCode,
     required this.totalUnits,
-    required this.components,
+    required this.componentsSeparate,
+    required this.componentsInBox,
   });
 }
