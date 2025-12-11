@@ -257,6 +257,53 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
     });
   }
 
+  //GET COMPNENT ROW
+  Future<List<VariantComponentRow>> getVariantComponentsByType({
+    required String variantId,
+    required String type, // 'IN_BOX' atau 'SEPARATE'
+  }) async {
+    final q =
+        (select(
+          variantComponents,
+        )..where((vc) => vc.variantId.equals(variantId))).join([
+          innerJoin(
+            components,
+            components.id.equalsExp(variantComponents.componentId),
+          ),
+          leftOuterJoin(brands, brands.id.equalsExp(components.brandId)),
+        ]);
+
+    final rows = await q.get(); // <- ambil sekali (get)
+    final List<VariantComponentRow> res = [];
+
+    for (final row in rows) {
+      final c = row.readTable(components);
+      if (c.type != type) continue; // filter by type
+      final b = row.readTableOrNull(brands);
+
+      // original: hit DB tiap iterasi -> bisa lambat
+      final count =
+          await (select(units)..where(
+                (u) => u.componentId.equals(c.id) & u.status.equals('ACTIVE'),
+              ))
+              .get()
+              .then((l) => l.length);
+
+      res.add(
+        VariantComponentRow(
+          componentId: c.id,
+          name: c.name,
+          manufCode: c.manufCode,
+          brandName: b?.name,
+          totalUnits: count,
+          type: c.type,
+        ),
+      );
+    }
+
+    return res;
+  }
+
   /// Create in-box component AND attach to variant in ONE transaction.
   /// Berguna untuk flow "create in-box part then register it for variant".
   Future<Component> createComponentAndAttach({

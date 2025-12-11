@@ -421,6 +421,16 @@ class InventoryRepository {
     );
   }
 
+  Future<List<VariantComponentRow>> getVariantComponentsByType({
+    required String variantId,
+    required String type,
+  }) {
+    return _variantDao.getVariantComponentsByType(
+      variantId: variantId,
+      type: type,
+    );
+  }
+
   Future<List<Component>> getComponentsForProduct(String productId) {
     return _variantDao.getComponentsByProduct(productId);
   }

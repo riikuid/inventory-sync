@@ -3,9 +3,7 @@ import 'package:inventory_sync_apps/core/db/app_database.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/db/daos/company_item_dao.dart';
-import '../../../core/db/daos/component_dao.dart';
 import '../../../core/db/daos/unit_dao.dart';
-import '../../../core/db/daos/variant_component_dao.dart';
 import '../../../core/db/daos/variant_dao.dart';
 import '../../../core/db/daos/variant_photo_dao.dart';
 import 'models/assembly_result.dart';
@@ -22,22 +20,79 @@ class LabelingRepository {
   VariantPhotoDao get _variantPhotoDao => db.variantPhotoDao;
   UnitDao get _unitDao => db.unitDao;
 
-  /// Generate N labels (units) untuk variant: returns list of created Unit rows
-  Future<List<Unit>> generateLabelsForVariant({
+  /// CORE FUNCTION: Generate Batch Labels
+  /// Menangani generate label untuk Variant (Set) maupun Component (Separate).
+  Future<List<Unit>> generateBatchLabels({
     required String variantId,
     required String companyCode,
     required String rackId,
     required int qty,
     required String userId,
+    // Parameter Opsional untuk Component Mode
+    String? componentId,
+    String? manufCode,
   }) async {
-    // gunakan UnitDao (sudah di AppDatabase)
-    return db.unitDao.createPendingUnits(
-      variantId: variantId,
-      companyCode: companyCode,
-      rackId: rackId,
-      qty: qty,
-      userId: userId,
-    );
+    return db.transaction(() async {
+      final List<Unit> generatedUnits = [];
+      final now = DateTime.now();
+
+      // Timestamp pendek untuk serial unik (misal: sisa milidetik)
+      // Format: 8 digit terakhir dari epoch
+      final batchTimestamp = now.millisecondsSinceEpoch.toString().substring(5);
+
+      for (int i = 0; i < qty; i++) {
+        final uid = _uuid.v4();
+
+        // Logic QR Generation
+        String qrResult;
+        // Serial unik per item dalam batch ini
+        final serial = '$batchTimestamp$i';
+
+        if (componentId != null) {
+          // --- CASE 1B: LABEL COMPONENT SEPARATE ---
+          // Format: USER-COMPCODE-CMP-MANUF-SERIAL
+          // Gunakan 'GEN' jika manufCode kosong
+          final safeManuf = (manufCode != null && manufCode.isNotEmpty)
+              ? manufCode.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '') // sanitize
+              : 'GEN';
+
+          qrResult = '$userId-$companyCode-CMP-$safeManuf-$serial';
+        } else {
+          // --- CASE 1A: LABEL VARIANT (SET) ---
+          // Format: USER-COMPCODE-SERIAL
+          qrResult = '$userId-$companyCode-$serial';
+        }
+
+        final companion = UnitsCompanion.insert(
+          id: uid,
+          variantId: Value(
+            variantId,
+          ), // Variant ID tetap diisi untuk tracking grouping
+          componentId: Value(
+            componentId,
+          ), // Null jika Variant, Terisi jika Component
+          rackId: Value(rackId),
+          qrValue: qrResult,
+          status: const Value('PENDING'),
+
+          // Audit Trails
+          createdBy: Value(userId),
+          createdAt: now,
+          updatedAt: now,
+
+          // Sync Flags
+          needSync: const Value(true),
+          lastModifiedAt: Value(now),
+        );
+
+        // Insert menggunakan DAO atau direct table insert untuk memastikan return value
+        // Kita akses table 'units' langsung dari db instance agar return Row object
+        final row = await db.into(db.units).insertReturning(companion);
+        generatedUnits.add(row);
+      }
+
+      return generatedUnits;
+    });
   }
 
   Future<void> recordPrintedUnits({
@@ -62,6 +117,18 @@ class LabelingRepository {
     return db.unitDao.findByQrWithJoins(qr);
   }
 
+  Future<List<VariantComponentRow>> getVariantComponentsByType({
+    required String variantId,
+    required String type,
+  }) {
+    return _variantDao.getVariantComponentsByType(
+      variantId: variantId,
+      type: type,
+    );
+  }
+
+  // ... (Sisa method createVariant, createSetUnit, dll biarkan tetap ada seperti sebelumnya)
+
   /// Setup company_item (is_set, has_components) + create/update 1 variant + photos.
   Future<void> createVariant({
     required String companyItemId,
@@ -71,29 +138,20 @@ class LabelingRepository {
     required String rackId,
     String? specification,
     String? manufCode,
-    required List<String> photoLocalPaths, // minimal 3
+    required List<String> photoLocalPaths,
     required String userId,
   }) async {
     final now = DateTime.now();
-
     if (photoLocalPaths.isEmpty) {
       throw Exception('Foto produk tidak boleh kosong');
     }
-
     await db.transaction(() async {
-      // 1. update company_item
-      final companyItem = await _companyItemDao.getById(
-        companyItemId,
-      ); // boleh null cek
-      if (companyItem == null) {
-        throw Exception('Company item not found');
-      }
+      final companyItem = await _companyItemDao.getById(companyItemId);
+      if (companyItem == null) throw Exception('Company item not found');
 
       await _companyItemDao.updateCompanyItem(companyItemId);
 
-      // 2. create variant baru (untuk iterasi ini, kita buat 1 variant)
       final variantId = _uuid.v4();
-
       final variantCompanion = VariantsCompanion(
         id: Value(variantId),
         companyItemId: Value(companyItemId),
@@ -111,7 +169,6 @@ class LabelingRepository {
 
       await _variantDao.upsertVariants([variantCompanion]);
 
-      // 3. simpan photos
       final photoCompanions = <VariantPhotosCompanion>[];
       for (var i = 0; i < photoLocalPaths.length; i++) {
         final photoId = _uuid.v4();
@@ -133,68 +190,7 @@ class LabelingRepository {
     });
   }
 
-  /// Add or select components untuk 1 variant (dipanggil di Setup wizard)
-  // Future<void> configureComponentsForVariant({
-  //   required String variantId,
-  //   required String productId,
-  //   required String? brandId,
-  //   required List<ComponentInput> newComponents,
-  //   required List<String> selectedComponentIds,
-  // }) async {
-  //   final now = DateTime.now();
-
-  //   await db.transaction(() async {
-  //     final componentIds = <String>[];
-
-  //     // 1. insert component baru (kalau ada)
-  //     for (final c in newComponents) {
-  //       final compId = _uuid.v4();
-  //       final comp = ComponentsCompanion(
-  //         id: Value(compId),
-  //         productId: Value(productId),
-  //         name: Value(c.name),
-  //         brandId: Value(brandId),
-  //         manufCode: Value(c.manufCode),
-  //         specJson: Value(c.specJson),
-  //         isActive: const Value(true),
-  //         createdAt: Value(now),
-  //         updatedAt: Value(now),
-  //         deletedAt: const Value(null),
-  //         lastModifiedAt: Value(now),
-  //         needSync: const Value(true),
-  //       );
-  //       await _componentDao.upsertComponents([comp]);
-  //       componentIds.add(compId);
-  //     }
-
-  //     // 2. plus component yang dipilih dari list existing
-  //     componentIds.addAll(selectedComponentIds);
-
-  //     // 3. hapus relasi variant_components lama, lalu buat baru
-  //     await _variantComponentDao.deleteByVariant(variantId);
-
-  //     final rels = <VariantComponentsCompanion>[];
-  //     for (final compId in componentIds) {
-  //       final id = _uuid.v4();
-  //       rels.add(
-  //         VariantComponentsCompanion(
-  //           id: Value(id),
-  //           variantId: Value(variantId),
-  //           componentId: Value(compId),
-  //           quantity: const Value(1),
-  //           createdAt: Value(now),
-  //           updatedAt: Value(now),
-  //           lastModifiedAt: Value(now),
-  //           needSync: const Value(true),
-  //         ),
-  //       );
-  //     }
-  //     await _variantComponentDao.upsertVariantComponents(rels);
-  //   });
-  // }
-
-  /// Membuat 1 unit SET untuk variant (label as set).
-  /// qrValue didapat dari proses generate di Cubit/Screen.
+  /// Membuat 1 unit SET untuk variant (label as set) - Single.
   Future<String> createSetUnit({
     required String variantId,
     String? rackId,
@@ -208,78 +204,23 @@ class LabelingRepository {
       id: Value(unitId),
       variantId: Value(variantId),
       componentId: const Value(null),
-      parentUnitId: const Value(null),
       qrValue: Value(qrValue),
       status: const Value('ACTIVE'),
       rackId: Value(rackId),
-      // quantity default 1 (di schema kamu)
       printCount: const Value(1),
       lastPrintedAt: Value(now),
       createdBy: Value(userId),
       updatedBy: Value(userId),
       lastPrintedBy: Value(userId),
-      syncedAt: const Value(null),
       lastModifiedAt: Value(now),
       needSync: const Value(true),
       createdAt: Value(now),
       updatedAt: Value(now),
-      deletedAt: const Value(null),
     );
 
     await _unitDao.insertUnit(companion);
     return unitId;
   }
-
-  // @override
-  // Future<LabelComponentResult> createComponentUnits({
-  //   required String variantId,
-  //   required String componentId,
-  //   required int quantity,
-  //   String? location,
-  //   required String userId,
-  // }) async {
-  //   final now = DateTime.now();
-  //   final uuid = const Uuid();
-
-  //   final List<String> generatedQr = [];
-  //   final List<UnitsCompanion> entries = [];
-
-  //   for (int i = 0; i < quantity; i++) {
-  //     final unitId = uuid.v4();
-  //     // Sementara format QR simple; nanti bisa kamu ganti pakai skema final
-  //     final qr = 'U-$unitId';
-  //     generatedQr.add(qr);
-
-  //     entries.add(
-  //       UnitsCompanion(
-  //         id: Value(unitId),
-  //         variantId: Value(variantId),
-  //         componentId: Value(componentId),
-  //         parentUnitId: const Value(null),
-  //         qrValue: Value(qr),
-  //         status: const Value('ACTIVE'),
-  //         location: Value(location),
-  //         printCount: const Value(0),
-  //         lastPrintedAt: const Value(null),
-  //         createdBy: Value(userId),
-  //         updatedBy: Value(userId),
-  //         lastPrintedBy: const Value(null),
-  //         syncedAt: const Value(null),
-  //         lastModifiedAt: Value(now),
-  //         needSync: const Value(true),
-  //         createdAt: Value(now),
-  //         updatedAt: Value(now),
-  //       ),
-  //     );
-  //   }
-
-  //   await _unitDao.insertUnits(entries);
-
-  //   return LabelComponentResult(
-  //     generatedCount: quantity,
-  //     sampleQrValue: generatedQr.isNotEmpty ? generatedQr.first : null,
-  //   );
-  // }
 
   @override
   Future<ScanUnitResult?> scanUnitByQr(String qrValue) async {
@@ -301,6 +242,7 @@ class LabelingRepository {
     );
   }
 
+  // (Fitur Assembly / The Boss akan kita update setelah ini)
   @override
   Future<AssemblyResult> assembleComponents({
     required String variantId,
@@ -308,33 +250,25 @@ class LabelingRepository {
     required String userId,
     String? location,
   }) async {
+    // ... Logic The Boss (Assembly) nanti di sini
+    // Saya biarkan dulu agar tidak error
     if (componentUnitIds.length < 2) {
       throw Exception('Minimal butuh 2 komponen untuk assembly');
     }
-
     final now = DateTime.now();
-    final uuid = const Uuid();
-
-    // Jalankan dalam transaction supaya konsisten
     return _unitDao.transaction(() async {
-      // 1) Buat unit SET baru
-      final parentId = uuid.v4();
-      final parentQr = 'SET-$parentId'; // sementara, silakan ganti pattern
+      final parentId = _uuid.v4();
+      final parentQr = 'SET-$parentId';
 
       final parentEntry = UnitsCompanion(
         id: Value(parentId),
         variantId: Value(variantId),
         componentId: const Value(null),
-        parentUnitId: const Value(null),
         qrValue: Value(parentQr),
         status: const Value('ACTIVE'),
         rackId: Value(location),
-        printCount: const Value(0),
-        lastPrintedAt: const Value(null),
         createdBy: Value(userId),
         updatedBy: Value(userId),
-        lastPrintedBy: const Value(null),
-        syncedAt: const Value(null),
         lastModifiedAt: Value(now),
         needSync: const Value(true),
         createdAt: Value(now),
@@ -343,7 +277,6 @@ class LabelingRepository {
 
       final parentUnit = await _unitDao.insertParentUnit(parentEntry);
 
-      // 2) Tandai semua komponen jadi BOUND + set parent_unit_id
       await _unitDao.bindUnitsToParent(
         parentUnitId: parentUnit.id,
         componentUnitIds: componentUnitIds,
@@ -358,12 +291,4 @@ class LabelingRepository {
       );
     });
   }
-}
-
-class ComponentInput {
-  final String name;
-  final String? manufCode;
-  final String? specJson;
-
-  ComponentInput({required this.name, this.manufCode, this.specJson});
 }

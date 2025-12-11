@@ -13,15 +13,19 @@ class GenerateLabelsScreen extends StatefulWidget {
   final VariantDetailRow variant;
   final String userId;
 
+  // Tambahan: Jika ini diisi, berarti kita sedang melabeli KOMPONEN SEPARATE
+  final String? componentId;
+  final String? componentName;
+  final String? componentManuf;
+
   const GenerateLabelsScreen({
     super.key,
-    // required this.variantId,
-    // required this.variantName,
-    // required this.companyCode,
-    // required this.defaultRackId,
-    // required this.defaultRackName,
+
     required this.variant,
     required this.userId,
+    this.componentId,
+    this.componentName,
+    this.componentManuf,
   });
 
   @override
@@ -32,6 +36,10 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
   int _qty = 1;
   String? _selectedRackId;
   String? _selectedRackName; // optional show
+
+  bool get isComponentMode => widget.componentId != null;
+  String get targetName =>
+      isComponentMode ? widget.componentName! : widget.variant.name;
 
   @override
   void initState() {
@@ -60,12 +68,18 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
     }
 
     final cubit = context.read<CreateLabelsCubit>();
+
     await cubit.generate(
-      variantId: widget.variant.variantId,
+      variantId: widget.variant.variantId, // Tetap kirim variant ID
       companyCode: widget.variant.companyCode,
       rackId: _selectedRackId!,
       qty: _qty,
       userId: widget.userId,
+      // Pass component params
+      componentId: widget.componentId,
+      manufCode: isComponentMode
+          ? widget.componentManuf
+          : widget.variant.manufCode,
     );
 
     final state = cubit.state;
@@ -117,7 +131,7 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Label Box untuk Varian',
+              isComponentMode ? 'Label Komponen' : 'Label Unit Box',
               style: AppStyle.poppinsTextSStyle.copyWith(
                 color: AppColors.onSurface,
                 fontSize: 15,
@@ -217,13 +231,18 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
                     ],
                   ),
                   Text(
-                    '${widget.variant.name}${widget.variant.manufCode != null && widget.variant.manufCode!.isNotEmpty ? '  •  ${widget.variant.manufCode}' : ''}',
+                    '$targetName${widget.variant.manufCode != null && widget.variant.manufCode!.isNotEmpty ? '  •  ${widget.variant.manufCode}' : ''}',
                     style: AppStyle.poppinsTextSStyle.copyWith(
                       color: AppColors.primaryDark,
                       fontWeight: FontWeight.w400,
                       fontSize: 12,
                     ),
                   ),
+                  if (isComponentMode)
+                    Text(
+                      'Bagian dari: ${widget.variant.name}',
+                      style: TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
                 ],
               ),
             ),

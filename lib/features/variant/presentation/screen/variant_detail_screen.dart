@@ -5,16 +5,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
 import 'package:inventory_sync_apps/features/inventory/presentation/screens/component_picker_screen.dart';
 import 'package:inventory_sync_apps/features/labeling/presentation/bloc/create_labels/create_labels_cubit.dart';
-import 'package:inventory_sync_apps/features/labeling/presentation/screens/generate_variant_label_screen.dart';
+import 'package:inventory_sync_apps/features/labeling/presentation/screens/generate_label_screen.dart';
 import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.dart';
 import '../../../../core/db/app_database.dart';
 import '../../../../core/db/daos/variant_dao.dart';
 import '../../../../core/styles/app_style.dart';
 import '../../../labeling/data/labeling_repository.dart';
 import '../../../inventory/data/inventory_repository.dart';
-import '../../../inventory/data/model/component_request.dart';
+import '../../../labeling/presentation/bloc/assembly/assembly_cubit.dart';
+import '../../../labeling/presentation/screens/assembly_screen.dart';
 import '../bloc/variant_detail/variant_detail_cubit.dart';
-import '../../../inventory/presentation/screens/create_component_in_box_screen.dart';
 
 class VariantDetailScreen extends StatelessWidget {
   final String variantId;
@@ -235,55 +235,47 @@ class _VariantDetailView extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => BlocProvider(
-                            create: (context) => CreateLabelsCubit(
-                              context.read<LabelingRepository>(),
-                            ),
-
-                            child: GenerateLabelsScreen(
-                              variant: d,
-                              userId: userId,
-                            ),
-                          ),
-                        ),
-                      );
                       // If no in-box components => go to LabelSetScreen directly (Label Item)
                       // else -> navigate to assembly/merge flow
-                      // if (d.components.where((c) => c != null).isEmpty) {
-                      //   // direct label (variant-level)
-                      //   Navigator.of(context).push(
-                      //     MaterialPageRoute(
-                      //       builder: (_) => BlocProvider(
-                      //         create: (ctx) => LabelSetCubit(
-                      //           labelingRepository: context
-                      //               .read<LabelingRepository>(),
-                      //           variantId: d.variantId,
-                      //           variantName: d.name,
-                      //           brandName: d.brandName,
-                      //           defaultLocation: d.rackName,
-                      //           userId: userId,
-                      //         ),
-                      //         child: const LabelSetScreen(),
-                      //       ),
-                      //     ),
-                      //   );
-                      // } else {
-                      //   // open assembly flow
-                      //   Navigator.of(context).push(
-                      //     MaterialPageRoute(
-                      //       builder: (_) => AssemblyScreen(
-                      //         variantId: d.variantId,
-                      //         variantName: d.name,
-                      //         componentIds: d.components
-                      //             .map((c) => c.componentId)
-                      //             .toList(),
-                      //         userId: userId,
-                      //       ),
-                      //     ),
-                      //   );
-                      // }
+                      if (d.componentsInBox.where((c) => c != null).isEmpty) {
+                        // direct label (variant-level)
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider(
+                              create: (context) => CreateLabelsCubit(
+                                context.read<LabelingRepository>(),
+                              ),
+
+                              child: GenerateLabelsScreen(
+                                variant: d,
+                                userId: userId,
+                              ),
+                            ),
+                          ),
+                        );
+                      } else {
+                        // open assembly flow
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider(
+                              create: (context) => AssemblyCubit(
+                                RepositoryProvider.of<LabelingRepository>(
+                                  context,
+                                ),
+                                d.variantId,
+                                d.name,
+                              ),
+                              child: AssemblyScreen(
+                                variantId: d.variantId,
+                                variantName: d.name,
+                                companyCode: d.companyCode,
+                                userId: userId,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
                     },
                     child: const Text(
                       'Cetak',
@@ -298,30 +290,7 @@ class _VariantDetailView extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     side: BorderSide(color: Colors.grey.shade300),
                   ),
-                  // onPressed: () async {
-                  //   final repo = context.read<InventoryRepository>();
 
-                  //   final result = await Navigator.push<ComponentRequest>(
-                  //     context,
-                  //     MaterialPageRoute(
-                  //       builder: (_) =>
-                  //           CreateComponentInBoxScreen(variantDetailRow: d),
-                  //     ),
-                  //   );
-                  //   if (result != null) {
-                  //     await repo.createComponentAndAttach(
-                  //       type: 'IN_BOX',
-                  //       photos: result.pathPhotos,
-                  //       productId: d.productId,
-                  //       brandId: d.brandId,
-                  //       name: result.name.trim(),
-                  //       manufCode: result.manufCode?.trim(),
-                  //       specification: result.specification?.trim(),
-                  //       variantId: d.variantId,
-                  //       // type: 'IN_BOX',
-                  //     );
-                  //   }
-                  // },
                   onPressed: () async {
                     final repo = context.read<InventoryRepository>();
 
@@ -597,19 +566,23 @@ class _VariantDetailView extends StatelessWidget {
                       borderColor: AppColors.border,
 
                       onPressed: () {
-                        // label single component
-                        // Navigator.of(context).push(
-                        //   MaterialPageRoute(
-                        //     builder: (_) => LabelComponentScreen(
-                        //       variantId: d.variantId,
-                        //       variantName: d.name,
-                        //       componentId: c.componentId,
-                        //       componentName: c.name,
-                        //       defaultLocation: d.rackName,
-                        //       userId: userId,
-                        //     ),
-                        //   ),
-                        // );
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider(
+                              create: (context) => CreateLabelsCubit(
+                                context.read<LabelingRepository>(),
+                              ),
+
+                              child: GenerateLabelsScreen(
+                                variant: d,
+                                userId: userId,
+                                componentId: c.componentId,
+                                componentName: c.name,
+                                componentManuf: c.manufCode,
+                              ),
+                            ),
+                          ),
+                        );
                       },
                       child: Row(
                         mainAxisSize: MainAxisSize.min,

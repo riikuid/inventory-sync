@@ -1,329 +1,437 @@
-// import 'package:flutter/material.dart';
-// import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:inventory_sync_apps/features/labeling/presentation/bloc/assembly/assembly_cubit.dart';
+import 'package:inventory_sync_apps/core/styles/app_style.dart'; // Sesuaikan path
+import 'package:inventory_sync_apps/core/styles/color_scheme.dart'; // Sesuaikan path
 
-// import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
+class AssemblyScreen extends StatefulWidget {
+  final String variantId;
+  final String variantName;
+  final String companyCode;
+  final String userId;
 
-// import '../../data/labeling_repository.dart';
-// import '../../data/models/assembly_result.dart';
-// import '../../data/models/scan_unit_result.dart';
-// import '../bloc/assembly/assembly_cubit.dart';
-// import '../bloc/assembly/assembly_state.dart';
+  const AssemblyScreen({
+    super.key,
+    required this.variantId,
+    required this.variantName,
+    required this.companyCode,
+    required this.userId,
+  });
 
-// class AssemblyScreen extends StatelessWidget {
-//   final String variantId;
-//   final String variantName;
-//   final String userId;
-//   final List<String> componentIds;
+  @override
+  State<AssemblyScreen> createState() => _AssemblyScreenState();
+}
 
-//   const AssemblyScreen({
-//     super.key,
-//     required this.variantId,
-//     required this.componentIds,
-//     required this.variantName,
-//     required this.userId,
-//   });
+class _AssemblyScreenState extends State<AssemblyScreen> {
+  // Controller scanner untuk pause/resume camera
+  final MobileScannerController _scannerController = MobileScannerController(
+    formats: [BarcodeFormat.qrCode],
+    detectionSpeed: DetectionSpeed.normal,
+  );
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return BlocProvider(
-//       create: (ctx) => AssemblyCubit(
-//         labelingRepository: ctx.read<LabelingRepository>(),
-//         variantId: variantId,
-//         variantName: variantName,
-//         componentIds: componentIds,
-//         userId: userId,
-//       ),
-//       child: const _AssemblyView(),
-//     );
-//   }
-// }
+  bool _isScanningActive = false;
 
-// class _AssemblyView extends StatefulWidget {
-//   const _AssemblyView();
+  @override
+  void initState() {
+    super.initState();
+    // Load data komponen saat screen dibuka
+    context.read<AssemblyCubit>().loadRequirements();
+  }
 
-//   @override
-//   State<_AssemblyView> createState() => _AssemblyViewState();
-// }
+  @override
+  void dispose() {
+    _scannerController.dispose();
+    super.dispose();
+  }
 
-// class _AssemblyViewState extends State<_AssemblyView> {
-//   final _qrController = TextEditingController();
-//   final _locationCtrl = TextEditingController();
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Perakitan Set (In-Box)',
+              style: TextStyle(fontSize: 16),
+            ),
+            Text(
+              widget.variantName,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+            ),
+          ],
+        ),
+        actions: [
+          // Indikator Company Code
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Chip(
+                label: Text(
+                  widget.companyCode,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                ),
+                backgroundColor: AppColors.primaryLight,
+                padding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: BlocConsumer<AssemblyCubit, AssemblyState>(
+        listener: (context, state) {
+          if (state.status == AssemblyStatus.failure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.error ?? 'Terjadi kesalahan'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
 
-//   @override
-//   void dispose() {
-//     _qrController.dispose();
-//     _locationCtrl.dispose();
-//     super.dispose();
-//   }
+          // Feedback suara/snack saat scan berhasil
+          if (state.lastScanMessage != null) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.lastScanMessage!),
+                backgroundColor: state.lastScanMessage!.contains('❌')
+                    ? Colors.red
+                    : Colors.green,
+                duration: const Duration(milliseconds: 1500),
+              ),
+            );
+          }
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return BlocConsumer<AssemblyCubit, AssemblyState>(
-//       listenWhen: (prev, curr) =>
-//           curr is AssemblyReady && curr.errorMessage != null ||
-//           curr is AssemblyError,
-//       listener: (context, state) {
-//         if (state is AssemblyReady && state.errorMessage != null) {
-//           ScaffoldMessenger.of(
-//             context,
-//           ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
-//         } else if (state is AssemblyError) {
-//           ScaffoldMessenger.of(
-//             context,
-//           ).showSnackBar(SnackBar(content: Text(state.message)));
-//         }
-//       },
-//       builder: (context, state) {
-//         if (state is AssemblyReady) {
-//           return Scaffold(
-//             appBar: AppBar(
-//               title: Text('Assembly — ${state.variantName}'),
-//               backgroundColor: AppColors.primary,
-//               foregroundColor: Colors.white,
-//             ),
-//             body: Stack(
-//               children: [
-//                 ListView(
-//                   padding: const EdgeInsets.all(16),
-//                   children: [
-//                     _buildHeader(state),
-//                     const SizedBox(height: 16),
-//                     _buildScanSection(context, state),
-//                     const SizedBox(height: 16),
-//                     _buildAssembleSection(context, state),
-//                   ],
-//                 ),
-//                 if (state.isSaving)
-//                   Container(
-//                     color: Colors.black26,
-//                     child: const Center(child: CircularProgressIndicator()),
-//                   ),
-//               ],
-//             ),
-//           );
-//         }
+          // Sukses Finalisasi
+          if (state.status == AssemblyStatus.success) {
+            _showSuccessDialog(state.parentSetQr ?? '-');
+          }
+        },
+        builder: (context, state) {
+          if (state.status == AssemblyStatus.loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-//         return const Scaffold(body: Center(child: CircularProgressIndicator()));
-//       },
-//     );
-//   }
+          return Column(
+            children: [
+              // 1. PROGRESS HEADER
+              _buildProgressHeader(state),
 
-//   Widget _buildHeader(AssemblyReady s) {
-//     return Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         Text(
-//           s.variantName,
-//           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
-//         ),
-//         const SizedBox(height: 4),
-//         Text(
-//           'Satukan beberapa unit komponen menjadi 1 unit set.\n'
-//           'Scan QR untuk setiap komponen yang menjadi bagian dari set ini.',
-//           style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-//         ),
-//       ],
-//     );
-//   }
+              // 2. LIST COMPONENTS
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: state.components.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final item = state.components[index];
+                    return _ComponentCard(
+                      item: item,
+                      onPrintTap: () {
+                        context.read<AssemblyCubit>().generateComponentLabel(
+                          index,
+                          widget.userId,
+                          widget.companyCode,
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
 
-//   Widget _buildScanSection(BuildContext context, AssemblyReady s) {
-//     final cubit = context.read<AssemblyCubit>();
-//     final total = s.requiredComponentIds.length;
-//     final scannedCount = s.scannedByComponentId.length;
+              // 3. SCANNER & ACTION AREA
+              _buildBottomActionArea(context, state),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
-//     return Card(
-//       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-//       child: Padding(
-//         padding: const EdgeInsets.all(12),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             const Text(
-//               'Scan Komponen',
-//               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-//             ),
-//             const SizedBox(height: 8),
-//             Text(
-//               'Sudah discan: $scannedCount / $total komponen',
-//               style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-//             ),
-//             const SizedBox(height: 12),
+  Widget _buildProgressHeader(AssemblyState state) {
+    final total = state.components.length;
+    final scanned = state.components.where((c) => c.isScanned).length;
+    final progress = total == 0 ? 0.0 : scanned / total;
 
-//             // List status komponen
-//             ListView.builder(
-//               shrinkWrap: true,
-//               physics: const NeverScrollableScrollPhysics(),
-//               itemCount: s.requiredComponentIds.length,
-//               itemBuilder: (context, index) {
-//                 final compId = s.requiredComponentIds[index];
-//                 final scanned = s.scannedByComponentId[compId];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: Colors.white,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '$scanned/$total Komponen Lengkap',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(
+                '${(progress * 100).toInt()}%',
+                style: TextStyle(color: AppColors.primaryDark),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: Colors.grey.shade200,
+          ),
+        ],
+      ),
+    );
+  }
 
-//                 // Kalau unit hasil scan punya componentName, pakai itu
-//                 final title =
-//                     scanned?.componentName != null &&
-//                         scanned!.componentName!.isNotEmpty
-//                     ? scanned.componentName!
-//                     : 'Komponen ${index + 1}';
+  Widget _buildBottomActionArea(BuildContext context, AssemblyState state) {
+    final isComplete = state.isAllComponentsScanned;
 
-//                 final subtitle = scanned != null
-//                     ? 'QR: ${scanned.qrValue}'
-//                     : 'Belum discan';
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Area Scanner (Bisa di-toggle on/off untuk hemat baterai)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            height: _isScanningActive && !isComplete ? 200 : 0,
+            child: _isScanningActive && !isComplete
+                ? Stack(
+                    children: [
+                      MobileScanner(
+                        controller: _scannerController,
+                        onDetect: (capture) {
+                          final barcodes = capture.barcodes;
+                          if (barcodes.isNotEmpty) {
+                            final code = barcodes.first.rawValue;
+                            if (code != null) {
+                              context.read<AssemblyCubit>().onScanQr(code);
+                            }
+                          }
+                        },
+                      ),
+                      Center(
+                        child: Container(
+                          width: 200,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.red, width: 2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: IconButton(
+                          icon: const Icon(Icons.flash_on, color: Colors.white),
+                          onPressed: () => _scannerController.toggleTorch(),
+                        ),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
 
-//                 final color = scanned != null
-//                     ? Colors.green.shade600
-//                     : Colors.grey.shade500;
+          // Tombol Kontrol
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: isComplete
+                ? SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      onPressed: state.status == AssemblyStatus.generating_set
+                          ? null
+                          : () => context.read<AssemblyCubit>().createFinalSet(
+                              widget.userId,
+                            ),
+                      child: state.status == AssemblyStatus.generating_set
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              'GENERATE SET & SELESAI',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                    ),
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: Icon(
+                            _isScanningActive ? Icons.stop : Icons.camera_alt,
+                          ),
+                          label: Text(
+                            _isScanningActive
+                                ? 'Stop Scan'
+                                : 'Mulai Scan Validasi',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isScanningActive = !_isScanningActive;
+                              if (_isScanningActive) {
+                                _scannerController.start();
+                              } else {
+                                _scannerController.stop();
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
 
-//                 return ListTile(
-//                   contentPadding: EdgeInsets.zero,
-//                   leading: Icon(
-//                     scanned != null
-//                         ? Icons.check_circle
-//                         : Icons.radio_button_unchecked,
-//                     color: color,
-//                   ),
-//                   title: Text(title, style: const TextStyle(fontSize: 14)),
-//                   subtitle: Text(
-//                     subtitle,
-//                     style: const TextStyle(fontSize: 12),
-//                   ),
-//                 );
-//               },
-//             ),
+  void _showSuccessDialog(String setQr) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('🎉 Assembly Berhasil'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 64),
+            const SizedBox(height: 16),
+            const Text('Unit Set berhasil dibuat!'),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              color: Colors.grey.shade100,
+              child: Text(
+                setQr,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Silakan tempel label QR Set pada box utama.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // close dialog
+              Navigator.pop(context); // back to variant detail
+            },
+            child: const Text('Selesai'),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-//             const SizedBox(height: 16),
+// WIDGET CARD TERPISAH
+class _ComponentCard extends StatelessWidget {
+  final AssemblyItemState item;
+  final VoidCallback onPrintTap;
 
-//             // Input QR (sementara, nanti ganti scanner beneran)
-//             TextField(
-//               controller: _qrController,
-//               decoration: InputDecoration(
-//                 labelText: 'QR komponen',
-//                 hintText: 'Tempel hasil scan QR di sini',
-//                 border: const OutlineInputBorder(),
-//                 suffixIcon: IconButton(
-//                   icon: const Icon(Icons.qr_code_scanner),
-//                   onPressed: () async {
-//                     final qr = _qrController.text.trim();
-//                     if (qr.isNotEmpty) {
-//                       await cubit.scanComponent(qr);
-//                       _qrController.clear();
-//                     }
-//                   },
-//                 ),
-//               ),
-//               onSubmitted: (value) async {
-//                 final qr = value.trim();
-//                 if (qr.isNotEmpty) {
-//                   await cubit.scanComponent(qr);
-//                   _qrController.clear();
-//                 }
-//               },
-//             ),
-//             const SizedBox(height: 8),
-//             Text(
-//               'Scan satu per satu QR komponen sampai semua berstatus hijau.',
-//               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
+  const _ComponentCard({required this.item, required this.onPrintTap});
 
-//   Widget _buildAssembleSection(BuildContext context, AssemblyReady s) {
-//     final cubit = context.read<AssemblyCubit>();
+  @override
+  Widget build(BuildContext context) {
+    // Tentukan Warna & Icon berdasarkan status
+    Color bgColor = Colors.white;
+    Color borderColor = Colors.grey.shade300;
+    IconData statusIcon = Icons.circle_outlined;
+    Color iconColor = Colors.grey;
 
-//     return Card(
-//       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-//       child: Padding(
-//         padding: const EdgeInsets.all(12),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             const Text(
-//               'Assembly',
-//               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-//             ),
-//             const SizedBox(height: 12),
-//             TextField(
-//               controller: _locationCtrl,
-//               decoration: const InputDecoration(
-//                 labelText: 'Lokasi set (opsional)',
-//                 border: OutlineInputBorder(),
-//               ),
-//             ),
-//             const SizedBox(height: 12),
-//             SizedBox(
-//               width: double.infinity,
-//               child: FilledButton(
-//                 style: FilledButton.styleFrom(
-//                   backgroundColor: s.canAssemble
-//                       ? AppColors.secondary
-//                       : Colors.grey.shade400,
-//                   foregroundColor: s.canAssemble ? Colors.black : Colors.white,
-//                   padding: const EdgeInsets.symmetric(
-//                     horizontal: 16,
-//                     vertical: 12,
-//                   ),
-//                   shape: RoundedRectangleBorder(
-//                     borderRadius: BorderRadius.circular(12),
-//                   ),
-//                 ),
-//                 onPressed: s.canAssemble
-//                     ? () async {
-//                         await cubit.assemble(
-//                           location: _locationCtrl.text.trim().isEmpty
-//                               ? null
-//                               : _locationCtrl.text.trim(),
-//                         );
-//                       }
-//                     : null,
-//                 child: Text(
-//                   s.canAssemble
-//                       ? 'Generate Unit Set'
-//                       : 'Scan semua komponen dulu',
-//                 ),
-//               ),
-//             ),
-//             const SizedBox(height: 16),
-//             if (s.assemblyResult != null)
-//               _buildAssemblyResult(s.assemblyResult!),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
+    if (item.isScanned) {
+      bgColor = Colors.green.shade50;
+      borderColor = Colors.green.shade200;
+      statusIcon = Icons.check_circle;
+      iconColor = Colors.green;
+    } else if (item.isPrinted) {
+      bgColor = Colors.orange.shade50;
+      borderColor = Colors.orange.shade200;
+      statusIcon = Icons.access_time_filled; // Waiting for scan
+      iconColor = Colors.orange;
+    }
 
-//   Widget _buildAssemblyResult(AssemblyResult result) {
-//     return Container(
-//       padding: const EdgeInsets.all(12),
-//       decoration: BoxDecoration(
-//         color: Colors.green.shade50,
-//         borderRadius: BorderRadius.circular(8),
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           const Text(
-//             'Assembly Berhasil',
-//             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-//           ),
-//           const SizedBox(height: 4),
-//           Text(
-//             'QR unit set: ${result.parentQrValue}',
-//             style: const TextStyle(fontSize: 12),
-//           ),
-//           const SizedBox(height: 4),
-//           Text(
-//             'Komponen terikat: ${result.boundComponentUnitIds.length} unit',
-//             style: const TextStyle(fontSize: 12),
-//           ),
-//           const SizedBox(height: 4),
-//           const Text(
-//             'Tempel QR ini ke barang set (cone+cup) setelah disatukan.',
-//             style: TextStyle(fontSize: 12),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
+    return Container(
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        leading: CircleAvatar(
+          backgroundColor: Colors.white,
+          child: Icon(statusIcon, color: iconColor),
+        ),
+        title: Text(
+          item.componentName,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            decoration: item.isScanned ? TextDecoration.lineThrough : null,
+            color: item.isScanned ? Colors.grey : Colors.black87,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Manuf: ${item.manufCode}',
+              style: const TextStyle(fontSize: 12),
+            ),
+            if (item.qrValue != null)
+              Text(
+                item.qrValue!,
+                style: const TextStyle(fontSize: 10, color: Colors.grey),
+              ),
+          ],
+        ),
+        trailing: !item.isPrinted
+            ? ElevatedButton.icon(
+                icon: const Icon(Icons.print, size: 16),
+                label: const Text('Cetak'),
+                style: ElevatedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  backgroundColor: AppColors.primaryDark,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: onPrintTap,
+              )
+            : item.isScanned
+            ? const Icon(Icons.done_all, color: Colors.green)
+            : const Chip(
+                label: Text('Scan Box'),
+                backgroundColor: Colors.orangeAccent,
+                labelStyle: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+      ),
+    );
+  }
+}

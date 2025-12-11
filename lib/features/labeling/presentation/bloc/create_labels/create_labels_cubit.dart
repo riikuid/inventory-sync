@@ -38,24 +38,30 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
   CreateLabelsCubit(this.repo) : super(CreateLabelsState.initial());
 
   /// generate -> create pending units and seed LabelItem list
+  // Update method generate
   Future<void> generate({
     required String variantId,
     required String companyCode,
     required String rackId,
     required int qty,
     required String userId,
+    // Tambahan parameter nullable
+    String? componentId,
+    String? manufCode, // Opsional, untuk dimasukkan ke format QR component
   }) async {
     emit(state.copyWith(status: CreateLabelsStatus.generating));
     try {
-      final units = await repo.generateLabelsForVariant(
+      // Panggil repo yang sudah di-update
+      final units = await repo.generateBatchLabels(
         variantId: variantId,
         companyCode: companyCode,
         rackId: rackId,
         qty: qty,
         userId: userId,
+        componentId: componentId,
+        manufCode: manufCode,
       );
 
-      // create LabelItem list from Units
       final items = units
           .map(
             (u) => LabelItem(
@@ -63,7 +69,6 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
               qrValue: u.qrValue,
               rackId: u.rackId,
               status: u.status,
-              // status: u.status ?? 'PENDING',
               printCount: u.printCount ?? 0,
             ),
           )
