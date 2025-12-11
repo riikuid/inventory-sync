@@ -70,6 +70,7 @@ class _HomeViewState extends State<_HomeView> {
             }
 
             if (state is HomeError) {
+              dev.log('HOME ERROR: ${state.message}');
               return Center(
                 child: Text(
                   'Terjadi kesalahan saat memuat data.\n${state.message}',

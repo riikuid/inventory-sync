@@ -1,3 +1,4 @@
+import 'dart:developer' as dev;
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -63,6 +64,8 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dir = await getApplicationDocumentsDirectory();
     final file = File(p.join(dir.path, 'inventory.db'));
+    print('DEBUG: inventory DB path -> ${file.path}');
+    dev.log('DEBUG: inventory DB path -> ${file.path}');
     return NativeDatabase.createInBackground(file);
   });
 }

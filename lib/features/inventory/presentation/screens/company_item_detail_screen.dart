@@ -8,7 +8,7 @@ import 'package:inventory_sync_apps/features/inventory/data/inventory_repository
 import '../../../../shared/presentation/widgets/primary_button.dart';
 import '../../../variant/presentation/screen/create_variant_screen.dart';
 import '../bloc/company_item_detail/company_item_detail_cubit.dart';
-import 'variant_detail_screen.dart';
+import '../../../variant/presentation/screen/variant_detail_screen.dart';
 
 class CompanyItemDetailScreen extends StatefulWidget {
   final String companyItemId;

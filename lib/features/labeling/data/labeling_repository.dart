@@ -19,10 +19,48 @@ class LabelingRepository {
 
   CompanyItemDao get _companyItemDao => db.companyItemDao;
   VariantDao get _variantDao => db.variantDao;
-  ComponentDao get _componentDao => db.componentDao;
-  VariantComponentDao get _variantComponentDao => db.variantComponentDao;
   VariantPhotoDao get _variantPhotoDao => db.variantPhotoDao;
   UnitDao get _unitDao => db.unitDao;
+
+  /// Generate N labels (units) untuk variant: returns list of created Unit rows
+  Future<List<Unit>> generateLabelsForVariant({
+    required String variantId,
+    required String companyCode,
+    required String rackId,
+    required int qty,
+    required String userId,
+  }) async {
+    // gunakan UnitDao (sudah di AppDatabase)
+    return db.unitDao.createPendingUnits(
+      variantId: variantId,
+      companyCode: companyCode,
+      rackId: rackId,
+      qty: qty,
+      userId: userId,
+    );
+  }
+
+  Future<void> recordPrintedUnits({
+    required List<String> unitIds,
+    required String userId,
+  }) async {
+    return db.unitDao.markUnitsPrinted(unitIds, userId);
+  }
+
+  Future<void> finalizeValidatedUnits({
+    required List<String> unitIds,
+    required String userId,
+  }) async {
+    return db.unitDao.markUnitsActive(unitIds, userId);
+  }
+
+  Future<void> cancelGeneratedUnits({required List<String> unitIds}) async {
+    return db.unitDao.deletePendingUnits(unitIds);
+  }
+
+  Future<UnitWithRelations?> findUnitByQr(String qr) async {
+    return db.unitDao.findByQrWithJoins(qr);
+  }
 
   /// Setup company_item (is_set, has_components) + create/update 1 variant + photos.
   Future<void> createVariant({

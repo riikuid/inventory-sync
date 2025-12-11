@@ -14,6 +14,7 @@ import '../../../../core/db/app_database.dart';
 import '../../data/inventory_repository.dart';
 import '../../data/model/component_request.dart';
 import '../widget/separate_component_card.dart';
+import 'create_component_in_box_screen.dart';
 
 class ComponentPickerScreen extends StatefulWidget {
   final String type;
@@ -82,7 +83,7 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
           ),
         ),
         title: Text(
-          'Pilih Komponen',
+          'Pilih ${widget.type == 'IN_BOX' ? 'Isi' : 'Komponen'}',
           overflow: TextOverflow.ellipsis,
           style: AppStyle.monoTextStyle.copyWith(
             color: AppColors.onSurface,
@@ -97,7 +98,7 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
         color: AppColors.primaryDark,
         width: 150,
         child: Text(
-          '+  Tambah Komponen',
+          '+  Tambah ${widget.type == 'IN_BOX' ? 'Isi' : 'Komponen'}',
           style: AppStyle.poppinsTextSStyle.copyWith(
             color: AppColors.surface,
             fontWeight: FontWeight.w600,
@@ -109,14 +110,22 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
           final result = await Navigator.push<ComponentRequest>(
             context,
             MaterialPageRoute(
-              builder: (_) => CreateComponentSeparateScreen(
-                variantDetailRow: widget.variant,
-              ),
+              builder: (_) {
+                if (widget.type == 'IN_BOX') {
+                  return CreateComponentInBoxScreen(
+                    variantDetailRow: widget.variant,
+                  );
+                } else {
+                  return CreateComponentSeparateScreen(
+                    variantDetailRow: widget.variant,
+                  );
+                }
+              },
             ),
           );
           if (result != null) {
             await repo.createComponentAndAttach(
-              type: 'SEPARATE',
+              type: widget.type,
               productId: widget.variant.productId,
               brandId: widget.variant.brandId,
               name: result.name.trim(),
@@ -132,6 +141,9 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
       ),
       body: Column(
         children: [
+          widget.type == 'IN_BOX'
+              ? _buildInBoxHeader()
+              : _buildSeparateHeader(),
           Padding(
             padding: const EdgeInsets.all(12),
             child: SearchFieldWidget(
@@ -175,6 +187,87 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
                   },
                 );
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSeparateHeader() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.primaryDark.withAlpha(30),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        children: [
+          Icon(Icons.layers_outlined, size: 28, color: AppColors.primaryDark),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              spacing: 2,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Komponen Box Terpisah',
+                  style: AppStyle.poppinsTextSStyle.copyWith(
+                    color: AppColors.onSurface,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  'Komponen dengan box/kemasan terpisah',
+                  style: AppStyle.poppinsTextSStyle.copyWith(
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.w400,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInBoxHeader() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.secondary,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        children: [
+          Icon(Icons.inbox_outlined, color: AppColors.surface),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Part in Box / Isi',
+                  style: AppStyle.poppinsTextSStyle.copyWith(
+                    color: AppColors.surface,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  'Komponen yang berada dalam 1 box',
+                  style: AppStyle.poppinsTextSStyle.copyWith(
+                    color: AppColors.divider,
+                    fontWeight: FontWeight.w400,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

@@ -219,7 +219,7 @@ class _CreateComponentInBoxScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'PART IN BOX / ISI',
+                          'Part in Box / Isi',
                           style: AppStyle.poppinsTextSStyle.copyWith(
                             color: AppColors.surface,
                             fontWeight: FontWeight.w600,

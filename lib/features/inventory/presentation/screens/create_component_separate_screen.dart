@@ -227,7 +227,7 @@ class _CreateComponentSeparateScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'KOMPONEN BERBEDA BOX',
+                          'Komponen Box Terpisah',
                           style: AppStyle.poppinsTextSStyle.copyWith(
                             color: AppColors.onSurface,
                             fontWeight: FontWeight.w600,

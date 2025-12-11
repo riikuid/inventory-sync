@@ -165,6 +165,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
         productId: p.id,
         name: variant.name,
         uom: variant.uom,
+        manufCode: variant.manufCode,
         brandId: variant.brandId,
         brandName: b?.name,
         rackId: variant.rackId,
@@ -372,14 +373,15 @@ class VariantDetailRow {
   final String variantId;
   final String companyItemId;
   final String productId;
+  final String companyCode;
   final String name;
   final String uom;
+  final String? manufCode;
   final String? specification;
   final String? rackId;
   final String? rackName;
   final String? brandId;
   final String? brandName;
-  final String companyCode;
   final int
   totalUnits; // semua unit ACTIVE untuk variant ini (component_id IS NULL)
   final List<VariantComponentRow> componentsInBox;
@@ -391,6 +393,7 @@ class VariantDetailRow {
     required this.productId,
     required this.name,
     required this.uom,
+    this.manufCode,
     this.brandId,
     this.brandName,
     this.rackId,

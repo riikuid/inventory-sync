@@ -4,15 +4,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
 import 'package:inventory_sync_apps/features/inventory/presentation/screens/component_picker_screen.dart';
+import 'package:inventory_sync_apps/features/labeling/presentation/bloc/create_labels/create_labels_cubit.dart';
+import 'package:inventory_sync_apps/features/labeling/presentation/screens/generate_variant_label_screen.dart';
 import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.dart';
 import '../../../../core/db/app_database.dart';
 import '../../../../core/db/daos/variant_dao.dart';
 import '../../../../core/styles/app_style.dart';
 import '../../../labeling/data/labeling_repository.dart';
-import '../../data/inventory_repository.dart';
-import '../../data/model/component_request.dart';
+import '../../../inventory/data/inventory_repository.dart';
+import '../../../inventory/data/model/component_request.dart';
 import '../bloc/variant_detail/variant_detail_cubit.dart';
-import 'create_component_in_box_screen.dart';
+import '../../../inventory/presentation/screens/create_component_in_box_screen.dart';
 
 class VariantDetailScreen extends StatelessWidget {
   final String variantId;
@@ -154,6 +156,27 @@ class _VariantDetailView extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (d.brandName != null && d.brandName!.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      d.brandName ?? '-',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                  ),
+
+                SizedBox(width: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -212,6 +235,20 @@ class _VariantDetailView extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => BlocProvider(
+                            create: (context) => CreateLabelsCubit(
+                              context.read<LabelingRepository>(),
+                            ),
+
+                            child: GenerateLabelsScreen(
+                              variant: d,
+                              userId: userId,
+                            ),
+                          ),
+                        ),
+                      );
                       // If no in-box components => go to LabelSetScreen directly (Label Item)
                       // else -> navigate to assembly/merge flow
                       // if (d.components.where((c) => c != null).isEmpty) {
@@ -261,36 +298,48 @@ class _VariantDetailView extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     side: BorderSide(color: Colors.grey.shade300),
                   ),
+                  // onPressed: () async {
+                  //   final repo = context.read<InventoryRepository>();
+
+                  //   final result = await Navigator.push<ComponentRequest>(
+                  //     context,
+                  //     MaterialPageRoute(
+                  //       builder: (_) =>
+                  //           CreateComponentInBoxScreen(variantDetailRow: d),
+                  //     ),
+                  //   );
+                  //   if (result != null) {
+                  //     await repo.createComponentAndAttach(
+                  //       type: 'IN_BOX',
+                  //       photos: result.pathPhotos,
+                  //       productId: d.productId,
+                  //       brandId: d.brandId,
+                  //       name: result.name.trim(),
+                  //       manufCode: result.manufCode?.trim(),
+                  //       specification: result.specification?.trim(),
+                  //       variantId: d.variantId,
+                  //       // type: 'IN_BOX',
+                  //     );
+                  //   }
+                  // },
                   onPressed: () async {
-                    // // action to add part / open picker for which section?
-                    // // We'll open add-in-box sheet by default
-                    // _openAddComponentSheet(context, d);
                     final repo = context.read<InventoryRepository>();
 
-                    final result = await Navigator.push<ComponentRequest>(
+                    // );
+
+                    final result = await Navigator.push<String>(
                       context,
                       MaterialPageRoute(
                         builder: (_) =>
-                            CreateComponentInBoxScreen(variantDetailRow: d),
+                            ComponentPickerScreen(type: 'IN_BOX', variant: d),
                       ),
                     );
                     if (result != null) {
-                      await repo.createComponentAndAttach(
-                        type: 'IN_BOX',
-                        photos: result.pathPhotos,
-                        productId: d.productId,
-                        brandId: d.brandId,
-                        name: result.name.trim(),
-                        manufCode: result.manufCode?.trim(),
-                        specification: result.specification?.trim(),
+                      await repo.attachComponentToVariant(
+                        componentId: result,
                         variantId: d.variantId,
-                        // type: 'IN_BOX',
+                        // type: 'SEPARATE',
                       );
-
-                      // await cubit.addComponentFromExisting(
-                      //   variantId: d.variantId,
-                      //   componentId: comp.id,
-                      // );
                     }
                   },
                   child: const Text(
@@ -334,10 +383,9 @@ class _VariantDetailView extends StatelessWidget {
                 ),
               ),
             ),
-            Text('${d.componentsInBox.length}'),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
             boxShadow: [AppStyle.defaultBoxShadow],
@@ -367,9 +415,9 @@ class _VariantDetailView extends StatelessWidget {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (c.manufCode != null)
+                            if (c.manufCode != null && c.brandName != null)
                               Text(
-                                c.manufCode!,
+                                '${c.brandName}${c.manufCode != null && c.manufCode!.isNotEmpty ? '  •  ${c.manufCode}' : ''}',
                                 style: const TextStyle(fontSize: 12),
                               ),
                           ],
@@ -383,7 +431,14 @@ class _VariantDetailView extends StatelessWidget {
                             color: AppColors.primary,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text('${c.totalUnits}'),
+                          child: Text(
+                            '${c.totalUnits}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.onPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                     );
@@ -457,7 +512,7 @@ class _VariantDetailView extends StatelessWidget {
                   await repo.attachComponentToVariant(
                     componentId: result,
                     variantId: d.variantId,
-                    // type: 'IN_BOX',
+                    // type: 'SEPARATE',
                   );
                 }
               },
