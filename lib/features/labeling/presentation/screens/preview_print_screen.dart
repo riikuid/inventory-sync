@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
+import '../../../../core/styles/app_style.dart';
 import '../../../../core/styles/color_scheme.dart';
 import '../bloc/create_labels/create_labels_cubit.dart';
 
@@ -58,7 +59,46 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(title: const Text('Pratinjau Label')),
+        appBar: AppBar(
+          iconTheme: IconThemeData(color: AppColors.onSurface),
+          leading: IconButton(
+            onPressed: () async {
+              await Navigator.of(context).maybePop();
+            },
+            icon: Icon(
+              Icons.arrow_back_ios_rounded,
+              color: AppColors.onSurface,
+            ),
+          ),
+
+          backgroundColor: AppColors.background,
+          elevation: 0.5,
+          toolbarHeight: 60,
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Pratinjau & Cetak Label',
+                style: AppStyle.poppinsTextSStyle.copyWith(
+                  color: AppColors.onSurface,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              SizedBox(height: 3),
+              Text(
+                widget.name,
+                style: AppStyle.monoTextStyle.copyWith(
+                  color: AppColors.primaryDark,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                maxLines: 1,
+              ),
+            ],
+          ),
+        ),
         body: Column(
           children: [
             // header progress + printer row

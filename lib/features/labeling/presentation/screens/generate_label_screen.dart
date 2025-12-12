@@ -92,7 +92,8 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
             value: cubit,
             child: PreviewPrintScreen(
               userId: widget.userId,
-              name: widget.variant.name,
+              name:
+                  '${isComponentMode ? widget.componentName! : widget.variant.name} • ${widget.variant.companyCode}',
             ),
           ),
         ),
@@ -156,7 +157,7 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
         decoration: BoxDecoration(
           color: AppColors.background,
           border: Border(
-            top: BorderSide(width: 0.3, color: AppColors.secondaryLight),
+            top: BorderSide(width: 0.2, color: AppColors.secondary),
           ),
         ),
         child: CustomButton(
@@ -165,20 +166,13 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
           height: 50,
           color: AppColors.primaryDark,
           onPressed: _onGenerate,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.save_outlined, color: AppColors.surface),
-              SizedBox(width: 8),
-              Text(
-                'Selanjutnya',
-                style: AppStyle.poppinsTextSStyle.copyWith(
-                  color: AppColors.surface,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            ],
+          child: Text(
+            'Selanjutnya',
+            style: AppStyle.poppinsTextSStyle.copyWith(
+              color: AppColors.surface,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
           ),
         ),
       ),
@@ -266,13 +260,6 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
             //   onTap: _openRackPicker,
             // ),
             // const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _onGenerate,
-                child: const Text('Buat & Pratinjau'),
-              ),
-            ),
           ],
         ),
       ),

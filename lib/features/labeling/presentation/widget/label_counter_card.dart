@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/styles/app_style.dart';
+import '../../../../core/styles/color_scheme.dart';
 
 class LabelCounterCard extends StatefulWidget {
   final int initialValue;
@@ -117,8 +118,8 @@ class _LabelCounterCardState extends State<LabelCounterCard> {
               // Tombol Plus
               _buildButton(
                 icon: Icons.add,
-                bgColor: _goldColor,
-                iconColor: Colors.white,
+                bgColor: AppColors.primary,
+                iconColor: AppColors.secondaryDark,
                 onTap: _currentValue < widget.max ? _increment : null,
                 isActive: _currentValue < widget.max,
               ),

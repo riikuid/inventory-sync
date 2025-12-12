@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:intl/intl.dart';
 import 'package:inventory_sync_apps/core/db/app_database.dart';
 import 'package:uuid/uuid.dart';
 
@@ -47,20 +48,17 @@ class LabelingRepository {
         String qrResult;
         // Serial unik per item dalam batch ini
         final serial = '$batchTimestamp$i';
+        // String dataTimeNow = DateTime.now().toIso8601String();
+        String formattedDateTime = DateFormat('yyyyMMddHHmm').format(now);
 
         if (componentId != null) {
           // --- CASE 1B: LABEL COMPONENT SEPARATE ---
-          // Format: USER-COMPCODE-CMP-MANUF-SERIAL
-          // Gunakan 'GEN' jika manufCode kosong
-          final safeManuf = (manufCode != null && manufCode.isNotEmpty)
-              ? manufCode.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '') // sanitize
-              : 'GEN';
 
-          qrResult = '$userId-$companyCode-CMP-$safeManuf-$serial';
+          qrResult = '$userId-$companyCode-CMP-$formattedDateTime-$serial';
         } else {
           // --- CASE 1A: LABEL VARIANT (SET) ---
           // Format: USER-COMPCODE-SERIAL
-          qrResult = '$userId-$companyCode-$serial';
+          qrResult = '$userId-$companyCode-$formattedDateTime-$serial';
         }
 
         final companion = UnitsCompanion.insert(
