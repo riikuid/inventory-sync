@@ -73,6 +73,7 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
       variantId: widget.variant.variantId, // Tetap kirim variant ID
       companyCode: widget.variant.companyCode,
       rackId: _selectedRackId!,
+      rackName: _selectedRackName ?? 'N/A',
       qty: _qty,
       userId: widget.userId,
       // Pass component params
@@ -92,8 +93,14 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
             value: cubit,
             child: PreviewPrintScreen(
               userId: widget.userId,
-              name:
-                  '${isComponentMode ? widget.componentName! : widget.variant.name} • ${widget.variant.companyCode}',
+              companyCode: widget.variant.companyCode,
+              name: isComponentMode
+                  ? widget.componentName!
+                  : widget.variant.name,
+              manufcode: isComponentMode
+                  ? '${widget.componentManuf}'
+                  : widget.variant.manufCode ?? '',
+              rackName: _selectedRackName ?? '',
             ),
           ),
         ),
@@ -106,14 +113,14 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
   }
 
   // placeholder rack picker — replace with your own picker navigation
-  Future<void> _openRackPicker() async {
-    // TODO: open your rack picker screen, then set _selectedRackId/_selectedRackName
-    // for demo I just toggle
-    setState(() {
-      _selectedRackId = _selectedRackId == null ? 'default-rack-1' : 'rack-2';
-      _selectedRackName = _selectedRackId == 'rack-2' ? 'Rak B2' : 'Rak A1';
-    });
-  }
+  // Future<void> _openRackPicker() async {
+  //   // TODO: open your rack picker screen, then set _selectedRackId/_selectedRackName
+  //   // for demo I just toggle
+  //   setState(() {
+  //     _selectedRackId = _selectedRackId == null ? 'default-rack-1' : 'rack-2';
+  //     _selectedRackName = _selectedRackId == 'rack-2' ? 'Rak B2' : 'Rak A1';
+  //   });
+  // }
 
   @override
   Widget build(BuildContext context) {

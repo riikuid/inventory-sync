@@ -34,39 +34,57 @@ class PrinterDevice {
 class CreateLabelsState extends Equatable {
   final CreateLabelsStatus status;
   final List<LabelItem> items;
-  final PrinterDevice? selectedPrinter;
   final ScanResult? lastScanResult;
   final String? error;
+
+  // --- BLUETOOTH STATE ---
+  final List<BluetoothInfo> availableDevices;
+  final BluetoothInfo? selectedDevice;
+  final bool isPrinterConnected;
+  final String printerStatusMessage;
 
   const CreateLabelsState({
     required this.status,
     required this.items,
-    required this.selectedPrinter,
     required this.lastScanResult,
     required this.error,
+    // Defaults
+    this.availableDevices = const [],
+    this.selectedDevice,
+    this.isPrinterConnected = false,
+    this.printerStatusMessage = "Printer Disconnected",
   });
 
   factory CreateLabelsState.initial() => const CreateLabelsState(
     status: CreateLabelsStatus.initial,
     items: [],
-    selectedPrinter: null,
     lastScanResult: null,
     error: null,
+    availableDevices: [],
+    selectedDevice: null,
+    isPrinterConnected: false,
+    printerStatusMessage: "Printer Disconnected",
   );
 
   CreateLabelsState copyWith({
     CreateLabelsStatus? status,
     List<LabelItem>? items,
-    PrinterDevice? selectedPrinter,
     ScanResult? lastScanResult,
     String? error,
+    List<BluetoothInfo>? availableDevices,
+    BluetoothInfo? selectedDevice,
+    bool? isPrinterConnected,
+    String? printerStatusMessage,
   }) {
     return CreateLabelsState(
       status: status ?? this.status,
       items: items ?? this.items,
-      selectedPrinter: selectedPrinter ?? this.selectedPrinter,
       lastScanResult: lastScanResult ?? this.lastScanResult,
       error: error ?? this.error,
+      availableDevices: availableDevices ?? this.availableDevices,
+      selectedDevice: selectedDevice ?? this.selectedDevice,
+      isPrinterConnected: isPrinterConnected ?? this.isPrinterConnected,
+      printerStatusMessage: printerStatusMessage ?? this.printerStatusMessage,
     );
   }
 
@@ -74,8 +92,11 @@ class CreateLabelsState extends Equatable {
   List<Object?> get props => [
     status,
     items,
-    selectedPrinter,
     lastScanResult,
     error,
+    availableDevices,
+    selectedDevice,
+    isPrinterConnected,
+    printerStatusMessage,
   ];
 }

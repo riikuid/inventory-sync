@@ -1,19 +1,26 @@
-// lib/features/labeling/presentation/screens/preview_print_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import '../../../../core/styles/app_style.dart';
 import '../../../../core/styles/color_scheme.dart';
 import '../bloc/create_labels/create_labels_cubit.dart';
 
 class PreviewPrintScreen extends StatefulWidget {
-  final String name;
   final String userId;
+  final String name;
+  final String companyCode;
+  final String manufcode;
+  final String rackName;
+
   const PreviewPrintScreen({
     super.key,
     required this.userId,
     required this.name,
+    required this.companyCode,
+    required this.manufcode,
+    required this.rackName,
   });
 
   @override
@@ -22,263 +29,384 @@ class PreviewPrintScreen extends StatefulWidget {
 
 class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
   @override
+  void initState() {
+    super.initState();
+    // Auto-scan saat masuk (User experience lebih mulus)
+    context.read<CreateLabelsCubit>().initBluetooth();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final cubit = context.watch<CreateLabelsCubit>();
-    final state = cubit.state;
-
-    final total = state.items.length;
-    final validated = state.items.where((i) => i.status == 'VALIDATED').length;
-    final printed = state.items.where((i) => i.status == 'PRINTED').length;
-
-    return WillPopScope(
-      onWillPop: () async {
-        final leave = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Tinggalkan proses pencetakan?'),
-            content: const Text(
-              'Label yang belum disimpan akan dihapus. Lanjutkan?',
+    return BlocConsumer<CreateLabelsCubit, CreateLabelsState>(
+      listener: (context, state) {
+        if (state.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.error!), backgroundColor: Colors.red),
+          );
+        }
+        if (state.status == CreateLabelsStatus.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Data Tersimpan!"),
+              backgroundColor: Colors.green,
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Batal'),
+          );
+          Navigator.pop(context); // Atau navigate ke home
+        }
+      },
+      builder: (context, state) {
+        final total = state.items.length;
+        final validatedCount = state.items
+            .where((i) => i.status == 'VALIDATED')
+            .length;
+        final isAllValidated = total > 0 && validatedCount == total;
+
+        // Cek apakah ada yang sudah diprint (untuk logic tombol)
+        final isAnyPrinted = state.items.any(
+          (i) => i.status == 'PRINTED' || i.status == 'VALIDATED',
+        );
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            title: Column(
+              children: [
+                Text(widget.name),
+                const Text('Preview & Cetak Label'),
+              ],
+            ),
+          ),
+          body: Column(
+            children: [
+              // 1. CONNECTION STATUS BAR (Kecil di atas)
+              _buildConnectionBar(context, state),
+
+              // 2. PROGRESS INFO
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Total: $total Unit"),
+                    Text(
+                      "$validatedCount / $total Tervalidasi",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isAllValidated ? Colors.green : Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Tinggalkan'),
+              const Divider(),
+
+              // 3. LIST DATA ASLI (Card lama dengan Status)
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: state.items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final item = state.items[index];
+                    return _buildLabelCard(item);
+                  },
+                ),
               ),
             ],
+          ),
+
+          // 4. BOTTOM ACTION BAR (Smart Logic)
+          bottomNavigationBar: _buildBottomBar(
+            context,
+            state,
+            isAnyPrinted,
+            isAllValidated,
           ),
         );
-        if (leave == true) {
-          await cubit.cancelAll();
-          return true;
-        }
-        return false;
       },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          iconTheme: IconThemeData(color: AppColors.onSurface),
-          leading: IconButton(
-            onPressed: () async {
-              await Navigator.of(context).maybePop();
-            },
-            icon: Icon(
-              Icons.arrow_back_ios_rounded,
-              color: AppColors.onSurface,
-            ),
-          ),
+    );
+  }
 
-          backgroundColor: AppColors.background,
-          elevation: 0.5,
-          toolbarHeight: 60,
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Pratinjau & Cetak Label',
-                style: AppStyle.poppinsTextSStyle.copyWith(
-                  color: AppColors.onSurface,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              SizedBox(height: 3),
-              Text(
-                widget.name,
-                style: AppStyle.monoTextStyle.copyWith(
-                  color: AppColors.primaryDark,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+  // --- WIDGET: CARD ITEM DENGAN STATUS TRACKING ---
+  Widget _buildLabelCard(LabelItem item) {
+    // Tentukan warna & icon berdasarkan status item
+    Color statusColor;
+    IconData statusIcon;
+    String statusText;
+
+    switch (item.status) {
+      case 'VALIDATED':
+        statusColor = Colors.green;
+        statusIcon = Icons.check_circle;
+        statusText = "Valid";
+        break;
+      case 'PRINTED':
+        statusColor = Colors.orange;
+        statusIcon = Icons.local_printshop_rounded; // atau icon printer check
+        statusText = "Printed";
+        break;
+      default: // PENDING
+        statusColor = Colors.grey;
+        statusIcon = Icons.hourglass_empty;
+        statusText = "Pending";
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // QR Preview Kecil (Visual clue)
+          Container(
+            width: 50,
+            height: 50,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: PrettyQrView.data(data: item.qrValue),
+          ),
+          const SizedBox(width: 12),
+
+          // Info Text
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.qrValue,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  "LOK: ${item.rackName}",
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
           ),
-        ),
-        body: Column(
+
+          // Status Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: statusColor.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(statusIcon, size: 14, color: statusColor),
+                const SizedBox(width: 4),
+                Text(
+                  statusText,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- WIDGET: CONNECTION STATUS BAR ---
+  Widget _buildConnectionBar(BuildContext context, CreateLabelsState state) {
+    final isConnected = state.isPrinterConnected;
+    return InkWell(
+      onTap: () => _showDevicePicker(context),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        color: isConnected ? Colors.green.shade50 : Colors.red.shade50,
+        child: Row(
           children: [
-            // header progress + printer row
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                children: [
-                  // progress row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '$validated / $total tervalidasi',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      Text(
-                        '$printed tercetak',
-                        style: TextStyle(color: Colors.grey.shade700),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Printer info button (long)
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.print),
-                      label: Text(
-                        state.selectedPrinter?.name ??
-                            'Pilih Printer (tidak tersambung)',
-                      ),
-                      onPressed: () async {
-                        // open printer picker screen (we'll provide a skeleton below)
-                        final selected = await Navigator.of(context)
-                            .push<PrinterDevice>(
-                              MaterialPageRoute(
-                                builder: (_) => const PrinterPickerScreen(),
-                              ),
-                            );
-                        if (selected != null) cubit.setPrinter(selected);
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
+            Icon(
+              isConnected
+                  ? Icons.bluetooth_connected
+                  : Icons.bluetooth_searching,
+              size: 16,
+              color: isConnected ? Colors.green : Colors.red,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                isConnected
+                    ? "Terhubung: ${state.selectedDevice?.name ?? 'Unknown'}"
+                    : "Printer belum terhubung. Ketuk untuk pilih.",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isConnected
+                      ? Colors.green.shade800
+                      : Colors.red.shade800,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-
-            const Divider(height: 1),
-
-            // list
-            Expanded(
-              child: state.items.isEmpty
-                  ? const Center(child: Text('Tidak ada label'))
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(12),
-                      itemCount: state.items.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (ctx, idx) {
-                        final it = state.items[idx];
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              // qr preview (simple)
-                              SizedBox(
-                                width: 110,
-                                height: 110,
-                                child: PrettyQrView.data(data: it.qrValue),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      it.qrValue,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Rack: ${it.rackId ?? '-'}',
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Chip(label: Text(it.status)),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-            ),
+            const Icon(Icons.arrow_drop_down, size: 16, color: Colors.grey),
           ],
-        ),
-
-        // bottom bar
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: state.items.isEmpty
-              ? null
-              : buildBottomBar(cubit, state, validated == total),
         ),
       ),
     );
   }
 
-  Widget buildBottomBar(
-    CreateLabelsCubit cubit,
+  // --- WIDGET: BOTTOM BUTTONS (LOGIC INTI) ---
+  Widget _buildBottomBar(
+    BuildContext context,
     CreateLabelsState state,
-    bool allValidated,
+    bool isAnyPrinted,
+    bool isAllValidated,
   ) {
-    final isPrinted = state.items.any((i) => i.status == 'PRINTED');
-
-    if (allValidated) {
-      return SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: state.status == CreateLabelsStatus.validating
-              ? null
-              : () async {
-                  await cubit.finalize(widget.userId);
-                  if (cubit.state.status == CreateLabelsStatus.success) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Semua tersimpan')),
-                    );
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                  }
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.black12)),
+      ),
+      child: Row(
+        children: [
+          // 1. TOMBOL SIMPAN (Muncul HANYA jika semua Valid)
+          if (isAllValidated)
+            Expanded(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryDark,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                onPressed: () {
+                  context.read<CreateLabelsCubit>().finalize(widget.userId);
                 },
-          child: const Text('Selesai & Simpan'),
-        ),
-      );
-    }
+                child: const Text("SIMPAN & SELESAI"),
+              ),
+            )
+          // 2. TOMBOL FLOW (Cetak & Validasi)
+          else
+            Expanded(
+              child: Row(
+                children: [
+                  // TOMBOL CETAK
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            AppColors.secondary, // Warna beda dikit
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      // Disable jika belum connect printer
+                      onPressed: !state.isPrinterConnected
+                          ? null
+                          : () {
+                              context
+                                  .read<CreateLabelsCubit>()
+                                  .printLabelsBatch(
+                                    companyName: "PT MANUNGGAL PERKASA",
+                                    name: widget.name,
+                                    manufCode: widget.manufcode,
+                                  );
+                            },
+                      icon: const Icon(Icons.print),
+                      label: const Text("Cetak"),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
 
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton(
-            onPressed:
-                state.items.isEmpty ||
-                    state.status == CreateLabelsStatus.printing
-                ? null
-                : () async {
-                    // TODO: integrate actual print flow using state.selectedPrinter
-                    // For now simulate: mark all as PRINTED
-                    final ids = state.items.map((i) => i.id).toList();
-                    await cubit.markPrinted(ids, widget.userId);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Tandai tercetak')),
-                    );
-                  },
-            child: const Text('Cetak Label'),
+                  // TOMBOL VALIDASI
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      // Validasi hanya boleh jika minimal ada 1 yg sudah diprint (Business Rule)
+                      // atau boleh validasi kapan saja, terserah Anda. Di sini saya set bebas.
+                      onPressed: () =>
+                          _openScanner(context.read<CreateLabelsCubit>()),
+                      icon: const Icon(Icons.qr_code_scanner),
+                      label: const Text("Validasi"),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showDevicePicker(BuildContext context) {
+    // Panggil scan di cubit
+    context.read<CreateLabelsCubit>().scanPrinters();
+
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return BlocProvider.value(
+          value: context.read<CreateLabelsCubit>(), // Pass existing cubit
+          child: BlocBuilder<CreateLabelsCubit, CreateLabelsState>(
+            builder: (ctx, state) {
+              return Container(
+                height: 350,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const Text(
+                      "Pilih Printer",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    if (state.availableDevices.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Text("Mencari printer bluetooth..."),
+                      ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: state.availableDevices.length,
+                        itemBuilder: (c, i) {
+                          final d = state.availableDevices[i];
+                          return ListTile(
+                            leading: const Icon(Icons.print),
+                            title: Text(d.name),
+                            subtitle: Text(d.macAdress),
+                            onTap: () {
+                              Navigator.pop(context);
+                              ctx.read<CreateLabelsCubit>().connectPrinter(d);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: OutlinedButton(
-            onPressed:
-                state.items.isEmpty ||
-                    !state.items.any((i) => i.status == 'PRINTED')
-                ? null
-                : () {
-                    // open scanner modal
-                    _openScanner(cubit);
-                  },
-            child: const Text('Validasi'),
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -378,33 +506,6 @@ class _ScannerModalState extends State<ScannerModal> {
         ),
         const SizedBox(height: 12),
       ],
-    );
-  }
-}
-
-// === PrinterPicker skeleton (basic) ===
-class PrinterPickerScreen extends StatelessWidget {
-  const PrinterPickerScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    // THIS IS A SKELETON: implement bluetooth list using flutter_bluetooth_serial
-    final devices = <PrinterDevice>[
-      PrinterDevice(id: 'bt-1', name: 'XP-TT426B (mock)'),
-      PrinterDevice(id: 'bt-2', name: 'Thermal-Office'),
-    ];
-    return Scaffold(
-      appBar: AppBar(title: const Text('Pilih Printer')),
-      body: ListView.builder(
-        itemCount: devices.length,
-        itemBuilder: (ctx, i) {
-          final d = devices[i];
-          return ListTile(
-            title: Text(d.name),
-            onTap: () => Navigator.of(context).pop(d),
-          );
-        },
-      ),
     );
   }
 }
