@@ -19,14 +19,14 @@ class _RackPickerScreenState extends State<RackPickerScreen> {
     final db = context.read<AppDatabase>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Pilih Rack")),
+      appBar: AppBar(title: const Text("Pilih Rak")),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
               decoration: const InputDecoration(
-                hintText: "Cari Rack...",
+                hintText: "Cari Rak...",
                 prefixIcon: Icon(Icons.search),
               ),
               onChanged: (v) => setState(() => search = v),
@@ -40,7 +40,7 @@ class _RackPickerScreenState extends State<RackPickerScreen> {
                 final data = snapshot.data ?? [];
 
                 if (data.isEmpty) {
-                  return const Center(child: Text("Tidak ada rack ditemukan"));
+                  return const Center(child: Text("Tidak ada rak ditemukan"));
                 }
 
                 return ListView.separated(
@@ -49,9 +49,9 @@ class _RackPickerScreenState extends State<RackPickerScreen> {
                   itemBuilder: (context, i) {
                     final rack = data[i];
                     return ListTile(
-                      title: Text('${rack.warehouseName} - ${rack.rack.name}'),
+                      title: Text(rack.rack.name),
                       subtitle: Text(
-                        '${rack.departmentName} / ${rack.sectionName}',
+                        '${rack.warehouseName} - ${rack.departmentName}',
                       ),
                       onTap: () {
                         Navigator.pop(

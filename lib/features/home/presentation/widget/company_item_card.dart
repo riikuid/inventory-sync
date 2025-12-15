@@ -21,10 +21,10 @@ class CompanyItemCard extends StatelessWidget {
 
     return InkWell(
       borderRadius: BorderRadius.circular(24),
-      onTap: () {
+      onTap: () async {
         dev.log('TOTAL VARIANT: ${row.totalVariants}');
         if (row.totalVariants == 0) {
-          Navigator.push(
+          final result = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
               builder: (context) => CreateVariantScreen(
@@ -35,6 +35,16 @@ class CompanyItemCard extends StatelessWidget {
               ),
             ),
           );
+
+          if (result == true) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    CompanyItemDetailScreen(companyItemId: row.companyItemId),
+              ),
+            );
+          }
         } else {
           Navigator.push(
             context,

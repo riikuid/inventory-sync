@@ -43,6 +43,18 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
     );
   }
 
+  Stream<int> watchUnitsCount(String variantId) {
+    final q = selectOnly(units)
+      ..addColumns([units.id.count()])
+      ..where(
+        units.variantId.equals(variantId) &
+            units.componentId.isNull() &
+            units.status.equals('ACTIVE'),
+      );
+
+    return q.watchSingle().map((row) => row.read(units.id.count()) ?? 0);
+  }
+
   Stream<VariantDetailRow?> watchVariantDetail(String variantId) {
     // Join utama: variant + company_item + product + brand
     final base = select(variants).join([
@@ -54,8 +66,8 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       leftOuterJoin(brands, brands.id.equalsExp(variants.brandId)),
     ])..where(variants.id.equals(variantId));
 
-    // Stream pertama: info variant + stok total per variant (unit yang component_id IS NULL)
-    final variantStream = base.watchSingleOrNull().asyncMap((row) async {
+    // 1) Stream info utama (variant, companyItem, product, brand)
+    final infoStream = base.watchSingleOrNull().map((row) {
       if (row == null) return null;
 
       final v = row.readTable(variants);
@@ -63,43 +75,38 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       final p = row.readTable(products);
       final b = row.readTableOrNull(brands);
 
-      // hitung total unit ACTIVE untuk variant ini, hanya untuk unit yang merupakan parent (component_id IS NULL)
-      final unitsCount =
-          await (select(units)..where(
-                (u) =>
-                    u.variantId.equals(v.id) &
-                    u.componentId.isNull() &
-                    u.status.equals('ACTIVE'),
-              ))
-              .get()
-              .then((list) => list.length);
-
-      // ambil rack name jika ada
-      String? rackName;
-      if (v.rackId != null) {
-        final r = await (select(
-          racks,
-        )..where((rk) => rk.id.equals(v.rackId!))).getSingleOrNull();
-        if (r != null) {
-          final w = await (select(
-            warehouses,
-          )..where((w) => w.id.equals(r.warehouseId))).getSingleOrNull();
-          rackName = '${r.name} - ${w?.name}';
-        }
-      }
-
-      return {
-        'variant': v,
-        'companyItem': ci,
-        'product': p,
-        'brand': b,
-        'totalUnits': unitsCount,
-        'rackName': rackName,
-      };
+      return _VariantBaseInfo(
+        variant: v,
+        companyItem: ci,
+        product: p,
+        brand: b,
+      );
     });
 
-    // Stream kedua: list komponen + stok per komponen + type (IN_BOX / SEPARATE)
-    final componentsStream =
+    // 2) totalUnits reaktif (yang kamu udah bikin)
+    final totalUnitsStream = watchUnitsCount(variantId);
+
+    // 3) rackName reaktif (kalau rackId null => null)
+    final rackNameStream = infoStream.switchMap((info) {
+      final rackId = info?.variant.rackId;
+      if (rackId == null) return Stream<String?>.value(null);
+
+      final q = select(racks).join([
+        leftOuterJoin(warehouses, warehouses.id.equalsExp(racks.warehouseId)),
+      ])..where(racks.id.equals(rackId));
+
+      return q.watchSingleOrNull().map((row) {
+        if (row == null) return null;
+        final r = row.readTable(racks);
+        // Kalau mau pakai warehouse juga:
+        // final w = row.readTableOrNull(warehouses);
+        // return '${r.name} - ${w?.name}';
+        return r.name;
+      });
+    });
+
+    // 4) Definisi komponen (reaktif saat variantComponents/components berubah)
+    final componentsDefStream =
         (select(variantComponents)
               ..where((vc) => vc.variantId.equals(variantId)))
             .join([
@@ -110,55 +117,87 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
               leftOuterJoin(brands, brands.id.equalsExp(components.brandId)),
             ])
             .watch()
-            .asyncMap((rows) async {
-              final List<VariantComponentRow> result = [];
-
-              for (final row in rows) {
+            .map((rows) {
+              return rows.map((row) {
                 final vc = row.readTable(variantComponents);
                 final c = row.readTable(components);
                 final b = row.readTableOrNull(brands);
-
-                final unitsCount =
-                    await (select(units)..where(
-                          (u) =>
-                              u.componentId.equals(c.id) &
-                              u.status.equals('ACTIVE'),
-                        ))
-                        .get()
-                        .then((list) => list.length);
-
-                result.add(
-                  VariantComponentRow(
-                    componentId: c.id,
-                    name: c.name,
-                    manufCode: c.manufCode,
-                    brandName: b?.name,
-                    totalUnits: unitsCount,
-                    type: c.type, // ambil type dari kolom components.type
-                  ),
-                );
-              }
-
-              return result;
+                return _ComponentDef(vc: vc, c: c, brand: b);
+              }).toList();
             });
 
-    // gabung dua stream
-    return Rx.combineLatest2(variantStream, componentsStream, (
-      dynamic a,
-      List<VariantComponentRow> comps,
+    // 5) componentsStream FINAL: reaktif saat units berubah juga
+    final componentsStream = componentsDefStream.switchMap((defs) {
+      final componentIds = defs.map((d) => d.c.id).toList();
+
+      // kalau ga ada komponen
+      if (componentIds.isEmpty) return Stream.value(<VariantComponentRow>[]);
+
+      // bikin stream count units ACTIVE per componentId (reaktif)
+      final countsQuery = selectOnly(units)
+        ..addColumns([units.componentId, units.id.count()])
+        ..where(
+          units.status.equals('ACTIVE') & units.componentId.isIn(componentIds),
+        )
+        ..groupBy([units.componentId]);
+
+      final countsStream = countsQuery.watch().map((rows) {
+        final map = <String, int>{};
+        for (final row in rows) {
+          final cid = row.read(units.componentId);
+          final cnt = row.read(units.id.count()) ?? 0;
+          if (cid != null) map[cid] = cnt;
+        }
+        return map;
+      });
+
+      // gabung defs + counts -> List<VariantComponentRow>
+      return Rx.combineLatest2<
+        List<_ComponentDef>,
+        Map<String, int>,
+        List<VariantComponentRow>
+      >(Stream.value(defs), countsStream, (defs, countsMap) {
+        return defs.map((d) {
+          final c = d.c;
+          final b = d.brand;
+
+          final unitsCount = countsMap[c.id] ?? 0;
+
+          return VariantComponentRow(
+            componentId: c.id,
+            name: c.name,
+            manufCode: c.manufCode,
+            brandName: b?.name,
+            totalUnits: unitsCount,
+            type: c.type, // IN_BOX / SEPARATE
+          );
+        }).toList();
+      });
+    });
+
+    // 6) Gabung semuanya -> VariantDetailRow (return sama kayak punyamu)
+    return Rx.combineLatest4<
+      _VariantBaseInfo?,
+      int,
+      String?,
+      List<VariantComponentRow>,
+      VariantDetailRow?
+    >(infoStream, totalUnitsStream, rackNameStream, componentsStream, (
+      info,
+      totalUnits,
+      rackName,
+      comps,
     ) {
-      if (a == null) return null;
-      final variant = a['variant'] as Variant;
-      final ci = a['companyItem'] as CompanyItem;
-      final p = a['product'] as Product;
-      final b = a['brand'] as Brand?;
-      final totalUnits = a['totalUnits'] as int;
-      final rackName = a['rackName'] as String?;
+      if (info == null) return null;
+
+      final variant = info.variant;
+      final ci = info.companyItem;
+      final p = info.product;
+      final b = info.brand;
 
       final compsSeparate = comps.where((c) => c.type == 'SEPARATE').toList();
       final compsInBox = comps.where((c) => c.type == 'IN_BOX').toList();
 
-      // Pada saat mengembalikan komponen, kita bisa serahkan semuanya dan UI nanti memfilter berdasarkan VariantComponentRow.type
       return VariantDetailRow(
         variantId: variant.id,
         companyItemId: ci.id,
@@ -451,4 +490,26 @@ class VariantDetailRow {
     required this.componentsSeparate,
     required this.componentsInBox,
   });
+}
+
+class _VariantBaseInfo {
+  final Variant variant;
+  final CompanyItem companyItem;
+  final Product product;
+  final Brand? brand;
+
+  _VariantBaseInfo({
+    required this.variant,
+    required this.companyItem,
+    required this.product,
+    required this.brand,
+  });
+}
+
+class _ComponentDef {
+  final VariantComponent vc;
+  final Component c;
+  final Brand? brand;
+
+  _ComponentDef({required this.vc, required this.c, required this.brand});
 }

@@ -16,6 +16,7 @@ import '../../../../shared/models/selected_brand_result.dart';
 import '../../../../shared/models/selected_rack_result.dart';
 import '../../../../shared/presentation/screen/brand_picker_screen.dart';
 import '../../../../shared/presentation/screen/rack_picker_screen.dart';
+import '../../../inventory/presentation/screens/company_item_detail_screen.dart';
 import '../bloc/create_variant/create_variant_cubit.dart';
 
 class CreateVariantScreen extends StatefulWidget {
@@ -102,6 +103,14 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
           if (state.status == CreateVariantStatus.success) {
             _maybeShowOverlay(false);
             Navigator.of(context).pop(true);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CompanyItemDetailScreen(
+                  companyItemId: widget.companyItemId,
+                ),
+              ),
+            );
           }
 
           // show/hide overlay based on loading state
@@ -319,6 +328,10 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                       color: AppColors.primaryDark,
                       fontWeight: FontWeight.w400,
                     ),
+                    suffixIcon: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.primaryDark,
+                    ),
                     onFieldTap: () async {
                       final result = await Navigator.push(
                         context,
@@ -329,7 +342,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
 
                       if (result is SelectedBrandResult) {
                         // tampilkan nama segera di UI
-                        final displayName = result.name ?? 'Tanpa Brand';
+                        final displayName = result.name;
                         _brandController.text = displayName;
 
                         // panggil onBrandSelected agar cubit auto-compose name
@@ -355,6 +368,10 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                     hintStyle: TextStyle(
                       color: AppColors.primaryDark,
                       fontWeight: FontWeight.w400,
+                    ),
+                    suffixIcon: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.primaryDark,
                     ),
                     onFieldTap: () async {
                       final result = await Navigator.push(
@@ -416,16 +433,25 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                     onFieldTap: () async {
                       final selected = await showModalBottomSheet<String>(
                         context: context,
+                        isScrollControlled: true,
                         builder: (ctx) {
                           return SafeArea(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: _uomOptions.map((e) {
-                                return ListTile(
-                                  title: Text(e),
-                                  onTap: () => Navigator.of(ctx).pop(e),
+                            child: DraggableScrollableSheet(
+                              expand: false,
+                              initialChildSize: 0.5,
+                              minChildSize: 0.25,
+                              maxChildSize: 0.9,
+                              builder: (context, scrollController) {
+                                return ListView.builder(
+                                  controller: scrollController,
+                                  itemCount: _uomOptions.length,
+                                  itemBuilder: (_, i) => ListTile(
+                                    title: Text(_uomOptions[i]),
+                                    onTap: () =>
+                                        Navigator.of(ctx).pop(_uomOptions[i]),
+                                  ),
                                 );
-                              }).toList(),
+                              },
                             ),
                           );
                         },
@@ -491,14 +517,20 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
         title: const Text("Tambah Foto"),
         actions: [
           CupertinoActionSheetAction(
-            child: const Text("Kamera"),
+            child: const Text(
+              "Kamera",
+              style: TextStyle(color: AppColors.secondary),
+            ),
             onPressed: () {
               Navigator.pop(ctx);
               cubit.addPhoto(ImageSource.camera);
             },
           ),
           CupertinoActionSheetAction(
-            child: const Text("Galeri"),
+            child: const Text(
+              "Galeri",
+              style: TextStyle(color: AppColors.secondary),
+            ),
             onPressed: () {
               Navigator.pop(ctx);
               cubit.addPhoto(ImageSource.gallery);
@@ -507,7 +539,10 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
         ],
         cancelButton: CupertinoActionSheetAction(
           isDefaultAction: true,
-          child: const Text("Batal"),
+          child: const Text(
+            "Batal",
+            style: TextStyle(color: AppColors.secondary),
+          ),
           onPressed: () => Navigator.pop(ctx),
         ),
       ),

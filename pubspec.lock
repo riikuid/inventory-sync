@@ -58,7 +58,7 @@ packages:
     source: hosted
     version: "2.13.0"
   bloc:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: bloc
       sha256: a2cebb899f91d36eeeaa55c7b20b5915db5a9df1b8fd4a3c9c825e22e474537d
@@ -313,6 +313,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.7"
+  ellipsized_text:
+    dependency: "direct main"
+    description:
+      name: ellipsized_text
+      sha256: "62d130a2531af8167de2b00ca0a46633fb0030df5eb794b4143cf53dcc1e8de6"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.0"
   equatable:
     dependency: "direct main"
     description:

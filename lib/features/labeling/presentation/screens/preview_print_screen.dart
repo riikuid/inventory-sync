@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
-import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
-import '../../../../core/styles/app_style.dart';
+
+// Import Cubits & Styles
 import '../../../../core/styles/color_scheme.dart';
+import '../../../printer/presentation/bloc/printer_cubit.dart';
 import '../bloc/create_labels/create_labels_cubit.dart';
 
 class PreviewPrintScreen extends StatefulWidget {
   final String userId;
-  final String name;
+  final String name; // Nama Variant / Item
   final String companyCode;
   final String manufcode;
   final String rackName;
@@ -28,100 +29,189 @@ class PreviewPrintScreen extends StatefulWidget {
 }
 
 class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Auto-scan saat masuk (User experience lebih mulus)
-    context.read<CreateLabelsCubit>().initBluetooth();
+  // Logic Cetak yang Menjembatani PrinterCubit (Global) & LabelsCubit (Lokal)
+  void _handlePrint(
+    PrinterCubit printerCubit,
+    CreateLabelsCubit labelsCubit,
+  ) async {
+    // 1. Filter item yang belum divalidasi (bisa print ulang item pending/printed)
+    final itemsToPrint = labelsCubit.state.items
+        .where((i) => i.status != 'VALIDATED')
+        .toList();
+
+    if (itemsToPrint.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Semua item sudah tervalidasi.")),
+      );
+      return;
+    }
+
+    int successCount = 0;
+    List<String> printedIds = [];
+
+    // Tampilkan loading indicator kecil atau toast
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Sedang mengirim data ke printer...")),
+    );
+
+    // 2. Loop & Print
+    for (var item in itemsToPrint) {
+      bool success = await printerCubit.printLabel(
+        company: "PT MANUNGGAL PERKASA",
+        location: item.rackName,
+        name: widget.name,
+        manufCode: widget.manufcode,
+        qrValue: item.qrValue,
+        companyCode: widget.companyCode,
+      );
+
+      if (success) {
+        successCount++;
+        printedIds.add(item.id);
+      }
+
+      // Delay kecil agar buffer printer tidak overload
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    // 3. Update Status di Database & UI Local
+    if (printedIds.isNotEmpty) {
+      await labelsCubit.markPrinted(printedIds, widget.userId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Berhasil mencetak $successCount label"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Gagal mencetak. Cek koneksi printer."),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<CreateLabelsCubit, CreateLabelsState>(
-      listener: (context, state) {
-        if (state.error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.error!), backgroundColor: Colors.red),
-          );
-        }
-        if (state.status == CreateLabelsStatus.success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Data Tersimpan!"),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pop(context); // Atau navigate ke home
-        }
-      },
-      builder: (context, state) {
-        final total = state.items.length;
-        final validatedCount = state.items
-            .where((i) => i.status == 'VALIDATED')
-            .length;
-        final isAllValidated = total > 0 && validatedCount == total;
+    // Kita akses PrinterCubit (Global) dan CreateLabelsCubit (Lokal)
+    return BlocBuilder<PrinterCubit, PrinterState>(
+      builder: (context, printerState) {
+        return BlocConsumer<CreateLabelsCubit, CreateLabelsState>(
+          listener: (context, state) {
+            if (state.error != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.error!),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+            if (state.status == CreateLabelsStatus.success) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Data Tersimpan!"),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              Navigator.pop(context); // Kembali ke halaman sebelumnya
+            }
+          },
+          builder: (context, labelsState) {
+            final total = labelsState.items.length;
+            final validatedCount = labelsState.items
+                .where((i) => i.status == 'VALIDATED')
+                .length;
+            final isAllValidated = total > 0 && validatedCount == total;
 
-        // Cek apakah ada yang sudah diprint (untuk logic tombol)
-        final isAnyPrinted = state.items.any(
-          (i) => i.status == 'PRINTED' || i.status == 'VALIDATED',
-        );
+            // Cek apakah minimal ada 1 yg PRINTED atau VALIDATED untuk mengaktifkan tombol Validasi
+            final isAnyPrinted = labelsState.items.any(
+              (i) => i.status == 'PRINTED' || i.status == 'VALIDATED',
+            );
 
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          appBar: AppBar(
-            title: Column(
-              children: [
-                Text(widget.name),
-                const Text('Preview & Cetak Label'),
-              ],
-            ),
-          ),
-          body: Column(
-            children: [
-              // 1. CONNECTION STATUS BAR (Kecil di atas)
-              _buildConnectionBar(context, state),
-
-              // 2. PROGRESS INFO
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            return Scaffold(
+              backgroundColor: AppColors.background,
+              appBar: AppBar(
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Total: $total Unit"),
-                    Text(
-                      "$validatedCount / $total Tervalidasi",
+                    const Text(
+                      'Cetak Label',
                       style: TextStyle(
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isAllValidated ? Colors.green : Colors.orange,
                       ),
+                    ),
+                    Text(
+                      widget.companyCode,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
                 ),
-              ),
-              const Divider(),
-
-              // 3. LIST DATA ASLI (Card lama dengan Status)
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: state.items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final item = state.items[index];
-                    return _buildLabelCard(item);
-                  },
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new),
+                  onPressed: () => Navigator.pop(context),
                 ),
               ),
-            ],
-          ),
+              body: Column(
+                children: [
+                  // 1. CONNECTION STATUS BAR (Global State)
+                  _buildConnectionBar(context, printerState),
 
-          // 4. BOTTOM ACTION BAR (Smart Logic)
-          bottomNavigationBar: _buildBottomBar(
-            context,
-            state,
-            isAnyPrinted,
-            isAllValidated,
-          ),
+                  // 2. PROGRESS INFO
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("Total: $total Unit"),
+                        Text(
+                          "$validatedCount / $total Tervalidasi",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isAllValidated
+                                ? Colors.green
+                                : Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+
+                  // 3. LIST DATA LABEL
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: labelsState.items.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final item = labelsState.items[index];
+                        return _buildLabelCard(item);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              // 4. BOTTOM ACTION BAR (Smart Logic)
+              bottomNavigationBar: _buildBottomBar(
+                context,
+                printerState,
+                labelsState,
+                isAnyPrinted,
+                isAllValidated,
+              ),
+            );
+          },
         );
       },
     );
@@ -129,7 +219,6 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
 
   // --- WIDGET: CARD ITEM DENGAN STATUS TRACKING ---
   Widget _buildLabelCard(LabelItem item) {
-    // Tentukan warna & icon berdasarkan status item
     Color statusColor;
     IconData statusIcon;
     String statusText;
@@ -142,7 +231,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
         break;
       case 'PRINTED':
         statusColor = Colors.orange;
-        statusIcon = Icons.local_printshop_rounded; // atau icon printer check
+        statusIcon = Icons.print;
         statusText = "Printed";
         break;
       default: // PENDING
@@ -157,17 +246,10 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Row(
         children: [
-          // QR Preview Kecil (Visual clue)
+          // QR Preview
           Container(
             width: 50,
             height: 50,
@@ -178,7 +260,6 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
             child: PrettyQrView.data(data: item.qrValue),
           ),
           const SizedBox(width: 12),
-
           // Info Text
           Expanded(
             child: Column(
@@ -195,13 +276,12 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "LOK: ${item.rackName}",
+                  "LOK: ${widget.rackName}",
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
             ),
           ),
-
           // Status Badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -212,7 +292,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
             ),
             child: Row(
               children: [
-                Icon(statusIcon, size: 14, color: statusColor),
+                Icon(statusIcon, size: 12, color: statusColor),
                 const SizedBox(width: 4),
                 Text(
                   statusText,
@@ -231,8 +311,8 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
   }
 
   // --- WIDGET: CONNECTION STATUS BAR ---
-  Widget _buildConnectionBar(BuildContext context, CreateLabelsState state) {
-    final isConnected = state.isPrinterConnected;
+  Widget _buildConnectionBar(BuildContext context, PrinterState state) {
+    final isConnected = state.isConnected;
     return InkWell(
       onTap: () => _showDevicePicker(context),
       child: Container(
@@ -270,10 +350,11 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
     );
   }
 
-  // --- WIDGET: BOTTOM BUTTONS (LOGIC INTI) ---
+  // --- WIDGET: BOTTOM BUTTONS ---
   Widget _buildBottomBar(
     BuildContext context,
-    CreateLabelsState state,
+    PrinterState printerState,
+    CreateLabelsState labelsState,
     bool isAnyPrinted,
     bool isAllValidated,
   ) {
@@ -285,7 +366,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
       ),
       child: Row(
         children: [
-          // 1. TOMBOL SIMPAN (Muncul HANYA jika semua Valid)
+          // STATE: SIMPAN (Jika semua Valid)
           if (isAllValidated)
             Expanded(
               child: ElevatedButton(
@@ -300,7 +381,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
                 child: const Text("SIMPAN & SELESAI"),
               ),
             )
-          // 2. TOMBOL FLOW (Cetak & Validasi)
+          // STATE: ACTION (Cetak & Validasi)
           else
             Expanded(
               child: Row(
@@ -309,37 +390,30 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
                   Expanded(
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            AppColors.secondary, // Warna beda dikit
+                        backgroundColor: AppColors.secondary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      // Disable jika belum connect printer
-                      onPressed: !state.isPrinterConnected
+                      onPressed: !printerState.isConnected
                           ? null
                           : () {
-                              context
-                                  .read<CreateLabelsCubit>()
-                                  .printLabelsBatch(
-                                    companyName: "PT MANUNGGAL PERKASA",
-                                    name: widget.name,
-                                    manufCode: widget.manufcode,
-                                  );
+                              _handlePrint(
+                                context.read<PrinterCubit>(),
+                                context.read<CreateLabelsCubit>(),
+                              );
                             },
                       icon: const Icon(Icons.print),
                       label: const Text("Cetak"),
                     ),
                   ),
                   const SizedBox(width: 12),
-
                   // TOMBOL VALIDASI
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      // Validasi hanya boleh jika minimal ada 1 yg sudah diprint (Business Rule)
-                      // atau boleh validasi kapan saja, terserah Anda. Di sini saya set bebas.
+                      // Aktifkan validasi jika minimal 1 printed, ATAU user mau validasi manual boleh juga
                       onPressed: () =>
                           _openScanner(context.read<CreateLabelsCubit>()),
                       icon: const Icon(Icons.qr_code_scanner),
@@ -354,69 +428,64 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
     );
   }
 
+  // --- MODAL PILIH DEVICE (Menggunakan Global PrinterCubit) ---
   void _showDevicePicker(BuildContext context) {
-    // Panggil scan di cubit
-    context.read<CreateLabelsCubit>().scanPrinters();
+    context.read<PrinterCubit>().scanPrinters();
 
     showModalBottomSheet(
       context: context,
       builder: (_) {
-        return BlocProvider.value(
-          value: context.read<CreateLabelsCubit>(), // Pass existing cubit
-          child: BlocBuilder<CreateLabelsCubit, CreateLabelsState>(
-            builder: (ctx, state) {
-              return Container(
-                height: 350,
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    const Text(
-                      "Pilih Printer",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+        return BlocBuilder<PrinterCubit, PrinterState>(
+          builder: (ctx, state) {
+            return Container(
+              height: 350,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Text(
+                    "Pilih Printer",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 10),
+                  if (state.availableDevices.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: Text("Mencari printer bluetooth..."),
                     ),
-                    const SizedBox(height: 10),
-                    if (state.availableDevices.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child: Text("Mencari printer bluetooth..."),
-                      ),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: state.availableDevices.length,
-                        itemBuilder: (c, i) {
-                          final d = state.availableDevices[i];
-                          return ListTile(
-                            leading: const Icon(Icons.print),
-                            title: Text(d.name),
-                            subtitle: Text(d.macAdress),
-                            onTap: () {
-                              Navigator.pop(context);
-                              ctx.read<CreateLabelsCubit>().connectPrinter(d);
-                            },
-                          );
-                        },
-                      ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: state.availableDevices.length,
+                      itemBuilder: (c, i) {
+                        final d = state.availableDevices[i];
+                        return ListTile(
+                          leading: const Icon(Icons.print),
+                          title: Text(d.name),
+                          subtitle: Text(d.macAdress),
+                          onTap: () {
+                            Navigator.pop(context);
+                            ctx.read<PrinterCubit>().connect(d);
+                          },
+                        );
+                      },
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
   }
 
+  // --- BUKA MODAL SCANNER ---
   void _openScanner(CreateLabelsCubit cubit) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (ctx) {
         return SizedBox(
-          height: MediaQuery.of(ctx).size.height * 0.8,
+          height: MediaQuery.of(ctx).size.height * 0.85,
           child: ScannerModal(cubit: cubit),
         );
       },
@@ -424,7 +493,9 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
   }
 }
 
-// ===== scanner modal widget =====
+// =========================================================
+// WIDGET SCANNER MODAL (Improved Logic)
+// =========================================================
 class ScannerModal extends StatefulWidget {
   final CreateLabelsCubit cubit;
   const ScannerModal({required this.cubit, super.key});
@@ -434,12 +505,15 @@ class ScannerModal extends StatefulWidget {
 
 class _ScannerModalState extends State<ScannerModal> {
   late MobileScannerController cameraController;
-  bool processing = false;
+  bool isProcessing = false;
 
   @override
   void initState() {
     super.initState();
-    cameraController = MobileScannerController(formats: [BarcodeFormat.qrCode]);
+    cameraController = MobileScannerController(
+      formats: [BarcodeFormat.qrCode],
+      detectionSpeed: DetectionSpeed.noDuplicates,
+    );
   }
 
   @override
@@ -448,32 +522,66 @@ class _ScannerModalState extends State<ScannerModal> {
     super.dispose();
   }
 
-  void _onDetect(Barcode barcode, BarcodeCapture? args) async {
-    final raw = barcode.rawValue;
+  void _onDetect(BarcodeCapture capture) async {
+    if (isProcessing) return;
+
+    final barcodes = capture.barcodes;
+    if (barcodes.isEmpty) return;
+    final raw = barcodes.first.rawValue;
     if (raw == null) return;
-    if (processing) return;
-    processing = true;
 
-    // call cubit validate
-    await widget.cubit.validateByQr(raw).onError((error, stackTrace) {
-      processing = false;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error saat validasi: $error')));
-    });
+    setState(() => isProcessing = true);
 
-    final result = widget.cubit.state.lastScanResult;
-    if (result != null) {
-      final msg = result.ok
-          ? 'Tervalidasi: ${result.qr}'
-          : (result.message ?? 'Invalid');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    try {
+      // 1. Validasi via Cubit
+      await widget.cubit.validateByQr(raw);
+
+      if (!mounted) return;
+      final state = widget.cubit.state;
+      final result = state.lastScanResult;
+
+      // 2. Feedback
+      if (result != null && result.ok) {
+        _showToast(result.message ?? "Valid!", Colors.green);
+
+        // Cek Kelengkapan
+        final total = state.items.length;
+        final validated = state.items
+            .where((i) => i.status == 'VALIDATED')
+            .length;
+
+        if (validated == total) {
+          _showToast("Semua Selesai! Menutup...", Colors.blue);
+          await Future.delayed(const Duration(milliseconds: 800));
+          if (mounted) Navigator.pop(context);
+        }
+      } else {
+        _showToast(result?.message ?? "QR Salah / Duplikat", Colors.red);
+      }
+    } catch (e) {
+      _showToast("Error: $e", Colors.red);
+    } finally {
+      // Debounce agar tidak spam scan
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (mounted) setState(() => isProcessing = false);
     }
+  }
 
-    // small delay biar tidak double-scan
-    await Future.delayed(const Duration(milliseconds: 800));
-    processing = false;
+  void _showToast(String msg, Color color) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(milliseconds: 1000),
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height - 200,
+          left: 16,
+          right: 16,
+        ),
+      ),
+    );
   }
 
   @override
@@ -481,30 +589,39 @@ class _ScannerModalState extends State<ScannerModal> {
     return Column(
       children: [
         AppBar(
-          title: const Text('Scan QR untuk validasi'),
+          title: const Text('Scan Validasi'),
+          automaticallyImplyLeading: false,
           actions: [
             IconButton(
-              icon: const Icon(Icons.flash_on),
-              onPressed: () => cameraController.toggleTorch(),
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(context),
             ),
           ],
         ),
         Expanded(
-          child: MobileScanner(
-            controller: cameraController,
-            onDetect: (capture) {
-              final barcodes = capture.barcodes;
-              if (barcodes.isNotEmpty) _onDetect(barcodes.first, capture);
-            },
+          child: Stack(
+            children: [
+              MobileScanner(controller: cameraController, onDetect: _onDetect),
+              Center(
+                child: Container(
+                  width: 250,
+                  height: 250,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: isProcessing ? Colors.amber : Colors.white,
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              if (isProcessing)
+                const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+            ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Text(
-            'Arahkan kamera ke QR. QR yang valid akan otomatis terdeteksi.',
-          ),
-        ),
-        const SizedBox(height: 12),
       ],
     );
   }
