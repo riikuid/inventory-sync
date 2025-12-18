@@ -10,6 +10,7 @@ import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.d
 import '../../../../core/db/app_database.dart';
 import '../../../../core/db/daos/variant_dao.dart';
 import '../../../../core/styles/app_style.dart';
+import '../../../../core/styles/text_theme.dart';
 import '../../../labeling/data/labeling_repository.dart';
 import '../../../inventory/data/inventory_repository.dart';
 import '../../../labeling/presentation/bloc/assembly/assembly_cubit.dart';
@@ -94,26 +95,110 @@ class _VariantDetailView extends StatelessWidget {
                 ),
               ),
               title: Text(
-                '${d.companyCode} • ${d.name}',
+                d.companyCode,
                 overflow: TextOverflow.ellipsis,
-                style: AppStyle.monoTextStyle.copyWith(
+                style: AppTextStyles.mono.copyWith(
                   color: AppColors.onSurface,
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: FontWeight.w900,
                 ),
               ),
               foregroundColor: Colors.transparent,
             ),
+            bottomNavigationBar: Container(
+              padding: const EdgeInsets.all(16),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                border: Border(
+                  top: BorderSide(width: 0.2, color: AppColors.border),
+                ),
+              ),
+              child: CustomButton(
+                elevation: 0,
+                radius: 40,
+                height: 50,
+                color: AppColors.secondary,
+                onPressed: () {
+                  // If no in-box components => go to LabelSetScreen directly (Label Item)
+                  // else -> navigate to assembly/merge flow
+                  if (d.componentsInBox.where((c) => c != null).isEmpty) {
+                    // direct label (variant-level)
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider(
+                          create: (context) => CreateLabelsCubit(
+                            context.read<LabelingRepository>(),
+                          ),
+
+                          child: GenerateLabelsScreen(
+                            variant: d,
+                            userId: userId,
+                          ),
+                        ),
+                      ),
+                    );
+                  } else {
+                    // open assembly flow
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider(
+                          create: (context) => AssemblyCubit(
+                            RepositoryProvider.of<LabelingRepository>(context),
+                            d.variantId,
+                            d.name,
+                          ),
+                          child: AssemblyScreen(
+                            variantManufCode: d.manufCode ?? '-',
+                            rackName: d.rackName ?? '-',
+                            targetComponents: d.componentsInBox,
+                            variantId: d.variantId,
+                            variantName: d.name,
+                            companyCode: d.companyCode,
+                            userId: userId,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: 10,
+                  children: [
+                    Icon(
+                      Icons.print_outlined,
+                      size: 18,
+                      color: AppColors.onSurface,
+                    ),
+                    Text(
+                      'Cetak Label',
+                      style: TextStyle(
+                        color: AppColors.onSurface,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             body: Stack(
               children: [
                 ListView(
                   padding: const EdgeInsets.all(16),
+
                   children: [
                     _buildDetailHeader(context, d),
-                    const SizedBox(height: 20),
-                    _buildBoxSection(context, d),
-                    const SizedBox(height: 20),
-                    _buildSeparateComponentSection(context, d),
+                    if (d.componentsSeparate.isEmpty) ...[
+                      const SizedBox(height: 20),
+                      _buildBoxSection(context, d),
+                    ],
+                    if (d.componentsInBox.isEmpty) ...[
+                      const SizedBox(height: 20),
+                      _buildSeparateComponentSection(context, d),
+                    ],
                     const SizedBox(height: 120), // space for bottom bar
                   ],
                 ),
@@ -136,6 +221,7 @@ class _VariantDetailView extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
+        border: Border.all(width: 1.2, color: AppColors.border),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [AppStyle.defaultBoxShadow],
       ),
@@ -149,60 +235,43 @@ class _VariantDetailView extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    d.companyCode,
-                    style: AppStyle.monoTextStyle.copyWith(
+                    d.name,
+                    style: AppTextStyles.mono.copyWith(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                     ),
                   ),
                 ),
-                if (d.brandName != null && d.brandName!.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryLight,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      d.brandName ?? '-',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryDark,
-                      ),
-                    ),
-                  ),
 
-                SizedBox(width: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: AppColors.secondary,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     d.totalUnits.toString(),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            // const SizedBox(height: 6),
             Text(
-              d.name,
+              d.companyCode,
               style: TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
                 color: Colors.grey.shade700,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             // ignore: unnecessary_null_comparison
             if ((d.rackName != null) || (d.uom != null))
               Text(
@@ -225,97 +294,155 @@ class _VariantDetailView extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Row(
+              spacing: 10,
               children: [
-                Expanded(
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                if (d.brandName != null && d.brandName!.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 2,
                     ),
-                    onPressed: () {
-                      // If no in-box components => go to LabelSetScreen directly (Label Item)
-                      // else -> navigate to assembly/merge flow
-                      if (d.componentsInBox.where((c) => c != null).isEmpty) {
-                        // direct label (variant-level)
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => BlocProvider(
-                              create: (context) => CreateLabelsCubit(
-                                context.read<LabelingRepository>(),
-                              ),
-
-                              child: GenerateLabelsScreen(
-                                variant: d,
-                                userId: userId,
-                              ),
-                            ),
-                          ),
-                        );
-                      } else {
-                        // open assembly flow
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BlocProvider(
-                              create: (context) => AssemblyCubit(
-                                RepositoryProvider.of<LabelingRepository>(
-                                  context,
-                                ),
-                                d.variantId,
-                                d.name,
-                              ),
-                              child: AssemblyScreen(
-                                variantId: d.variantId,
-                                variantName: d.name,
-                                companyCode: d.companyCode,
-                                userId: userId,
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    child: const Text(
-                      'Cetak',
-                      style: TextStyle(color: AppColors.onPrimary),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
+                      border: Border.all(width: 1.0, color: AppColors.border),
+                      borderRadius: BorderRadius.circular(999),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: Colors.grey.shade300),
-                  ),
-
-                  onPressed: () async {
-                    final repo = context.read<InventoryRepository>();
-
-                    // );
-
-                    final result = await Navigator.push<String>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            ComponentPickerScreen(type: 'IN_BOX', variant: d),
+                    child: Text(
+                      d.brandName ?? '-',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
                       ),
-                    );
-                    if (result != null) {
-                      await repo.attachComponentToVariant(
-                        componentId: result,
-                        variantId: d.variantId,
-                        // type: 'SEPARATE',
-                      );
-                    }
-                  },
-                  child: const Text(
-                    '+ Isi',
-                    style: TextStyle(color: Colors.black),
+                    ),
                   ),
-                ),
+                if (d.manufCode != null && d.manufCode!.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
+                      border: Border.all(width: 1.0, color: AppColors.border),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      d.manufCode ?? '-',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+
+                // Expanded(
+                //   child: FilledButton(
+                //     style: FilledButton.styleFrom(
+                //       backgroundColor: AppColors.secondary,
+                //       padding: const EdgeInsets.symmetric(vertical: 12),
+                //     ),
+                //     onPressed: () {
+                //       // If no in-box components => go to LabelSetScreen directly (Label Item)
+                //       // else -> navigate to assembly/merge flow
+                //       if (d.componentsInBox.where((c) => c != null).isEmpty) {
+                //         // direct label (variant-level)
+                //         Navigator.of(context).push(
+                //           MaterialPageRoute(
+                //             builder: (_) => BlocProvider(
+                //               create: (context) => CreateLabelsCubit(
+                //                 context.read<LabelingRepository>(),
+                //               ),
+
+                //               child: GenerateLabelsScreen(
+                //                 variant: d,
+                //                 userId: userId,
+                //               ),
+                //             ),
+                //           ),
+                //         );
+                //       } else {
+                //         // open assembly flow
+                //         Navigator.push(
+                //           context,
+                //           MaterialPageRoute(
+                //             builder: (_) => BlocProvider(
+                //               create: (context) => AssemblyCubit(
+                //                 RepositoryProvider.of<LabelingRepository>(
+                //                   context,
+                //                 ),
+                //                 d.variantId,
+                //                 d.name,
+                //               ),
+                //               child: AssemblyScreen(
+                //                 variantId: d.variantId,
+                //                 variantName: d.name,
+                //                 companyCode: d.companyCode,
+                //                 userId: userId,
+                //               ),
+                //             ),
+                //           ),
+                //         );
+                //       }
+                //     },
+                //     child: Row(
+                //       mainAxisAlignment: MainAxisAlignment.center,
+                //       children: [
+                //         Icon(
+                //           Icons.print_outlined,
+                //           size: 16,
+                //           color: AppColors.onBackground,
+                //         ),
+                //         const SizedBox(width: 8),
+                //         const Text(
+                //           'Cetak Label',
+
+                //           style: TextStyle(
+                //             color: AppColors.onBackground,
+                //             fontSize: 15,
+                //             fontWeight: FontWeight.w600,
+                //           ),
+                //         ),
+                //       ],
+                //     ),
+                //   ),
+                // ),
+                // const SizedBox(width: 12),
+                // FilledButton(
+                //   style: FilledButton.styleFrom(
+                //     backgroundColor: Colors.white,
+                //     padding: const EdgeInsets.symmetric(vertical: 12),
+                //     side: BorderSide(color: Colors.grey.shade300),
+                //   ),
+
+                //   onPressed: () async {
+                //     final repo = context.read<InventoryRepository>();
+
+                //     // );
+
+                //     final result = await Navigator.push<String>(
+                //       context,
+                //       MaterialPageRoute(
+                //         builder: (_) =>
+                //             ComponentPickerScreen(type: 'IN_BOX', variant: d),
+                //       ),
+                //     );
+                //     if (result != null) {
+                //       await repo.attachComponentToVariant(
+                //         componentId: result,
+                //         variantId: d.variantId,
+                //         // type: 'SEPARATE',
+                //       );
+                //     }
+                //   },
+                //   child: const Text(
+                //     '+ Isi',
+                //     style: TextStyle(color: Colors.black),
+                //   ),
+                // ),
               ],
             ),
           ],
@@ -339,27 +466,63 @@ class _VariantDetailView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(Icons.archive_outlined, size: 12, color: AppColors.secondary),
-            SizedBox(width: 6),
-            const Expanded(
-              child: Text(
-                'ISI DALAM BOX',
+            Row(
+              children: [
+                Icon(
+                  Icons.archive_outlined,
+                  size: 14,
+                  color: AppColors.primary,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'ISI DALAM BOX',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+            TextButton.icon(
+              onPressed: () async {
+                final repo = context.read<InventoryRepository>();
+
+                final result = await Navigator.push<String>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        ComponentPickerScreen(type: 'IN_BOX', variant: d),
+                  ),
+                );
+                if (result != null) {
+                  await repo.attachComponentToVariant(
+                    componentId: result,
+                    variantId: d.variantId,
+                    // type: 'SEPARATE',
+                  );
+                }
+              },
+
+              icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
+              label: Text(
+                'Isi',
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: AppColors.secondary,
+                  fontSize: 14,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
             boxShadow: [AppStyle.defaultBoxShadow],
-            color: AppColors.secondary,
-            borderRadius: BorderRadius.circular(24),
+            color: Color(0xff482f23),
+            borderRadius: BorderRadius.circular(18),
           ),
           padding: const EdgeInsets.all(12),
           child: hasAny
@@ -379,7 +542,10 @@ class _VariantDetailView extends StatelessWidget {
                         ),
                         title: Text(
                           c.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          style: AppTextStyles.mono.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,7 +553,10 @@ class _VariantDetailView extends StatelessWidget {
                             if (c.manufCode != null && c.brandName != null)
                               Text(
                                 '${c.brandName}${c.manufCode != null && c.manufCode!.isNotEmpty ? '  •  ${c.manufCode}' : ''}',
-                                style: const TextStyle(fontSize: 12),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                           ],
                         ),
@@ -397,14 +566,14 @@ class _VariantDetailView extends StatelessWidget {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primary,
+                            color: AppColors.secondary,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             '${c.totalUnits}',
                             style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.onPrimary,
+                              fontSize: 14,
+                              color: AppColors.onSurface,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -452,15 +621,15 @@ class _VariantDetailView extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(Icons.layers_outlined, size: 14, color: AppColors.secondary),
+            Icon(Icons.layers_outlined, size: 14, color: AppColors.primary),
             SizedBox(width: 6),
             const Expanded(
               child: Text(
                 'PISAH PER KEMASAN',
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: AppColors.secondary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppColors.primary,
                 ),
               ),
             ),
@@ -485,16 +654,13 @@ class _VariantDetailView extends StatelessWidget {
                   );
                 }
               },
-              icon: const Icon(
-                Icons.add,
-                size: 14,
-                color: AppColors.primaryDark,
-              ),
+              icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
               label: Text(
                 'Komponen',
-                style: AppStyle.poppinsTextSStyle.copyWith(
-                  fontSize: 12,
-                  color: AppColors.primaryDark,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -507,6 +673,7 @@ class _VariantDetailView extends StatelessWidget {
             return Container(
               decoration: BoxDecoration(
                 boxShadow: [AppStyle.defaultBoxShadow],
+                border: Border.all(width: 1.0, color: AppColors.border),
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(24),
               ),
@@ -531,7 +698,10 @@ class _VariantDetailView extends StatelessWidget {
                         children: [
                           Text(
                             c.name,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: AppTextStyles.mono.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
                           ),
 
                           if ((c.brandName != null) ||
@@ -539,7 +709,10 @@ class _VariantDetailView extends StatelessWidget {
                             SizedBox(height: 3),
                             Text(
                               '${c.brandName}${c.manufCode != null && c.manufCode!.isNotEmpty ? '  •  ${c.manufCode}' : ''}',
-                              style: TextStyle(color: Colors.grey.shade700),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ],
                         ],
@@ -552,10 +725,17 @@ class _VariantDetailView extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
+                        color: AppColors.secondary,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text('${c.totalUnits}'),
+                      child: Text(
+                        '${c.totalUnits}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.onSurface,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     CustomButton(
@@ -595,9 +775,9 @@ class _VariantDetailView extends StatelessWidget {
                           SizedBox(width: 5),
                           Text(
                             'Cetak',
-                            style: AppStyle.poppinsTextSStyle.copyWith(
-                              fontSize: 11,
-
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                               color: AppColors.onBackground,
                             ),
                           ),

@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/db/daos/variant_dao.dart';
+import '../../../../core/styles/text_theme.dart';
 import '../../data/model/component_request.dart';
 import '../../../../core/styles/app_style.dart';
 import '../../../../core/styles/color_scheme.dart';
@@ -127,17 +128,17 @@ class _CreateComponentSeparateScreenState
           children: [
             Text(
               'Tambah Komponen',
-              style: AppStyle.poppinsTextSStyle.copyWith(
+              style: TextStyle(
                 color: AppColors.onSurface,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
             SizedBox(height: 3),
             Text(
-              widget.variantDetailRow.name,
-              style: AppStyle.monoTextStyle.copyWith(
-                color: AppColors.primaryDark,
+              '${widget.variantDetailRow.companyCode} • ${widget.variantDetailRow.name}',
+              style: AppTextStyles.mono.copyWith(
+                color: AppColors.primary,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -150,15 +151,13 @@ class _CreateComponentSeparateScreenState
         width: double.infinity,
         decoration: BoxDecoration(
           color: AppColors.background,
-          border: Border(
-            top: BorderSide(width: 0.3, color: AppColors.secondaryLight),
-          ),
+          border: Border(top: BorderSide(width: 0.3, color: AppColors.accent)),
         ),
         child: CustomButton(
           elevation: 0,
           radius: 40,
           height: 50,
-          color: AppColors.primaryDark,
+          color: AppColors.primary,
           onPressed: () {
             // Validasi sederhana: pastikan minimal 1 foto & nama ada (ubah sesuai kebutuhan)
             if (_nameController.text.trim().isEmpty) {
@@ -191,7 +190,7 @@ class _CreateComponentSeparateScreenState
               SizedBox(width: 8),
               Text(
                 'Simpan Komponen',
-                style: AppStyle.poppinsTextSStyle.copyWith(
+                style: TextStyle(
                   color: AppColors.surface,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -208,7 +207,7 @@ class _CreateComponentSeparateScreenState
           children: [
             Container(
               decoration: BoxDecoration(
-                color: AppColors.primaryDark.withAlpha(30),
+                color: AppColors.primary.withAlpha(30),
                 borderRadius: BorderRadius.circular(16),
               ),
               margin: const EdgeInsets.only(bottom: 24),
@@ -218,7 +217,7 @@ class _CreateComponentSeparateScreenState
                   Icon(
                     Icons.layers_outlined,
                     size: 28,
-                    color: AppColors.primaryDark,
+                    color: AppColors.primary,
                   ),
                   const SizedBox(width: 18),
                   Expanded(
@@ -228,18 +227,18 @@ class _CreateComponentSeparateScreenState
                       children: [
                         Text(
                           'Komponen Box Terpisah',
-                          style: AppStyle.poppinsTextSStyle.copyWith(
+                          style: TextStyle(
                             color: AppColors.onSurface,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
                           ),
                         ),
                         Text(
                           'Komponen dengan box/kemasan terpisah',
-                          style: AppStyle.poppinsTextSStyle.copyWith(
-                            color: AppColors.secondary,
-                            fontWeight: FontWeight.w400,
-                            fontSize: 12,
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
                           ),
                         ),
                       ],

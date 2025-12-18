@@ -1,3 +1,5 @@
+// lib/features/printer/presentation/bloc/printer_cubit.dart
+
 import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';

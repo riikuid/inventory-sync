@@ -12,6 +12,7 @@ class App extends StatelessWidget {
 
     return MaterialApp(
       title: 'HRIS Pentamoo',
+
       theme: lightThemeData,
       themeMode: ThemeMode.light,
       home: AppRoot(),

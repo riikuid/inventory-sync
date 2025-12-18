@@ -1,6 +1,9 @@
+// lib/features/labeling/presentation/screens/generate_label_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_sync_apps/core/db/daos/variant_dao.dart';
+import 'package:inventory_sync_apps/core/styles/text_theme.dart';
 
 import '../../../../core/styles/app_style.dart';
 import '../../../../core/styles/color_scheme.dart';
@@ -40,6 +43,8 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
   bool get isComponentMode => widget.componentId != null;
   String get targetName =>
       isComponentMode ? widget.componentName! : widget.variant.name;
+  String get targetManufCode =>
+      isComponentMode ? widget.componentManuf! : widget.variant.manufCode ?? '';
 
   @override
   void initState() {
@@ -73,6 +78,7 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
       variantId: widget.variant.variantId, // Tetap kirim variant ID
       companyCode: widget.variant.companyCode,
       rackId: _selectedRackId!,
+      itemName: targetName,
       rackName: _selectedRackName ?? 'N/A',
       qty: _qty,
       userId: widget.userId,
@@ -87,16 +93,14 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
     if (state.status == CreateLabelsStatus.generated &&
         state.items.isNotEmpty) {
       // navigate to preview
-      Navigator.of(context).push(
+      bool result = await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => BlocProvider.value(
             value: cubit,
             child: PreviewPrintScreen(
               userId: widget.userId,
               companyCode: widget.variant.companyCode,
-              name: isComponentMode
-                  ? widget.componentName!
-                  : widget.variant.name,
+
               manufcode: isComponentMode
                   ? '${widget.componentManuf}'
                   : widget.variant.manufCode ?? '',
@@ -105,6 +109,9 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
           ),
         ),
       );
+      if (result == true) {
+        if (mounted) Navigator.pop(context, true);
+      }
     } else if (state.status == CreateLabelsStatus.failure) {
       ScaffoldMessenger.of(
         context,
@@ -140,17 +147,17 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
           children: [
             Text(
               isComponentMode ? 'Label Komponen' : 'Label Unit Box',
-              style: AppStyle.poppinsTextSStyle.copyWith(
+              style: TextStyle(
                 color: AppColors.onSurface,
                 fontSize: 15,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w600,
               ),
             ),
             SizedBox(height: 3),
             Text(
               widget.variant.companyCode,
-              style: AppStyle.monoTextStyle.copyWith(
-                color: AppColors.primaryDark,
+              style: AppTextStyles.mono.copyWith(
+                color: AppColors.primary,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -163,19 +170,17 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
         width: double.infinity,
         decoration: BoxDecoration(
           color: AppColors.background,
-          border: Border(
-            top: BorderSide(width: 0.2, color: AppColors.secondary),
-          ),
+          border: Border(top: BorderSide(width: 0.2, color: AppColors.border)),
         ),
         child: CustomButton(
           elevation: 0,
           radius: 40,
           height: 50,
-          color: AppColors.primaryDark,
+          color: AppColors.primary,
           onPressed: _onGenerate,
           child: Text(
             'Selanjutnya',
-            style: AppStyle.poppinsTextSStyle.copyWith(
+            style: TextStyle(
               color: AppColors.surface,
               fontWeight: FontWeight.bold,
               fontSize: 14,
@@ -190,7 +195,7 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: AppColors.primaryDark.withAlpha(30),
+                color: AppColors.primary.withAlpha(30),
                 borderRadius: BorderRadius.circular(16),
               ),
               margin: const EdgeInsets.only(bottom: 24),
@@ -202,11 +207,11 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        widget.variant.companyCode,
-                        style: AppStyle.monoTextStyle.copyWith(
-                          color: AppColors.secondary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                        targetName,
+                        style: AppTextStyles.mono.copyWith(
+                          color: AppColors.primary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                       if (widget.variant.brandName != null &&
@@ -217,25 +222,38 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryLight,
+                            border: Border.all(
+                              width: 1.0,
+                              color: AppColors.primary,
+                            ),
+                            color: AppColors.primary.withAlpha(50),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
                             widget.variant.brandName ?? '-',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.primaryDark,
+                              color: AppColors.primary,
                             ),
                           ),
                         ),
                     ],
                   ),
                   Text(
-                    '$targetName${widget.variant.manufCode != null && widget.variant.manufCode!.isNotEmpty ? '  •  ${widget.variant.manufCode}' : ''}',
-                    style: AppStyle.poppinsTextSStyle.copyWith(
-                      color: AppColors.primaryDark,
-                      fontWeight: FontWeight.w400,
+                    widget.variant.companyCode,
+                    style: TextStyle(
+                      color: AppColors.onBackground,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    '$targetManufCode${targetManufCode.isNotEmpty && widget.variant.rackName!.isNotEmpty ? '  •  ${widget.variant.rackName}' : ''}',
+                    style: TextStyle(
+                      color: AppColors.onBackground,
+                      fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),
                   ),

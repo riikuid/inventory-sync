@@ -74,15 +74,15 @@ class _LabelCounterCardState extends State<LabelCounterCard> {
                 const Text(
                   "Jumlah Label",
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   "Tentukan berapa label yang akan dicetak",
-                  style: TextStyle(fontSize: 13, color: _textGrey, height: 1.3),
+                  style: TextStyle(fontSize: 14, color: _textGrey, height: 1.3),
                 ),
               ],
             ),
@@ -118,8 +118,8 @@ class _LabelCounterCardState extends State<LabelCounterCard> {
               // Tombol Plus
               _buildButton(
                 icon: Icons.add,
-                bgColor: AppColors.primary,
-                iconColor: AppColors.secondaryDark,
+                bgColor: AppColors.secondary,
+                iconColor: AppColors.primary,
                 onTap: _currentValue < widget.max ? _increment : null,
                 isActive: _currentValue < widget.max,
               ),

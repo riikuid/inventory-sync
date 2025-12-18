@@ -1,31 +1,35 @@
+// lib/features/labeling/presentation/bloc/assembly/assembly_state.dart
+
 part of 'assembly_cubit.dart';
 
 enum AssemblyStatus {
+  initial,
   loading,
-  idle,
-  printing_component,
-  scanning_components,
-  generating_set,
-  success,
+  loaded,
+  generating_component, // Sedang bikin unit komponen di DB
+  printing_component, // Sedang print
+  scanned, // Berhasil scan
+  assembling, // Sedang finalisasi set
+  success, // Selesai
   failure,
 }
 
-/// Model untuk merepresentasikan 1 baris komponen di UI (The Card)
-class AssemblyItemState {
+/// Merepresentasikan 1 baris komponen dalam resep
+class AssemblyItemState extends Equatable {
   final String componentId;
-  final String componentName;
+  final String name;
   final String manufCode;
-  final int qtyNeeded; // Berapa pcs butuh komponen ini dalam 1 set (biasanya 1)
+  final int qtyNeeded;
 
   // State Tracking
-  final String? generatedUnitId; // ID unit komponen yang baru dibuat (pending)
-  final String? qrValue; // QR string untuk dicetak
+  final String? generatedUnitId; // ID unit di DB (jika sudah diprint/generate)
+  final String? qrValue; // QR string
   final bool isPrinted; // Apakah user sudah klik print?
   final bool isScanned; // Apakah user sudah validasi fisik?
 
-  AssemblyItemState({
+  const AssemblyItemState({
     required this.componentId,
-    required this.componentName,
+    required this.name,
     required this.manufCode,
     this.qtyNeeded = 1,
     this.generatedUnitId,
@@ -42,7 +46,7 @@ class AssemblyItemState {
   }) {
     return AssemblyItemState(
       componentId: componentId,
-      componentName: componentName,
+      name: name,
       manufCode: manufCode,
       qtyNeeded: qtyNeeded,
       generatedUnitId: generatedUnitId ?? this.generatedUnitId,
@@ -51,25 +55,32 @@ class AssemblyItemState {
       isScanned: isScanned ?? this.isScanned,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    componentId,
+    name,
+    generatedUnitId,
+    isPrinted,
+    isScanned,
+  ];
 }
 
 class AssemblyState extends Equatable {
   final AssemblyStatus status;
   final String variantId;
   final String variantName;
-
-  // List komponen yang harus dipenuhi
   final List<AssemblyItemState> components;
 
-  // Hasil akhir (Unit Set Gabungan)
+  // Hasil Akhir
   final String? parentSetQr;
   final String? parentSetUnitId;
 
   final String? error;
-  final String? lastScanMessage; // Feedback UI "Komponen Bearing OK"
+  final String? lastScanMessage; // Feedback toast (Hijau/Merah)
 
   const AssemblyState({
-    this.status = AssemblyStatus.loading,
+    this.status = AssemblyStatus.initial,
     required this.variantId,
     required this.variantName,
     this.components = const [],
@@ -79,8 +90,8 @@ class AssemblyState extends Equatable {
     this.lastScanMessage,
   });
 
-  // Getter: Apakah semua komponen sudah divalidasi?
-  bool get isAllComponentsScanned => components.every((c) => c.isScanned);
+  bool get isAllComponentsScanned =>
+      components.isNotEmpty && components.every((c) => c.isScanned);
 
   AssemblyState copyWith({
     AssemblyStatus? status,
@@ -97,8 +108,8 @@ class AssemblyState extends Equatable {
       components: components ?? this.components,
       parentSetQr: parentSetQr ?? this.parentSetQr,
       parentSetUnitId: parentSetUnitId ?? this.parentSetUnitId,
-      error: error, // Clear error on new state usually, or pass specific
-      lastScanMessage: lastScanMessage ?? this.lastScanMessage,
+      error: error, // Auto-clear error on new state usually
+      lastScanMessage: lastScanMessage, // Nullable update
     );
   }
 

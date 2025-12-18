@@ -4,6 +4,7 @@ import '../../../core/styles/color_scheme.dart';
 
 class SearchFieldWidget extends StatelessWidget {
   final TextEditingController? controller;
+  final String? hintText;
   final FocusNode? focusNode;
   final Function(String)? onSubmitted;
   final Function(String)? onChanged;
@@ -15,6 +16,7 @@ class SearchFieldWidget extends StatelessWidget {
     this.onChanged,
     this.onClear,
     this.focusNode,
+    this.hintText,
   });
 
   @override
@@ -23,7 +25,8 @@ class SearchFieldWidget extends StatelessWidget {
       padding: EdgeInsets.only(left: 6, right: 16, top: 4, bottom: 4),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
             color: AppColors.onSurface.withOpacity(0.04),
@@ -34,13 +37,8 @@ class SearchFieldWidget extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: AppColors.background,
-            child: Icon(
-              Icons.search_rounded,
-              color: AppColors.onSurface.withOpacity(0.5),
-            ),
-          ),
+          SizedBox(width: 8),
+          Icon(Icons.search_rounded, color: AppColors.primary),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -54,7 +52,9 @@ class SearchFieldWidget extends StatelessWidget {
                   horizontal: 6,
                   vertical: 10,
                 ),
-                hintText: 'Cari kode / nama barang (mis. 030, Bearing...)',
+                hintText:
+                    hintText ??
+                    'Cari kode / nama barang (mis. 030, Bearing...)',
                 border: InputBorder.none,
                 isDense: true,
                 hintStyle: TextStyle(

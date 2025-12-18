@@ -56,7 +56,7 @@ class SeparateComponentCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: AppColors.secondary,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text('${item.totalUnits}'),

@@ -32,7 +32,7 @@
 //       child: Scaffold(
 //         appBar: AppBar(
 //           title: const Text('Label as Set'),
-//           backgroundColor: AppColors.primary,
+//           backgroundColor: AppColors.secondary,
 //           foregroundColor: Colors.white,
 //         ),
 //         body: const Padding(
@@ -71,7 +71,7 @@
 //         padding: const EdgeInsets.all(16),
 //         child: Row(
 //           children: [
-//             Icon(Icons.widgets_outlined, color: AppColors.primary, size: 28),
+//             Icon(Icons.widgets_outlined, color: AppColors.secondary, size: 28),
 //             const SizedBox(width: 12),
 //             Expanded(
 //               child: Column(
@@ -209,7 +209,7 @@
 //             width: double.infinity,
 //             child: FilledButton(
 //               style: FilledButton.styleFrom(
-//                 backgroundColor: AppColors.primary,
+//                 backgroundColor: AppColors.secondary,
 //                 padding: const EdgeInsets.symmetric(
 //                   horizontal: 16,
 //                   vertical: 12,

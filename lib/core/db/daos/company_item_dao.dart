@@ -36,6 +36,7 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
   }) {
     final base = select(companyItems).join([
       innerJoin(products, products.id.equalsExp(companyItems.productId)),
+      leftOuterJoin(racks, racks.id.equalsExp(companyItems.defaultRackId)),
       leftOuterJoin(
         variants,
         variants.companyItemId.equalsExp(companyItems.id),
@@ -59,6 +60,7 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
         final p = row.readTable(products);
         final u = row.readTableOrNull(units);
         final v = row.readTableOrNull(variants);
+        final r = row.readTableOrNull(racks);
 
         final id = ci.id;
         // jika belum ada, inisialisasi entri dengan struktur sederhana
@@ -67,6 +69,8 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
             'companyItemId': ci.id,
             'companyCode': ci.companyCode,
             'productName': p.name,
+            'defaultRackId': r?.id,
+            'defaultRackName': r?.name,
             'totalUnits': 0,
             'variantIds': <String>{}, // Set untuk hindari double-count
           };
@@ -87,6 +91,8 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
           companyItemId: entry['companyItemId'] as String,
           companyCode: entry['companyCode'] as String,
           productName: entry['productName'] as String,
+          defaultRackId: entry['defaultRackId'] as String?,
+          defaultRackName: entry['defaultRackName'] as String?,
           categoryName: null,
           totalUnits: entry['totalUnits'] as int,
           totalVariants: variantIds.length,
@@ -149,9 +155,15 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
     )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
-  Future<void> updateCompanyItem(String id) async {
+  Future<void> updateDefaultRackCompanyItem({
+    required String id,
+    required String rackId,
+  }) async {
     await (update(companyItems)..where((t) => t.id.equals(id))).write(
-      CompanyItemsCompanion(needSync: const Value(true)),
+      CompanyItemsCompanion(
+        defaultRackId: Value(rackId),
+        needSync: const Value(true),
+      ),
     );
   }
 
@@ -212,6 +224,8 @@ class CompanyItemListRow {
   final String companyCode;
   final String productName;
   final String? categoryName; // kalau mau sekalian
+  final String? defaultRackId; // kalau mau sekalian
+  final String? defaultRackName; // kalau mau sekalian
   final int totalUnits; // total unit aktif untuk kode ini
   final int totalVariants; // total unit aktif untuk kode ini
 
@@ -220,6 +234,8 @@ class CompanyItemListRow {
     required this.companyCode,
     required this.productName,
     this.categoryName,
+    this.defaultRackId,
+    this.defaultRackName,
     required this.totalVariants,
     required this.totalUnits,
   });
@@ -230,6 +246,8 @@ class CompanyItemListRow {
       companyCode: companyCode,
       productName: productName,
       categoryName: categoryName,
+      defaultRackId: defaultRackId,
+      defaultRackName: defaultRackName,
       totalVariants: totalVariants ?? this.totalVariants,
       totalUnits: totalUnits ?? this.totalUnits,
     );

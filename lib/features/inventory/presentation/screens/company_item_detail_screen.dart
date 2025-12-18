@@ -67,7 +67,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                 return Text(
                   '${state.detail.companyCode} • ${state.detail.productName}',
                   overflow: TextOverflow.ellipsis,
-                  style: AppStyle.monoTextStyle.copyWith(
+                  style: AppTextStyles.mono.copyWith(
                     color: AppColors.onSurface,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
@@ -75,6 +75,52 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                 );
               }
               return const Text('Item Detail');
+            },
+          ),
+        ),
+        bottomNavigationBar: Container(
+          padding: const EdgeInsets.all(16),
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            border: Border(
+              top: BorderSide(width: 0.2, color: AppColors.border),
+            ),
+          ),
+          child: BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
+            builder: (context, state) {
+              if (state is! CompanyItemDetailLoaded) {
+                return const SizedBox.shrink();
+              }
+              return CustomButton(
+                elevation: 0,
+                radius: 40,
+                height: 50,
+                color: AppColors.primary,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CreateVariantScreen(
+                        companyItemId: widget.companyItemId,
+                        userId: 'USER-1',
+                        companyCode: state.detail.companyCode,
+                        productName: state.detail.productName,
+                        defaultRackId: state.detail.defaultRackId,
+                        defaultRackName: state.detail.defaultRackName,
+                      ),
+                    ),
+                  );
+                },
+                child: Text(
+                  '+ Tambah Varian',
+                  style: TextStyle(
+                    color: AppColors.surface,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              );
             },
           ),
         ),
@@ -144,18 +190,20 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
             return const SizedBox.shrink();
           },
         ),
-        floatingActionButton:
-            BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
-              builder: (context, state) {
-                if (state is! CompanyItemDetailLoaded) {
-                  return const SizedBox.shrink();
-                }
-                return _buildAddVariantFab(
-                  companyCode: state.detail.companyCode,
-                  productName: state.detail.productName,
-                );
-              },
-            ),
+        // floatingActionButton:
+        //     BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
+        //       builder: (context, state) {
+        //         if (state is! CompanyItemDetailLoaded) {
+        //           return const SizedBox.shrink();
+        //         }
+        //         return _buildAddVariantFab(
+        //           companyCode: state.detail.companyCode,
+        //           productName: state.detail.productName,
+        //           defaultRackId: state.detail.defaultRackId,
+        //           defaultRackName: state.detail.defaultRackName,
+        //         );
+        //       },
+        //     ),
       ),
     );
   }
@@ -181,17 +229,17 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                   width: 70,
                   height: 70,
                   decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
+                    color: AppColors.accent,
                     borderRadius: BorderRadius.circular(18),
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     // show last segment or short code from companyCode
                     detail.companyCode.split('-').last,
-                    style: AppStyle.monoTextStyle.copyWith(
-                      fontWeight: FontWeight.bold,
+                    style: AppTextStyles.mono.copyWith(
+                      fontWeight: FontWeight.w900,
                       fontSize: 18,
-                      color: AppColors.primaryDark,
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -203,26 +251,36 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                       Text(
                         detail.productName,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 2),
+                      Text(
+                        detail.categoryName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
                       Row(
                         children: [
                           const Icon(
                             Icons.location_on_outlined,
                             size: 14,
-                            color: Colors.grey,
+                            color: AppColors.onMuted,
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              detail.variants.isNotEmpty &&
-                                      detail.variants.first.rackName != null
-                                  ? detail.variants.first.rackName!
+                              detail.defaultRackName != null
+                                  ? detail.defaultRackName!
                                   : 'Tidak ada lokasi',
-                              style: TextStyle(color: Colors.grey.shade700),
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                                fontSize: 14,
+                              ),
                             ),
                           ),
                         ],
@@ -271,24 +329,24 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
     }
 
     return Card(
-      color: AppColors.primaryLight.withOpacity(0.6),
+      color: AppColors.accent.withOpacity(0.6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            Icon(Icons.info_outline, color: AppColors.primaryDark),
+            Icon(Icons.info_outline, color: AppColors.primary),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 'Item ini belum di-setup. Tentukan tipe, brand, lokasi, dan foto agar bisa dilabel.',
-                style: TextStyle(color: AppColors.primaryDark.withOpacity(0.9)),
+                style: TextStyle(color: AppColors.primary.withOpacity(0.9)),
               ),
             ),
             const SizedBox(width: 8),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: AppColors.secondary,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 10,
@@ -359,6 +417,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
       decoration: BoxDecoration(
         boxShadow: [AppStyle.defaultBoxShadow],
         color: AppColors.surface,
+        border: Border.all(width: 1.2, color: AppColors.border),
         borderRadius: BorderRadius.circular(24),
       ),
       margin: const EdgeInsets.only(bottom: 12),
@@ -385,66 +444,78 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                     Text(
                       v.name,
                       style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 2),
                     Row(
                       children: [
-                        if (v.manufCode != null) ...[
+                        if (v.manufCode != null && v.manufCode!.isNotEmpty) ...[
                           Text(
                             v.manufCode!,
-                            style: TextStyle(color: Colors.grey.shade700),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
                         ],
-                        if ((v.rackName != null) && (v.manufCode != null)) ...[
+                        if ((v.rackName != null) && (v.brandName != null)) ...[
                           const SizedBox(width: 6),
                           Text(
                             '•',
-                            style: TextStyle(color: Colors.grey.shade700),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
                           const SizedBox(width: 6),
                         ],
-                        if (v.rackName != null) ...[
+                        if (v.brandName != null && v.brandName!.isNotEmpty) ...[
                           Text(
-                            v.rackName!,
-                            style: TextStyle(color: Colors.grey.shade700),
+                            v.brandName!,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
                         ],
                       ],
                     ),
                     SizedBox(height: 3),
-                    Text(
-                      '${v.stock.toString()} unit aktif',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
+                    if (v.brandName != null && v.brandName!.isNotEmpty)
+                      Text(
+                        '${v.brandName}',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
-              if (v.brandName != null) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '${v.brandName}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryDark,
-                    ),
+
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(width: 1.5, color: AppColors.border),
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${v.stock} Unit',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
                   ),
                 ),
-              ],
+              ),
             ],
           ),
         ),
@@ -452,36 +523,37 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
     );
   }
 
-  Widget _buildAddVariantFab({
-    required String productName,
-    required String companyCode,
-  }) {
-    return CustomButton(
-      radius: 1000,
-      color: AppColors.primaryDark,
-      width: 150,
-      child: Text(
-        '+  Tambah Variant',
-        style: AppStyle.poppinsTextSStyle.copyWith(
-          color: AppColors.surface,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      onPressed: () => {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CreateVariantScreen(
-              companyItemId: widget.companyItemId,
-              userId: 'USER-1',
-              productName: productName,
-              companyCode: companyCode,
-            ),
-          ),
-        ),
-      },
-    );
-  }
+  // Widget _buildAddVariantFab({
+  //   String? defaultRackId,
+  //   String? defaultRackName,
+  //   required String productName,
+  //   required String companyCode,
+  // }) {
+  //   return CustomButton(
+  //     radius: 1000,
+  //     color: AppColors.primary,
+  //     width: 150,
+  //     child: Text(
+  //       '+  Tambah Variant',
+  //       style: TextStyle(color: AppColors.surface, fontWeight: FontWeight.w600),
+  //     ),
+  //     onPressed: () => {
+  //       Navigator.push(
+  //         context,
+  //         MaterialPageRoute(
+  //           builder: (context) => CreateVariantScreen(
+  //             companyItemId: widget.companyItemId,
+  //             userId: 'USER-1',
+  //             productName: productName,
+  //             companyCode: companyCode,
+  //             defaultRackId: defaultRackId,
+  //             defaultRackName: defaultRackName,
+  //           ),
+  //         ),
+  //       ),
+  //     },
+  //   );
+  // }
 
   // void _openSetupScreen() async {
   //   // open existing SetupCompanyItemScreen using SetupCompanyItemCubit

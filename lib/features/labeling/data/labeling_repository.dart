@@ -104,7 +104,25 @@ class LabelingRepository {
     required List<String> unitIds,
     required String userId,
   }) async {
-    return db.unitDao.markUnitsActive(unitIds, userId);
+    // Gunakan transaction untuk menjamin data konsisten
+    await db.transaction(() async {
+      // 1. Aktifkan Unit yang dipilih (Parent atau Single Unit)
+      await db.unitDao.markUnitsActive(unitIds, userId);
+
+      // 2. CASCADING UPDATE (THE FIX)
+      // Cari semua unit 'anak' yang parent_unit_id-nya adalah salah satu dari unitIds yang sedang divalidasi.
+      // Update status mereka menjadi 'ACTIVE' juga.
+
+      await (db.update(
+        db.units,
+      )..where((tbl) => tbl.parentUnitId.isIn(unitIds))).write(
+        const UnitsCompanion(
+          status: Value('ACTIVE'),
+          // Opsional: update lastModifiedAt agar ter-sync ke server
+          // lastModifiedAt: Value(DateTime.now()),
+        ),
+      );
+    });
   }
 
   Future<void> cancelGeneratedUnits({required List<String> unitIds}) async {
@@ -129,6 +147,7 @@ class LabelingRepository {
 
   /// Setup company_item (is_set, has_components) + create/update 1 variant + photos.
   Future<void> createVariant({
+    required bool isSetUp,
     required String companyItemId,
     required String? brandId,
     required String variantName,
@@ -147,7 +166,12 @@ class LabelingRepository {
       final companyItem = await _companyItemDao.getById(companyItemId);
       if (companyItem == null) throw Exception('Company item not found');
 
-      await _companyItemDao.updateCompanyItem(companyItemId);
+      if (isSetUp) {
+        await _companyItemDao.updateDefaultRackCompanyItem(
+          id: companyItemId,
+          rackId: rackId,
+        );
+      }
 
       final variantId = _uuid.v4();
       final variantCompanion = VariantsCompanion(
@@ -263,7 +287,7 @@ class LabelingRepository {
         variantId: Value(variantId),
         componentId: const Value(null),
         qrValue: Value(parentQr),
-        status: const Value('ACTIVE'),
+        status: const Value('PENDING'),
         rackId: Value(location),
         createdBy: Value(userId),
         updatedBy: Value(userId),

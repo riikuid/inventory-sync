@@ -91,7 +91,7 @@
 //           return Scaffold(
 //             appBar: AppBar(
 //               title: Text('Label Komponen — ${state.componentName}'),
-//               backgroundColor: AppColors.primary,
+//               backgroundColor: AppColors.secondary,
 //               foregroundColor: Colors.white,
 //             ),
 //             body: Stack(

@@ -231,6 +231,24 @@ class InventoryRepository {
 
     // dev.log('Product Selected: ${product?.name}', name: 'InventoryRepository');
 
+    // --- TAMBAHAN: Ambil Category Name ---
+    String? categoryName;
+    if (product != null && product.categoryId != null) {
+      final category = await (db.select(
+        db.categories,
+      )..where((c) => c.id.equals(product.categoryId!))).getSingleOrNull();
+
+      categoryName = category?.name;
+    }
+
+    String? defaultRackName;
+    if (item.defaultRackId != null) {
+      final rack = await (db.select(
+        db.racks,
+      )..where((r) => r.id.equals(item.defaultRackId!))).getSingleOrNull();
+      defaultRackName = rack?.name;
+    }
+
     // ambil semua variant untuk company_item ini
     final variants = await (db.select(
       db.variants,
@@ -280,6 +298,9 @@ class InventoryRepository {
     return CompanyItemDetail(
       companyItemId: item.id,
       companyCode: item.companyCode,
+      defaultRackId: item.defaultRackId,
+      defaultRackName: defaultRackName,
+      categoryName: categoryName ?? '',
       productId: item.productId,
       productName: product?.name ?? '-',
       variants: variantSummaries,
@@ -522,13 +543,19 @@ class CompanyItemSummary {
 class CompanyItemDetail {
   final String companyItemId;
   final String companyCode;
+  final String categoryName;
   final String productId;
   final String productName;
+  final String? defaultRackId;
+  final String? defaultRackName;
   final List<VariantSummary> variants;
 
   CompanyItemDetail({
+    this.defaultRackId,
+    this.defaultRackName,
     required this.companyItemId,
     required this.companyCode,
+    required this.categoryName,
     required this.productId,
     required this.productName,
     required this.variants,
@@ -538,8 +565,11 @@ class CompanyItemDetail {
     return CompanyItemDetail(
       companyItemId: companyItemId,
       companyCode: companyCode,
+      categoryName: categoryName,
       productId: productId,
       productName: productName,
+      defaultRackId: defaultRackId,
+      defaultRackName: defaultRackName,
       variants: variants ?? this.variants,
     );
   }

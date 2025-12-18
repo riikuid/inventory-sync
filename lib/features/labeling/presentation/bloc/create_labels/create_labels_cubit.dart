@@ -1,4 +1,5 @@
 // lib/features/labeling/presentation/bloc/create_labels/create_labels_cubit.dart
+
 import 'dart:io';
 
 import 'package:bloc/bloc.dart';
@@ -7,11 +8,14 @@ import 'package:inventory_sync_apps/features/labeling/data/labeling_repository.d
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../../../core/db/app_database.dart';
+
 part 'create_labels_state.dart';
 
 class LabelItem {
   final String id;
   final String qrValue;
+  final String itemName;
   final String rackName;
   final String companyCode;
   String status; // 'PENDING' | 'PRINTED' | 'VALIDATED'
@@ -20,6 +24,7 @@ class LabelItem {
   LabelItem({
     required this.id,
     required this.qrValue,
+    required this.itemName,
     required this.rackName,
     required this.companyCode,
     this.status = 'PENDING',
@@ -30,6 +35,7 @@ class LabelItem {
     return LabelItem(
       id: id,
       qrValue: qrValue,
+      itemName: itemName,
       rackName: rackName,
       companyCode: companyCode,
       status: status ?? this.status,
@@ -50,6 +56,7 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
     required String companyCode,
     required String rackId,
     required String rackName,
+    required String itemName,
     required int qty,
     required String userId,
     // Tambahan parameter nullable
@@ -74,6 +81,7 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
             (u) => LabelItem(
               id: u.id,
               qrValue: u.qrValue,
+              itemName: itemName,
               rackName: rackName,
               status: u.status,
               companyCode: companyCode,
@@ -344,33 +352,80 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
   }
 
   /// validate a scanned QR (called from camera scanner)
-  Future<void> validateByQr(String qrValue) async {
-    // find generated item in current batch by qrValue
-    LabelItem match = state.items.firstWhere(
-      (it) => it.qrValue == qrValue,
-      // orElse: () => null,
-    );
+  // Future<void> validateByQr(String qrValue) async {
+  //   // find generated item in current batch by qrValue
+  //   LabelItem match = state.items.firstWhere(
+  //     (it) => it.qrValue == qrValue,
+  //     // orElse: () => null,
+  //   );
 
-    if (match == null) {
-      // maybe try to lookup in db for friendly message (but we treat as wrong)
+  //   if (match == null) {
+  //     // maybe try to lookup in db for friendly message (but we treat as wrong)
+  //     emit(
+  //       state.copyWith(
+  //         lastScanResult: ScanResult.invalid('QR tidak terdaftar di batch ini'),
+  //       ),
+  //     );
+  //     return;
+  //   }
+
+  //   if (match.status == 'VALIDATED') {
+  //     emit(
+  //       state.copyWith(
+  //         lastScanResult: ScanResult.duplicate('QR sudah tervalidasi'),
+  //       ),
+  //     );
+  //     return;
+  //   }
+
+  //   // mark validated locally (UI)
+  //   final updated = state.items.map((it) {
+  //     if (it.id == match.id) return it.copyWith(status: 'VALIDATED');
+  //     return it;
+  //   }).toList();
+
+  //   emit(
+  //     state.copyWith(
+  //       items: updated,
+  //       lastScanResult: ScanResult.valid(match.qrValue),
+  //     ),
+  //   );
+
+  //   // optional: if you want to immediately persist validated -> call repo.finalizeValidatedUnits for single id
+  //   // but we will finalize all at the end when user press Selesai
+  // }
+  Future<void> validateByQr(String qrValue) async {
+    // 1. CARA AMAN: Filter dulu baru ambil first
+    // Menggunakan .where() tidak akan error walau hasil kosong
+    final matches = state.items.where((it) => it.qrValue == qrValue);
+
+    // 2. Cek apakah ada hasil?
+    if (matches.isEmpty) {
       emit(
         state.copyWith(
-          lastScanResult: ScanResult.invalid('QR tidak terdaftar di batch ini'),
+          // Reset last result biar UI tau ada update baru
+          lastScanResult: ScanResult.invalid('QR tidak dikenali / Salah'),
         ),
       );
       return;
     }
 
+    // Ambil item pertama karena pasti ada
+    LabelItem match = matches.first;
+
+    // 3. Cek Status Duplicate
     if (match.status == 'VALIDATED') {
       emit(
         state.copyWith(
-          lastScanResult: ScanResult.duplicate('QR sudah tervalidasi'),
+          lastScanResult: ScanResult.duplicate(
+            'Label ini sudah divalidasi sebelumnya',
+          ),
         ),
       );
       return;
     }
 
-    // mark validated locally (UI)
+    // 4. Update Status Succcess
     final updated = state.items.map((it) {
       if (it.id == match.id) return it.copyWith(status: 'VALIDATED');
       return it;
@@ -382,9 +437,6 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
         lastScanResult: ScanResult.valid(match.qrValue),
       ),
     );
-
-    // optional: if you want to immediately persist validated -> call repo.finalizeValidatedUnits for single id
-    // but we will finalize all at the end when user press Selesai
   }
 
   /// finalize (save) all validated items -> set ACTIVE in DB
@@ -429,6 +481,28 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
         state.copyWith(status: CreateLabelsStatus.failure, error: e.toString()),
       );
     }
+  }
+
+  void loadExistingUnit({
+    required Unit unit,
+    required String itemName,
+    required String companyCode,
+  }) {
+    final item = LabelItem(
+      id: unit.id,
+      qrValue: unit.qrValue,
+      itemName: itemName, // Atau ambil nama variant dari DB
+      rackName: unit.rackId ?? '-',
+      companyCode: companyCode, // Perlu di query/pass
+      status: unit.status,
+    );
+
+    emit(
+      state.copyWith(
+        status: CreateLabelsStatus.generated,
+        items: [item], // List isi 1 item saja (si Parent)
+      ),
+    );
   }
 
   // /// set selected printer info in state

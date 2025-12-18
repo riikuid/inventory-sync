@@ -41,7 +41,7 @@
 //       child: Scaffold(
 //         appBar: AppBar(
 //           title: const Text('Setup Company Item'),
-//           backgroundColor: AppColors.primary,
+//           backgroundColor: AppColors.secondary,
 //           foregroundColor: Colors.white,
 //         ),
 //         body: const _SetupBody(),

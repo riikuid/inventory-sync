@@ -11,6 +11,7 @@ import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.d
 import 'package:inventory_sync_apps/shared/presentation/widgets/text_field_widget.dart';
 
 import '../../../../core/styles/color_scheme.dart';
+import '../../../../core/styles/text_theme.dart';
 import '../../../../core/utils/loading_overlay.dart';
 import '../../../../shared/models/selected_brand_result.dart';
 import '../../../../shared/models/selected_rack_result.dart';
@@ -26,11 +27,13 @@ class CreateVariantScreen extends StatefulWidget {
   final String? productName; // auto base (ex: "Bearing")
   final String? defaultRackId;
   final String? defaultRackName;
+  final bool? isSetUp;
 
   const CreateVariantScreen({
     super.key,
     required this.companyItemId,
     required this.userId,
+    this.isSetUp,
     this.companyCode,
     this.productName,
     this.defaultRackId,
@@ -96,6 +99,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
         companyItemId: widget.companyItemId,
         userId: widget.userId,
         defaultRackId: widget.defaultRackId,
+        isSetUp: widget.isSetUp ?? false,
       ),
       child: BlocConsumer<CreateVariantCubit, CreateVariantState>(
         listener: (context, state) {
@@ -178,18 +182,18 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                   Text(
                     'Tambah Variant ${widget.productName}',
                     overflow: TextOverflow.ellipsis,
-                    style: AppStyle.poppinsTextSStyle.copyWith(
+                    style: TextStyle(
                       color: AppColors.onSurface,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   SizedBox(height: 3),
                   Text(
                     '${widget.companyCode}',
                     overflow: TextOverflow.ellipsis,
-                    style: AppStyle.monoTextStyle.copyWith(
-                      color: AppColors.primaryDark,
+                    style: AppTextStyles.mono.copyWith(
+                      color: AppColors.primary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -203,27 +207,31 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
               decoration: BoxDecoration(
                 color: AppColors.background,
                 border: Border(
-                  top: BorderSide(width: 0.3, color: AppColors.secondaryLight),
+                  top: BorderSide(width: 0.3, color: AppColors.onAccent),
                 ),
               ),
               child: CustomButton(
                 elevation: 0,
                 radius: 40,
                 height: 50,
-                color: AppColors.primaryDark,
+                color: AppColors.primary,
                 onPressed: state.status == CreateVariantStatus.loading
                     ? null
                     : (cubit.canSubmit ? cubit.submit : null),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.save_outlined, color: AppColors.surface),
+                    Icon(
+                      Icons.save_outlined,
+                      color: AppColors.surface,
+                      size: 16,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Simpan Variant',
-                      style: AppStyle.poppinsTextSStyle.copyWith(
+                      style: TextStyle(
                         color: AppColors.surface,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
                     ),
@@ -283,26 +291,21 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                         );
                       }),
                       if (state.photos.length < 5)
-                        GestureDetector(
-                          onTap: () => _showAddPhotoMenu(context, cubit),
-                          child: DottedBorder(
-                            options: RoundedRectDottedBorderOptions(
-                              radius: Radius.circular(15),
-                              dashPattern: [10, 5],
-                              strokeWidth: 2,
-                              color: AppColors.border,
-
-                              // padding: EdgeInsets.all(16),
-                            ),
-                            child: SizedBox(
+                        DottedBorder(
+                          options: RoundedRectDottedBorderOptions(
+                            radius: Radius.circular(15),
+                            dashPattern: [10, 5],
+                            strokeWidth: 2,
+                            color: AppColors.border,
+                          ),
+                          child: GestureDetector(
+                            onTap: () => _showAddPhotoMenu(context, cubit),
+                            child: Container(
                               width: 90,
                               height: 90,
-                              // decoration: BoxDecoration(
-                              //   border: Border.all(color: AppColors.border),
-                              //   borderRadius: BorderRadius.circular(15),
-                              // ),
+                              color: Colors.transparent,
                               child: const Icon(
-                                Icons.add_a_photo_rounded,
+                                Icons.add_a_photo_outlined,
                                 size: 32,
                                 color: AppColors.border,
                               ),
@@ -325,12 +328,12 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                     ),
                     hintText: 'Pilih Brand',
                     hintStyle: TextStyle(
-                      color: AppColors.primaryDark,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w400,
                     ),
                     suffixIcon: Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.primaryDark,
+                      color: AppColors.primary,
                     ),
                     onFieldTap: () async {
                       final result = await Navigator.push(
@@ -366,12 +369,12 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                     ),
                     hintText: 'Pilih Lokasi Rak',
                     hintStyle: TextStyle(
-                      color: AppColors.primaryDark,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w400,
                     ),
                     suffixIcon: Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.primaryDark,
+                      color: AppColors.primary,
                     ),
                     onFieldTap: () async {
                       final result = await Navigator.push(
@@ -403,7 +406,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                     ),
                     hintText: 'Contoh: Bearing Timken A',
                     hintStyle: TextStyle(
-                      color: AppColors.primaryDark,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w400,
                     ),
                     onChanged: (value) => cubit.setName(value),
@@ -423,12 +426,12 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                     ),
                     hintText: 'Pilih Satuan',
                     hintStyle: TextStyle(
-                      color: AppColors.primaryDark,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w400,
                     ),
                     suffixIcon: Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.primaryDark,
+                      color: AppColors.primary,
                     ),
                     onFieldTap: () async {
                       final selected = await showModalBottomSheet<String>(
@@ -476,7 +479,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                     // maxLines: 4,
                     hintText: 'Contoh: 31274/2322',
                     hintStyle: TextStyle(
-                      color: AppColors.primaryDark,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w400,
                     ),
                     onChanged: (v) => cubit.setManufCode(v),
@@ -494,7 +497,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                     ),
                     maxLines: 4,
                     hintStyle: TextStyle(
-                      color: AppColors.primaryDark,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w400,
                     ),
                     onChanged: (v) => cubit.setSpecification(v),
@@ -519,7 +522,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
           CupertinoActionSheetAction(
             child: const Text(
               "Kamera",
-              style: TextStyle(color: AppColors.secondary),
+              style: TextStyle(color: AppColors.primary),
             ),
             onPressed: () {
               Navigator.pop(ctx);
@@ -529,7 +532,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
           CupertinoActionSheetAction(
             child: const Text(
               "Galeri",
-              style: TextStyle(color: AppColors.secondary),
+              style: TextStyle(color: AppColors.primary),
             ),
             onPressed: () {
               Navigator.pop(ctx);
@@ -541,7 +544,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
           isDefaultAction: true,
           child: const Text(
             "Batal",
-            style: TextStyle(color: AppColors.secondary),
+            style: TextStyle(color: AppColors.focusRing),
           ),
           onPressed: () => Navigator.pop(ctx),
         ),

@@ -12,17 +12,20 @@ class CreateVariantCubit extends Cubit<CreateVariantState> {
   final LabelingRepository labelingRepository;
   final String companyItemId;
   final String userId;
-  final String? defaultRackId; // dari company item detail
+  final bool isSetUp;
+  final String? defaultRackId;
+  final String? defaultRackName;
 
   CreateVariantCubit({
     required this.labelingRepository,
     required this.companyItemId,
     required this.userId,
+    this.isSetUp = false,
     this.defaultRackId,
+    this.defaultRackName,
   }) : super(CreateVariantState.initial()) {
-    // prefill rack kalau tersedia
-    if (defaultRackId != null) {
-      emit(state.copyWith(rackId: defaultRackId));
+    if (isSetUp == false && defaultRackId != null) {
+      emit(state.copyWith(rackId: defaultRackId, rackName: defaultRackName));
     }
   }
 
@@ -32,8 +35,9 @@ class CreateVariantCubit extends Cubit<CreateVariantState> {
     if (base.isEmpty) return brandName?.trim() ?? '';
     if (brandName == null ||
         brandName.trim().isEmpty ||
-        brandName == 'Tanpa Brand')
+        brandName == 'Tanpa Brand') {
       return base;
+    }
     return '$base ${brandName.trim()}';
   }
 
@@ -139,6 +143,7 @@ class CreateVariantCubit extends Cubit<CreateVariantState> {
         manufCode: state.manufCode,
         photoLocalPaths: state.photos,
         userId: userId,
+        isSetUp: isSetUp,
       );
 
       emit(state.copyWith(status: CreateVariantStatus.success));

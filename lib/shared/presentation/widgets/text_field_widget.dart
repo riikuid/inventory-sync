@@ -101,7 +101,10 @@ class TextFieldWidget extends StatelessWidget {
               children: [
                 Text(
                   label ?? '',
-                  style: TextStyle(color: labelColor ?? defaultColor),
+                  style: TextStyle(
+                    color: labelColor ?? defaultColor,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 Text(
                   requiredMark ?? (required ? ' *' : ''),
@@ -148,7 +151,7 @@ class TextFieldWidget extends StatelessWidget {
           textAlign: textAlign ?? TextAlign.start,
           style: TextStyle(
             color: color ?? defaultColor,
-            fontWeight: fontWeight ?? FontWeight.bold,
+            fontWeight: fontWeight ?? FontWeight.w600,
           ),
           decoration: InputDecoration(
             contentPadding: contentPadding,

@@ -1,57 +1,75 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  /// CORE BRAND COLORS
-  static const Color primary = Color(0xffF5D045); // Gold Matte
-  static const Color primaryDark = Color(0xffA49364); // Dark Gold Brown
-  static const Color primaryLight = Color(0xffF2EFE8); // Light Gold
+  /// PRIMARY
+  static const Color primary = Color(0xff78443B);
+  static const Color onPrimary = Color(0xffF8F6F2);
 
-  static const Color secondary = Color(0xff45423A); // Almost Black / Coffee
-  static const Color secondaryLight = Color(0xff2C2C2C);
-  static const Color secondaryDark = Color(0xff000000);
+  /// SECONDARY
+  static const Color secondary = Color(0xffF0C400);
+  static const Color onSecondary = Color(0xff161412);
 
-  /// BACKGROUND
-  static const Color background = Color(0xffF4F3F1); // Cream Warm
-  static const Color surface = Color(0xffffffff);
+  /// ACCENT / TERTIARY
+  static const Color accent = Color(0xffEBE4E0);
+  static const Color onAccent = Color(0xff161412);
 
-  /// SUPPORTING
-  static const Color border = Color(0xffD7D3CC); // Soft grey beige
-  static const Color divider = Color(0xffE5E1DA);
+  /// BASE
+  static const Color background = Color(0xffF4F1EC);
+  static const Color onBackground = Color(0xff161412);
 
-  /// STATUS COLORS
-  static const Color error = Color(0xffE53935);
-  static const Color success = Color(0xff4CAF50);
+  /// SURFACE (Card/Popover)
+  static const Color surface = Color(0xffFBFAF8);
+  static const Color onSurface = Color(0xff161412);
 
-  /// TEXT COLORS
-  static const Color onPrimary = Color(0xff1E1E1E);
-  static const Color onSecondary = Color(0xffffffff);
-  static const Color onBackground = Color(0xff1E1E1E);
-  static const Color onSurface = Color(0xff1E1E1E);
+  /// MUTED
+  static const Color muted = Color(0xffE5E0DC);
+  static const Color onMuted = Color(0xff70635C);
+
+  /// BORDER / INPUT / FOCUS
+  static const Color border = Color(0xffC9BCB6);
+  static const Color input = Color(0xffC9BCB6);
+  static const Color focusRing = Color(0xff78443B);
+
+  /// DESTRUCTIVE / ERROR
+  static const Color error = Color(0xffD92626);
   static const Color onError = Color(0xffffffff);
 }
 
 const ColorScheme lightColorScheme = ColorScheme(
   brightness: Brightness.light,
+
+  /// Brand
   primary: AppColors.primary,
   onPrimary: AppColors.onPrimary,
-  primaryContainer: AppColors.primaryLight,
-  onPrimaryContainer: AppColors.primaryDark,
+  primaryContainer: AppColors.accent,
+  onPrimaryContainer: AppColors.onAccent,
 
   secondary: AppColors.secondary,
   onSecondary: AppColors.onSecondary,
-  secondaryContainer: AppColors.secondaryLight,
-  onSecondaryContainer: AppColors.onSecondary,
+  secondaryContainer: AppColors.muted,
+  onSecondaryContainer: AppColors.onMuted,
 
-  surface: AppColors.surface,
-  onSurface: AppColors.onSurface,
+  /// Optional (kalau kamu pakai tertiary di component tertentu)
+  tertiary: AppColors.accent,
+  onTertiary: AppColors.onAccent,
+  tertiaryContainer: AppColors.muted,
+  onTertiaryContainer: AppColors.onMuted,
+
+  /// Surfaces
   background: AppColors.background,
   onBackground: AppColors.onBackground,
+  surface: AppColors.surface,
+  onSurface: AppColors.onSurface,
 
+  /// Status
   error: AppColors.error,
   onError: AppColors.onError,
 
+  /// Borders / outlines
   outline: AppColors.border,
-  outlineVariant: AppColors.divider,
+  outlineVariant: AppColors.muted,
+
+  /// Effects
   shadow: Color(0xff000000),
   scrim: Color(0xff000000),
   surfaceTint: AppColors.primary,

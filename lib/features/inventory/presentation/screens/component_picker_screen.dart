@@ -9,8 +9,8 @@ import 'package:inventory_sync_apps/features/inventory/presentation/screens/crea
 import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.dart';
 import 'package:inventory_sync_apps/shared/presentation/widgets/search_field_widget.dart';
 import '../../../../core/styles/app_style.dart';
-import '../../../../shared/models/selected_brand_result.dart';
 import '../../../../core/db/app_database.dart';
+import '../../../../core/styles/text_theme.dart';
 import '../../data/inventory_repository.dart';
 import '../../data/model/component_request.dart';
 import '../widget/separate_component_card.dart';
@@ -85,7 +85,7 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
         title: Text(
           'Pilih ${widget.type == 'IN_BOX' ? 'Isi' : 'Komponen'}',
           overflow: TextOverflow.ellipsis,
-          style: AppStyle.monoTextStyle.copyWith(
+          style: AppTextStyles.mono.copyWith(
             color: AppColors.onSurface,
             fontSize: 16,
             fontWeight: FontWeight.w900,
@@ -95,11 +95,11 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
       ),
       floatingActionButton: CustomButton(
         radius: 1000,
-        color: AppColors.primaryDark,
+        color: AppColors.primary,
         width: 150,
         child: Text(
           '+  Tambah ${widget.type == 'IN_BOX' ? 'Isi' : 'Komponen'}',
-          style: AppStyle.poppinsTextSStyle.copyWith(
+          style: TextStyle(
             color: AppColors.surface,
             fontWeight: FontWeight.w600,
           ),
@@ -147,6 +147,7 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
           Padding(
             padding: const EdgeInsets.all(12),
             child: SearchFieldWidget(
+              hintText: 'Cari kata kunci...',
               controller: _searchController,
               focusNode: _searchFocusNode, // pass focus node
               onClear: () {
@@ -197,14 +198,14 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
   Widget _buildSeparateHeader() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.primaryDark.withAlpha(30),
+        color: AppColors.primary.withAlpha(30),
         borderRadius: BorderRadius.circular(16),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       padding: const EdgeInsets.all(18),
       child: Row(
         children: [
-          Icon(Icons.layers_outlined, size: 28, color: AppColors.primaryDark),
+          Icon(Icons.layers_outlined, size: 28, color: AppColors.primary),
           const SizedBox(width: 18),
           Expanded(
             child: Column(
@@ -213,18 +214,18 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
               children: [
                 Text(
                   'Komponen Box Terpisah',
-                  style: AppStyle.poppinsTextSStyle.copyWith(
+                  style: TextStyle(
                     color: AppColors.onSurface,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
                   ),
                 ),
                 Text(
                   'Komponen dengan box/kemasan terpisah',
-                  style: AppStyle.poppinsTextSStyle.copyWith(
-                    color: AppColors.secondary,
-                    fontWeight: FontWeight.w400,
-                    fontSize: 12,
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
                   ),
                 ),
               ],
@@ -238,7 +239,7 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
   Widget _buildInBoxHeader() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.secondary,
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(16),
       ),
       margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
@@ -253,18 +254,18 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
               children: [
                 Text(
                   'Part in Box / Isi',
-                  style: AppStyle.poppinsTextSStyle.copyWith(
+                  style: TextStyle(
                     color: AppColors.surface,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
                   ),
                 ),
                 Text(
                   'Komponen yang berada dalam 1 box',
-                  style: AppStyle.poppinsTextSStyle.copyWith(
-                    color: AppColors.divider,
-                    fontWeight: FontWeight.w400,
-                    fontSize: 12,
+                  style: TextStyle(
+                    color: AppColors.border,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
                   ),
                 ),
               ],

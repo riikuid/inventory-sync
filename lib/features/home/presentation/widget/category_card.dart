@@ -84,7 +84,7 @@ _CategoryUiConfig _categoryUiConfig(CategorySummary category) {
     return _CategoryUiConfig(
       displayName: 'Spare Part',
       iconData: Icons.inventory_2_rounded,
-      iconBgColor: AppColors.primary,
+      iconBgColor: AppColors.secondary,
     );
   }
   if (name.contains('running')) {

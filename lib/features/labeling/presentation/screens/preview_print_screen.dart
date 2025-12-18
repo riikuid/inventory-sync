@@ -1,16 +1,22 @@
+// lib/features/labeling/presentation/screens/preview_print_screen.dart
+
+import 'package:ellipsized_text/ellipsized_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_sync_apps/core/styles/app_style.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 
 // Import Cubits & Styles
 import '../../../../core/styles/color_scheme.dart';
+import '../../../../core/styles/text_theme.dart';
+import '../../../../shared/presentation/widgets/primary_button.dart';
 import '../../../printer/presentation/bloc/printer_cubit.dart';
 import '../bloc/create_labels/create_labels_cubit.dart';
 
 class PreviewPrintScreen extends StatefulWidget {
   final String userId;
-  final String name; // Nama Variant / Item
+
   final String companyCode;
   final String manufcode;
   final String rackName;
@@ -18,7 +24,7 @@ class PreviewPrintScreen extends StatefulWidget {
   const PreviewPrintScreen({
     super.key,
     required this.userId,
-    required this.name,
+
     required this.companyCode,
     required this.manufcode,
     required this.rackName,
@@ -59,7 +65,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
       bool success = await printerCubit.printLabel(
         company: "PT MANUNGGAL PERKASA",
         location: item.rackName,
-        name: widget.name,
+        name: item.itemName,
         manufCode: widget.manufcode,
         qrValue: item.qrValue,
         companyCode: widget.companyCode,
@@ -101,9 +107,9 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
   Widget build(BuildContext context) {
     // Kita akses PrinterCubit (Global) dan CreateLabelsCubit (Lokal)
     return BlocBuilder<PrinterCubit, PrinterState>(
-      builder: (context, printerState) {
+      builder: (contextPrinter, printerState) {
         return BlocConsumer<CreateLabelsCubit, CreateLabelsState>(
-          listener: (context, state) {
+          listener: (contextCreateLabel, state) {
             if (state.error != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -119,96 +125,160 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
                   backgroundColor: Colors.green,
                 ),
               );
-              Navigator.pop(context); // Kembali ke halaman sebelumnya
+              Navigator.pop(context, true); // Kembali ke halaman sebelumnya
             }
           },
-          builder: (context, labelsState) {
+          builder: (contextCreateLabel, labelsState) {
             final total = labelsState.items.length;
             final validatedCount = labelsState.items
                 .where((i) => i.status == 'VALIDATED')
                 .length;
             final isAllValidated = total > 0 && validatedCount == total;
-
+            final isAllPending = labelsState.items.every(
+              (i) => i.status == 'PENDING',
+            );
             // Cek apakah minimal ada 1 yg PRINTED atau VALIDATED untuk mengaktifkan tombol Validasi
             final isAnyPrinted = labelsState.items.any(
               (i) => i.status == 'PRINTED' || i.status == 'VALIDATED',
             );
 
-            return Scaffold(
-              backgroundColor: AppColors.background,
-              appBar: AppBar(
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            return WillPopScope(
+              onWillPop: () async {
+                final leave = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Tinggalkan proses pencetakan?'),
+                    content: const Text(
+                      'Label yang belum disimpan akan dihapus. Lanjutkan?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.of(ctx).pop(false), // Tetap di halaman
+                        child: const Text('Batal'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(true), // Keluar
+                        child: const Text('Tinggalkan'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (leave == true) {
+                  // 1. Jalankan fungsi cleanup cubit
+                  await context.read<CreateLabelsCubit>().cancelAll();
+
+                  // 2. Lakukan POP MANUAL dengan membawa nilai 'false'
+                  if (context.mounted) {
+                    Navigator.of(context).pop(false);
+                  }
+
+                  // 3. Return 'false' agar sistem tidak melakukan pop ganda
+                  return false;
+                }
+
+                // Jika user batal (pilih No), return false agar tetap di halaman
+                return false;
+              },
+              child: Scaffold(
+                backgroundColor: AppColors.background,
+                appBar: AppBar(
+                  iconTheme: IconThemeData(color: AppColors.onSurface),
+                  leading: IconButton(
+                    onPressed: () async {
+                      await Navigator.of(context).maybePop();
+                    },
+                    icon: Icon(
+                      Icons.arrow_back_ios_rounded,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                  backgroundColor: AppColors.background,
+                  elevation: 0.5,
+                  toolbarHeight: 60,
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Cetal Label',
+                        style: TextStyle(
+                          color: AppColors.onSurface,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        widget.companyCode,
+                        style: AppTextStyles.mono.copyWith(
+                          color: AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                body: Column(
                   children: [
-                    const Text(
-                      'Cetak Label',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                    // 1. CONNECTION STATUS BAR (Global State)
+                    _buildConnectionBar(context, printerState),
+
+                    // 2. PROGRESS INFO
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Total: $total Unit",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.onBackground,
+                            ),
+                          ),
+                          Text(
+                            "$validatedCount / $total Tervalidasi",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: isAllValidated
+                                  ? Colors.green
+                                  : Colors.orange,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Text(
-                      widget.companyCode,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    const Divider(height: 1),
+
+                    // 3. LIST DATA LABEL
+                    Expanded(
+                      child: ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: labelsState.items.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final item = labelsState.items[index];
+                          return _buildLabelCard(item);
+                        },
+                      ),
                     ),
                   ],
                 ),
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new),
-                  onPressed: () => Navigator.pop(context),
+
+                // 4. BOTTOM ACTION BAR (Smart Logic)
+                bottomNavigationBar: _buildBottomBar(
+                  context,
+                  printerState,
+                  labelsState,
+                  isAllPending,
+                  isAnyPrinted,
+                  isAllValidated,
                 ),
-              ),
-              body: Column(
-                children: [
-                  // 1. CONNECTION STATUS BAR (Global State)
-                  _buildConnectionBar(context, printerState),
-
-                  // 2. PROGRESS INFO
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text("Total: $total Unit"),
-                        Text(
-                          "$validatedCount / $total Tervalidasi",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isAllValidated
-                                ? Colors.green
-                                : Colors.orange,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-
-                  // 3. LIST DATA LABEL
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: labelsState.items.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final item = labelsState.items[index];
-                        return _buildLabelCard(item);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-
-              // 4. BOTTOM ACTION BAR (Smart Logic)
-              bottomNavigationBar: _buildBottomBar(
-                context,
-                printerState,
-                labelsState,
-                isAnyPrinted,
-                isAllValidated,
               ),
             );
           },
@@ -241,21 +311,23 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
+        color: AppColors.surface,
+        boxShadow: [AppStyle.defaultBoxShadow],
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border, width: 1.2),
       ),
       child: Row(
         children: [
           // QR Preview
           Container(
-            width: 50,
-            height: 50,
+            width: 80,
+            height: 80,
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.all(Radius.circular(20.0)),
+              // border: Border.all(color: Colors.grey.shade300),
             ),
             child: PrettyQrView.data(data: item.qrValue),
           ),
@@ -265,11 +337,20 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                EllipsizedText(
                   item.qrValue,
+                  type: EllipsisType.middle,
                   style: const TextStyle(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w500,
                     fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.itemName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -277,13 +358,18 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
                 const SizedBox(height: 4),
                 Text(
                   "LOK: ${widget.rackName}",
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.onSurface.withAlpha(150),
+                  ),
                 ),
               ],
             ),
           ),
           // Status Badge
           Container(
+            margin: const EdgeInsets.only(left: 12),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: statusColor.withOpacity(0.1),
@@ -355,6 +441,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
     BuildContext context,
     PrinterState printerState,
     CreateLabelsState labelsState,
+    bool isAllPending,
     bool isAnyPrinted,
     bool isAllValidated,
   ) {
@@ -371,7 +458,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
             Expanded(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryDark,
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
@@ -381,19 +468,19 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
                 child: const Text("SIMPAN & SELESAI"),
               ),
             )
-          // STATE: ACTION (Cetak & Validasi)
-          else
+          else if (isAllPending)
             Expanded(
               child: Row(
                 children: [
                   // TOMBOL CETAK
                   Expanded(
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.secondary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
+                    child: CustomButton(
+                      elevation: 0,
+                      radius: 40,
+                      height: 50,
+                      color: !printerState.isConnected
+                          ? Colors.grey
+                          : AppColors.secondary,
                       onPressed: !printerState.isConnected
                           ? null
                           : () {
@@ -402,22 +489,108 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
                                 context.read<CreateLabelsCubit>(),
                               );
                             },
-                      icon: const Icon(Icons.print),
-                      label: const Text("Cetak"),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        spacing: 10,
+                        children: [
+                          Icon(
+                            Icons.print_outlined,
+                            size: 18,
+                            color: !printerState.isConnected
+                                ? AppColors.onSurface.withAlpha(100)
+                                : AppColors.onSurface,
+                          ),
+                          Text(
+                            'Cetak Label',
+                            style: TextStyle(
+                              color: !printerState.isConnected
+                                  ? AppColors.onSurface.withAlpha(100)
+                                  : AppColors.onSurface,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          // STATE: ACTION (Cetak & Validasi)
+          else
+            Expanded(
+              child: Row(
+                children: [
+                  // TOMBOL CETAK
+                  Expanded(
+                    child: CustomButton(
+                      elevation: 0,
+                      radius: 40,
+                      height: 50,
+                      color: !printerState.isConnected
+                          ? Colors.grey
+                          : AppColors.secondary,
+                      onPressed: !printerState.isConnected
+                          ? null
+                          : () {
+                              _handlePrint(
+                                context.read<PrinterCubit>(),
+                                context.read<CreateLabelsCubit>(),
+                              );
+                            },
+
+                      child: Row(
+                        spacing: 5,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.local_print_shop_outlined,
+                            color: !printerState.isConnected
+                                ? AppColors.onSurface.withAlpha(100)
+                                : AppColors.onSurface,
+                          ),
+                          Text(
+                            "Cetak",
+                            style: TextStyle(
+                              color: !printerState.isConnected
+                                  ? AppColors.onSurface.withAlpha(100)
+                                  : AppColors.onSurface,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   // TOMBOL VALIDASI
                   Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
+                    child: CustomButton(
+                      color: AppColors.surface,
+                      borderColor: AppColors.border,
+                      elevation: 0,
+                      radius: 40,
+                      height: 50,
                       // Aktifkan validasi jika minimal 1 printed, ATAU user mau validasi manual boleh juga
                       onPressed: () =>
                           _openScanner(context.read<CreateLabelsCubit>()),
-                      icon: const Icon(Icons.qr_code_scanner),
-                      label: const Text("Validasi"),
+                      child: Row(
+                        spacing: 5,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.qr_code_scanner, color: AppColors.primary),
+                          Text(
+                            "Validasi",
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -542,6 +715,8 @@ class _ScannerModalState extends State<ScannerModal> {
 
       // 2. Feedback
       if (result != null && result.ok) {
+        await Future.delayed(const Duration(milliseconds: 800));
+        if (mounted) Navigator.pop(context);
         _showToast(result.message ?? "Valid!", Colors.green);
 
         // Cek Kelengkapan
@@ -551,11 +726,13 @@ class _ScannerModalState extends State<ScannerModal> {
             .length;
 
         if (validated == total) {
-          _showToast("Semua Selesai! Menutup...", Colors.blue);
+          // _showToast("Semua Selesai! Menutup...", Colors.blue);
           await Future.delayed(const Duration(milliseconds: 800));
           if (mounted) Navigator.pop(context);
         }
       } else {
+        await Future.delayed(const Duration(milliseconds: 800));
+        if (mounted) Navigator.pop(context);
         _showToast(result?.message ?? "QR Salah / Duplikat", Colors.red);
       }
     } catch (e) {
