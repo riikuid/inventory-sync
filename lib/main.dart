@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_sync_apps/core/app_firebase.dart';
-import 'package:inventory_sync_apps/features/sync/data/sync_api.dart';
+import 'package:inventory_sync_apps/features/sync/data/sync_service.dart';
 import 'package:inventory_sync_apps/features/sync/data/sync_repository.dart';
 
 import 'app.dart';

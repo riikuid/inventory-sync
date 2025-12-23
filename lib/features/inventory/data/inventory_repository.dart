@@ -224,16 +224,16 @@ class InventoryRepository {
 
   /// Detail per company_item: list variant + stok masing-masing
   Future<CompanyItemDetail?> getCompanyItemDetail(String companyItemId) async {
+    // 1. Ambil Item Utama
     final item = await _companyItemDao.getById(companyItemId);
     if (item == null) return null;
 
+    // 2. Ambil Product
     final product = await (db.select(
       db.products,
     )..where((p) => p.id.equals(item.productId))).getSingleOrNull();
 
-    // dev.log('Product Selected: ${product?.name}', name: 'InventoryRepository');
-
-    // --- TAMBAHAN: Ambil Category Name ---
+    // 3. Ambil Category Name
     String? categoryName;
     if (product != null && product.categoryId != null) {
       final category = await (db.select(
@@ -243,6 +243,7 @@ class InventoryRepository {
       categoryName = category?.name;
     }
 
+    // 4. Ambil Default Rack Name
     String? defaultRackName;
     if (item.defaultRackId != null) {
       final rack = await (db.select(
@@ -251,24 +252,52 @@ class InventoryRepository {
       defaultRackName = rack?.name;
     }
 
-    // ambil semua variant untuk company_item ini
+    // 5. Ambil Semua Variant
     final variants = await (db.select(
       db.variants,
     )..where((v) => v.companyItemId.equals(companyItemId))).get();
 
     final variantSummaries = <VariantSummary>[];
 
+    // --- LOOPING VARIANT (LOGIC STOCK BARU DI SINI) ---
     for (final v in variants) {
-      // hitung stok unit ACTIVE untuk variant ini
-      final units =
+      // A. Ambil Definisi Komponen untuk Variant ini (Untuk cek Type IN_BOX/SEPARATE)
+      final componentRows = await (db.select(db.variantComponents).join([
+        innerJoin(
+          db.components,
+          db.components.id.equalsExp(db.variantComponents.componentId),
+        ),
+      ])..where(db.variantComponents.variantId.equals(v.id))).get();
+
+      // Mapping ke DTO VariantComponentRow (agar bisa dibaca helper)
+      final myComponents = componentRows.map((row) {
+        final c = row.readTable(db.components);
+        return VariantComponentRow(
+          componentId: c.id,
+          name: c.name,
+          manufCode: c.manufCode,
+          totalUnits: 0, // Dummy, tidak dipakai di helper ini
+          type: c.type, // Penting: IN_BOX atau SEPARATE
+        );
+      }).toList();
+
+      // B. Ambil Raw Active Units (Tanpa Join, agar data akurat)
+      final activeUnits =
           await (db.select(db.units)..where(
                 (u) => u.status.equals('ACTIVE') & u.variantId.equals(v.id),
               ))
               .get();
 
-      final stock = units.length;
+      // C. HITUNG STOK MENGGUNAKAN HELPER 'SAKTI'
+      final calculatedStock = calculateVariantStock(
+        variantId: v.id,
+        components: myComponents,
+        activeUnits: activeUnits,
+      );
 
-      // ambil brand kalau ada
+      // --- Sisa Logic (Ambil Brand & Rack) Tetap Sama ---
+
+      // Ambil Brand
       String? brandName;
       if (v.brandId != null) {
         final brand = await (db.select(
@@ -277,6 +306,7 @@ class InventoryRepository {
         brandName = brand?.name;
       }
 
+      // Ambil Rack Variant
       String? rackName;
       if (v.rackId != null) {
         final rack = await (db.select(
@@ -292,7 +322,7 @@ class InventoryRepository {
           manufCode: v.manufCode,
           brandName: brandName,
           rackName: rackName,
-          stock: stock,
+          stock: calculatedStock, // <--- GUNAKAN HASIL PERHITUNGAN BARU
         ),
       );
     }

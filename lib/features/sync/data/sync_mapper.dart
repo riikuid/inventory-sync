@@ -1,5 +1,5 @@
 // lib/features/sync/data/sync_mapper.dart
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide Component;
 import 'package:inventory_sync_apps/core/db/app_database.dart';
 
 String? toStr(dynamic v) => v?.toString();
@@ -168,6 +168,7 @@ ComponentsCompanion componentFromJson(Map<String, dynamic> json) {
     productId: Value(json['product_id'] as String),
     name: Value(json['name'] as String),
     brandId: Value(toStr(json['brand_id'])),
+    type: Value(json['type'] as String),
     manufCode: Value(toStr(json['manuf_code'])),
     specification: Value(toStr(json['spec_json'])),
     createdAt: Value(_parseDate(json['created_at']) ?? DateTime.now()),
@@ -238,3 +239,122 @@ UnitsCompanion unitFromJson(Map<String, dynamic> json) {
     needSync: const Value(false), // data dari server dianggap sudah sync
   );
 }
+
+// --- EXTENSIONS UNTUK PUSH (Drift Row -> JSON) ---
+
+extension ProductSyncX on Product {
+  Map<String, dynamic> toSyncJson() => {
+    'id': id,
+    'name': name,
+    'category_id': categoryId,
+    'machine_purchase': machinePurchase,
+    'description': description,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+    // Backend handle last_modified_at server side, jadi opsional
+  };
+}
+
+extension CompanyItemSyncX on CompanyItem {
+  Map<String, dynamic> toSyncJson() => {
+    'id': id,
+    'default_rack_id': defaultRackId,
+    'product_id': productId,
+    'company_code': companyCode,
+    'specification': specification,
+    'notes': notes,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+    'deleted_at': deletedAt?.toIso8601String(),
+  };
+}
+
+extension VariantSyncX on Variant {
+  Map<String, dynamic> toSyncJson() => {
+    'id': id,
+    'company_item_id': companyItemId,
+    'rack_id': rackId,
+    'brand_id': brandId,
+    'name': name,
+    'uom': uom,
+    'manuf_code': manufCode,
+    'specification': specification,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+    'deleted_at': deletedAt?.toIso8601String(),
+  };
+}
+
+extension ComponentSyncX on Component {
+  Map<String, dynamic> toSyncJson() => {
+    'id': id,
+    'product_id': productId,
+    'name': name,
+    'type': type, // PENTING: Jangan lupa field type
+    'brand_id': brandId,
+    'manuf_code': manufCode,
+    'spec_json':
+        specification, // Perhatikan backend pakai 'spec_json' [cite: 17]
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+    'deleted_at': deletedAt?.toIso8601String(),
+  };
+}
+
+extension VariantComponentSyncX on VariantComponent {
+  Map<String, dynamic> toSyncJson() => {
+    'id': id,
+    'variant_id': variantId,
+    'component_id': componentId,
+    'quantity':
+        quantityNeeded, // Backend pakai 'quantity'[cite: 18], Drift 'quantityNeeded'
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+  };
+}
+
+extension UnitSyncX on Unit {
+  Map<String, dynamic> toSyncJson() => {
+    'id': id,
+    'variant_id': variantId,
+    'component_id': componentId,
+    'parent_unit_id': parentUnitId,
+    'qr_value': qrValue,
+    'status': status,
+    'rack_id': rackId, // SUDAH FIXED: Menggunakan rack_id sesuai fix backend
+    'print_count': printCount,
+    'last_printed_at': lastPrintedAt?.toIso8601String(),
+    'last_printed_by': lastPrintedBy,
+    'created_by': createdBy,
+    'updated_by': updatedBy,
+    'synced_at': syncedAt?.toIso8601String(),
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+    'deleted_at': deletedAt?.toIso8601String(),
+  };
+}
+
+// Helper khusus untuk Photo karena butuh remoteUrl hasil upload
+Map<String, dynamic> variantPhotoToSyncJson(VariantPhoto p, String remoteUrl) =>
+    {
+      'id': p.id,
+      'variant_id': p.variantId,
+      'file_path': remoteUrl,
+      'sort_order': p.sortOrder,
+      'created_at': p.createdAt.toIso8601String(),
+      'updated_at': p.updatedAt.toIso8601String(),
+      'deleted_at': p.deletedAt?.toIso8601String(),
+    };
+
+Map<String, dynamic> componentPhotoToSyncJson(
+  ComponentPhoto p,
+  String remoteUrl,
+) => {
+  'id': p.id,
+  'component_id': p.componentId,
+  'file_path': remoteUrl,
+  'sort_order': p.sortOrder,
+  'created_at': p.createdAt.toIso8601String(),
+  'updated_at': p.updatedAt.toIso8601String(),
+  'deleted_at': p.deletedAt?.toIso8601String(),
+};

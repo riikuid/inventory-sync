@@ -128,7 +128,7 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
 
           // Loop tiap variant di company item ini, hitung stok cerdas-nya, lalu jumlahkan
           for (final v in myVariants) {
-            final stock = _calculateVariantStock(
+            final stock = calculateVariantStock(
               variantId: v.id,
               components: compsByVar[v.id] ?? [],
               activeUnits: unitsByVar[v.id] ?? [],
@@ -206,11 +206,14 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
         });
 
     // ... (STREAM C: Units - Tetap Sama)
+    // 3. Stream C (Units) -> 🔴 GANTI BAGIAN INI DENGAN KODE DI BAWAH 🔴
+    // Kita hapus .join() dan gunakan .isInQuery().
+    // Ini menjamin data yang didapat adalah object Unit murni, bukan hasil mapping Join.
     final unitsStream =
         (select(units)..where(
               (u) =>
                   u.status.equals('ACTIVE') &
-                  // Ambil unit yang variantId-nya ada di daftar variant companyItem ini
+                  // Ambil semua unit yang variantId-nya ada di dalam Variant milik CompanyItem ini
                   u.variantId.isInQuery(
                     selectOnly(variants)
                       ..addColumns([variants.id])
@@ -221,8 +224,8 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
             .map((rows) {
               final map = <String, List<Unit>>{};
               for (final u in rows) {
-                // Karena tidak pakai JOIN, 'u' di sini adalah object Unit langsung
-                // Tidak perlu row.readTable(units)
+                // Karena ini query langsung ke tabel 'units', variable 'u' sudah bertipe 'Unit'
+                // Tidak perlu lagi 'row.readTable(units)'
                 if (u.variantId != null) {
                   if (!map.containsKey(u.variantId)) map[u.variantId!] = [];
                   map[u.variantId]!.add(u);
@@ -246,7 +249,7 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
         final variantUnits = unitsMap[v.id] ?? [];
 
         // Panggil Logic Baru
-        final calculatedStock = _calculateVariantStock(
+        final calculatedStock = calculateVariantStock(
           variantId: v.id,
           components: variantComps,
           activeUnits: variantUnits,
@@ -261,94 +264,6 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
         );
       }).toList();
     });
-  }
-
-  /// Helper untuk menghitung stok berdasarkan Rules Anda
-  int _calculateVariantStock({
-    required String variantId,
-    required List<VariantComponentRow> components,
-    required List<Unit> activeUnits,
-  }) {
-    // ---------------------------------------------------------
-    // PERBAIKAN UTAMA: Handle NULL dan EMPTY STRING
-    // ---------------------------------------------------------
-
-    if (components.isNotEmpty) {
-      print("--- DEBUG VARIANT: $variantId ---");
-      print("Tipe: ${components.first.type}");
-      print("Total Units Active: ${activeUnits.length}");
-
-      for (var u in activeUnits) {
-        print(
-          "Unit ID: ${u.id} | CompID: '${u.componentId}' | IsEmpty: ${u.componentId?.isEmpty}",
-        );
-      }
-    }
-
-    // 1. Hitung Unit Parent (Unit yang componentId-nya NULL atau KOSONG)
-    final parentUnitsCount = activeUnits.where((u) {
-      final cId = u.componentId;
-      // Anggap parent jika null ATAU string kosong
-      return cId == null || cId.trim().isEmpty;
-    }).length;
-
-    // Jika tidak punya komponen, stok = stok parent
-    if (components.isEmpty) return parentUnitsCount;
-
-    // Deteksi Tipe (Case Insensitive agar aman)
-    final hasInBox = components.any((c) {
-      final type = c.type.trim().toUpperCase();
-      return type == 'IN_BOX';
-    });
-
-    // CASE 2: IN_BOX (Assembly)
-    if (hasInBox) {
-      // Abaikan stok komponen, HANYA hitung stok parent
-      return parentUnitsCount;
-    }
-
-    // CASE 3: SEPARATE (Komponen Terpisah)
-
-    // A. Definisi Kebutuhan
-    final definitionMap = <String, int>{};
-    for (final c in components) {
-      definitionMap[c.componentId] = (definitionMap[c.componentId] ?? 0) + 1;
-    }
-
-    // B. Hitung Stok Real Komponen
-    final stockMap = <String, int>{};
-    for (final u in activeUnits) {
-      final cId = u.componentId;
-      // Hanya hitung jika componentId VALID (tidak null & tidak kosong)
-      if (cId != null && cId.trim().isNotEmpty) {
-        stockMap[cId] = (stockMap[cId] ?? 0) + 1;
-      }
-    }
-
-    // C. Cari Bottleneck (Set Minimum)
-    int minComponentSets = 999999;
-
-    // Jika ada komponen tapi stok komponen kosong, maka set = 0
-    if (stockMap.isEmpty) {
-      minComponentSets = 0;
-    } else {
-      for (final entry in definitionMap.entries) {
-        final compId = entry.key;
-        final qtyNeeded = entry.value;
-        final qtyAvailable = stockMap[compId] ?? 0;
-
-        final possibleSets = qtyAvailable ~/ qtyNeeded;
-
-        if (possibleSets < minComponentSets) {
-          minComponentSets = possibleSets;
-        }
-      }
-    }
-
-    if (minComponentSets == 999999) minComponentSets = 0;
-
-    // Total = Unit Jadi (Parent) + Unit Potensial (Komponen)
-    return parentUnitsCount + minComponentSets;
   }
 
   Future<CompanyItem?> getById(String id) {
@@ -454,4 +369,104 @@ class CompanyItemListRow {
       totalUnits: totalUnits ?? this.totalUnits,
     );
   }
+}
+
+/// Helper untuk menghitung stok berdasarkan Rules Anda
+int calculateVariantStock({
+  required String variantId,
+  required List<VariantComponentRow> components,
+  required List<Unit> activeUnits,
+}) {
+  // --- STEP 0: DEBUG HEADER ---
+  print("\n=== DEBUG STOCK CALCULATION: $variantId ===");
+  print("Total Active Units: ${activeUnits.length}");
+  print("Total Defined Components: ${components.length}");
+
+  // --- STEP 1: HITUNG PARENT ---
+  int parentUnitsCount = 0;
+  for (var u in activeUnits) {
+    final cId = u.componentId;
+    // Kita debug setiap unit untuk melihat kenapa dia lolos/gagal filter
+    // bool isParent = cId == null || cId.trim().isEmpty || cId == "null";
+    // ^ Jaga-jaga jika ada string "null"
+
+    bool isNull = cId == null;
+    bool isEmpty = cId != null && cId.trim().isEmpty;
+    bool isLiteralNull = cId == "null"; // Cek string "null"
+
+    if (isNull || isEmpty || isLiteralNull) {
+      parentUnitsCount++;
+    } else {
+      // Ini unit komponen
+      // print(">> Unit ${u.id.substring(0,4)}... adalah KOMPONEN (ID: $cId)");
+    }
+  }
+  print("STEP 1 Result (Parent Count): $parentUnitsCount");
+
+  // Jika tidak punya komponen, langsung return
+  if (components.isEmpty) {
+    print("-> No components defined. Return: $parentUnitsCount");
+    return parentUnitsCount;
+  }
+
+  // --- STEP 2: CEK TIPE ---
+  final hasInBox = components.any((c) {
+    final type = c.type.trim().toUpperCase();
+    return type == 'IN_BOX';
+  });
+  print("STEP 2 Type Check (hasInBox): $hasInBox");
+
+  if (hasInBox) {
+    print("-> IN_BOX detected. Return: $parentUnitsCount");
+    return parentUnitsCount;
+  }
+
+  // --- STEP 3: SEPARATE CALCULATION ---
+
+  // A. Definisi Kebutuhan
+  final definitionMap = <String, int>{};
+  for (final c in components) {
+    definitionMap[c.componentId] = (definitionMap[c.componentId] ?? 0) + 1;
+  }
+  print("STEP 3A Definition: $definitionMap");
+
+  // B. Stok Real
+  final stockMap = <String, int>{};
+  for (final u in activeUnits) {
+    final cId = u.componentId;
+    if (cId != null && cId.trim().isNotEmpty && cId != "null") {
+      stockMap[cId] = (stockMap[cId] ?? 0) + 1;
+    }
+  }
+  print("STEP 3B Stock Map: $stockMap");
+
+  // C. Min Sets
+  int minComponentSets = 999999;
+
+  if (stockMap.isEmpty) {
+    minComponentSets = 0;
+  } else {
+    for (final entry in definitionMap.entries) {
+      final compId = entry.key;
+      final qtyNeeded = entry.value;
+      final qtyAvailable = stockMap[compId] ?? 0;
+
+      final possibleSets = qtyAvailable ~/ qtyNeeded;
+      print(
+        "   -> Comp $compId: Available $qtyAvailable / Need $qtyNeeded = $possibleSets sets",
+      );
+
+      if (possibleSets < minComponentSets) {
+        minComponentSets = possibleSets;
+      }
+    }
+  }
+
+  if (minComponentSets == 999999) minComponentSets = 0;
+  print("STEP 3C Min Sets: $minComponentSets");
+
+  final finalTotal = parentUnitsCount + minComponentSets;
+  print("=== FINAL RESULT: $finalTotal ===\n");
+
+  return finalTotal;
 }

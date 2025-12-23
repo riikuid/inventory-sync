@@ -6,7 +6,7 @@ import 'package:inventory_sync_apps/core/result.dart';
 
 import 'models/photo_upload_response.dart';
 
-class SyncApi {
+class SyncService {
   Future<Result<Map<String, dynamic>>> pull({String? sinceIso}) async {
     return dioCall<Map<String, dynamic>>(
       (dio) => dio.get(

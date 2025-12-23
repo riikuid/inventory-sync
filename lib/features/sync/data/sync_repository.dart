@@ -5,12 +5,12 @@ import 'package:drift/drift.dart';
 import 'package:inventory_sync_apps/core/db/app_database.dart';
 import 'package:inventory_sync_apps/core/result.dart';
 
-import 'sync_api.dart';
+import 'sync_service.dart';
 import 'sync_mapper.dart';
 
 class SyncRepository {
   final AppDatabase db;
-  final SyncApi api;
+  final SyncService api;
 
   SyncRepository({required this.db, required this.api});
 
@@ -76,7 +76,9 @@ class SyncRepository {
   }
 
   Future<Result<void>> pushPendingAll() async {
-    // 1. Ambil pending dari semua tabel
+    // -----------------------------------------------------------
+    // PART 1: AMBIL DATA PENDING DARI DATABASE LOKAL
+    // -----------------------------------------------------------
     final pendingProducts = await db.productDao.getPendingProducts();
     final pendingCompanyItems = await db.companyItemDao
         .getPendingCompanyItems();
@@ -84,287 +86,181 @@ class SyncRepository {
     final pendingComponents = await db.componentDao.getPendingComponents();
     final pendingVariantComponents = await db.variantComponentDao
         .getPendingVariantComponents();
+    final pendingUnits = await db.unitDao.getPendingUnits();
 
+    // Khusus Foto
     final pendingVariantPhotos = await db.variantPhotoDao.getPendingPhotos();
     final pendingComponentPhotos = await db.componentPhotoDao
         .getPendingPhotos();
 
-    final pendingUnits = await db.unitDao.getPendingUnits();
-
-    // 🔧: include componentPhotos juga di pengecekan kosong
+    // Cek apakah ada data yang perlu dikirim?
     if (pendingProducts.isEmpty &&
         pendingCompanyItems.isEmpty &&
         pendingVariants.isEmpty &&
         pendingComponents.isEmpty &&
-        pendingVariantPhotos.isEmpty &&
-        pendingComponentPhotos.isEmpty &&
         pendingVariantComponents.isEmpty &&
-        pendingUnits.isEmpty) {
+        pendingUnits.isEmpty &&
+        pendingVariantPhotos.isEmpty &&
+        pendingComponentPhotos.isEmpty) {
       return const Result.success(null);
     }
 
-    // =========== Upload file dulu ==========
-    // 🔧: siapkan pencatatan upload
-    final failedUploads = <String, String>{}; // photoId -> error
+    // -----------------------------------------------------------
+    // PART 2: UPLOAD FOTO TERLEBIH DAHULU (Logic Lama Dipertahankan)
+    // -----------------------------------------------------------
+    final failedUploads = <String, String>{};
     var uploadTriedCount = 0;
 
-    // --- Variant photos ---
+    // A. Upload Variant Photos
     for (final p in pendingVariantPhotos.where(
       (p) => p.remoteUrl == null && p.localPath != null,
     )) {
       uploadTriedCount++;
-
       final uploadRes = await api.uploadPhoto(
         id: p.id,
         type: 'variant',
         filePath: p.localPath!,
       );
 
-      if (!uploadRes.isSuccess) {
-        // 🔧: JANGAN langsung return, tapi kumpulkan error
-        failedUploads[p.id] =
-            uploadRes.errorMessage ?? 'Failed to upload variant photo ${p.id}';
-        continue;
+      if (uploadRes.isSuccess) {
+        await db.variantPhotoDao.markUploaded(
+          id: p.id,
+          uploadedUrl: uploadRes.resultValue?.filePath ?? '',
+          lastModifiedAt: DateTime.now(),
+        );
+      } else {
+        failedUploads[p.id] = uploadRes.errorMessage ?? 'Upload failed';
       }
-
-      final resp = uploadRes.resultValue;
-      await db.variantPhotoDao.markUploaded(
-        id: p.id,
-        uploadedUrl: resp?.filePath ?? '',
-        lastModifiedAt: DateTime.now(),
-      );
     }
 
-    // --- Component photos ---
+    // B. Upload Component Photos
     for (final p in pendingComponentPhotos.where(
       (p) => p.remoteUrl == null && p.localPath != null,
     )) {
       uploadTriedCount++;
-
       final uploadRes = await api.uploadPhoto(
         id: p.id,
         type: 'component',
         filePath: p.localPath!,
       );
 
-      if (!uploadRes.isSuccess) {
-        // 🔧: lagi-lagi kumpulkan, bukan return
-        failedUploads[p.id] =
-            uploadRes.errorMessage ??
-            'Failed to upload component photo ${p.id}';
-        continue;
+      if (uploadRes.isSuccess) {
+        await db.componentPhotoDao.markUploaded(
+          id: p.id,
+          uploadedUrl: uploadRes.resultValue?.filePath ?? '',
+          lastModifiedAt: DateTime.now(),
+        );
+      } else {
+        failedUploads[p.id] = uploadRes.errorMessage ?? 'Upload failed';
       }
-
-      final resp = uploadRes.resultValue;
-      await db.componentPhotoDao.markUploaded(
-        id: p.id,
-        uploadedUrl: resp?.filePath ?? '',
-        lastModifiedAt: DateTime.now(),
-      );
     }
 
-    // 🔧: keputusan setelah percobaan upload foto
-    if (uploadTriedCount > 0 && failedUploads.length == uploadTriedCount) {
-      // Artinya semua upload foto gagal → percuma lanjut push
-      final firstError = failedUploads.values.first;
-      return Result.failed(
-        'Failed to upload all photos (${failedUploads.length}). '
-        'Example error: $firstError',
-      );
-    }
-
-    // 🔧: re-fetch pending photos setelah markUploaded,
-    // supaya remoteUrl terbaru ikut terpakai
-    final updatedVariantPhotos = await db.variantPhotoDao.getPendingPhotos();
-    final updatedComponentPhotos = await db.componentPhotoDao
-        .getPendingPhotos();
-
-    // 🔧: hanya foto yang SUDAH punya remoteUrl yang ikut di-push
-    final variantPhotosForPush = updatedVariantPhotos
-        .where((p) => p.remoteUrl != null && p.deletedAt == null)
+    // Ambil ulang foto yang sudah punya remoteUrl (siap sync data)
+    final readyVariantPhotos = await db.variantPhotoDao.getPendingPhotos();
+    final variantPhotosPayload = readyVariantPhotos
+        .where((p) => p.remoteUrl != null)
+        .map((p) => variantPhotoToSyncJson(p, p.remoteUrl!))
         .toList();
 
-    final componentPhotosForPush = updatedComponentPhotos
-        .where((p) => p.remoteUrl != null && p.deletedAt == null)
+    final readyComponentPhotos = await db.componentPhotoDao.getPendingPhotos();
+    final componentPhotosPayload = readyComponentPhotos
+        .where((p) => p.remoteUrl != null)
+        .map((p) => componentPhotoToSyncJson(p, p.remoteUrl!))
         .toList();
 
-    // =========== Build payload non-file ==========
-    final productsPayload = pendingProducts
-        .map(
-          (p) => {
-            'id': p.id,
-            'name': p.name,
-            'category_id': p.categoryId,
-            'machine_purchase': p.machinePurchase,
-            'description': p.description,
-            'created_at': p.createdAt.toIso8601String(),
-            'updated_at': p.updatedAt.toIso8601String(),
-          },
-        )
-        .toList();
-
-    final companyItemsPayload = pendingCompanyItems
-        .map(
-          (ci) => {
-            'id': ci.id,
-            'default_rack_id': ci.defaultRackId,
-            'product_id': ci.productId,
-            'company_code': ci.companyCode,
-            'specification': ci.specification,
-            'notes': ci.notes,
-            'created_at': ci.createdAt.toIso8601String(),
-            'updated_at': ci.updatedAt.toIso8601String(),
-            'deleted_at': ci.deletedAt?.toIso8601String(),
-          },
-        )
-        .toList();
-
-    final variantsPayload = pendingVariants
-        .map(
-          (v) => {
-            'id': v.id,
-            'company_item_id': v.companyItemId,
-            'rack_id': v.rackId,
-            'brand_id': v.brandId,
-            'name': v.name,
-            'uom': v.uom,
-            'manuf_code': v.manufCode,
-            'specification': v.specification,
-            'created_at': v.createdAt.toIso8601String(),
-            'updated_at': v.updatedAt.toIso8601String(),
-            'deleted_at': v.deletedAt?.toIso8601String(),
-          },
-        )
-        .toList();
-
-    // 🔧: pakai variantPhotosForPush, bukan updatedVariantPhotos mentah
-    final variantPhotosPayload = variantPhotosForPush
-        .map(
-          (p) => {
-            'id': p.id,
-            'variant_id': p.variantId,
-            'file_path': p.remoteUrl, // hasil uploadPhoto
-            'sort_order': p.sortOrder,
-            'created_at': p.createdAt.toIso8601String(),
-            'updated_at': p.updatedAt.toIso8601String(),
-            'deleted_at': p.deletedAt?.toIso8601String(),
-          },
-        )
-        .toList();
-
-    final componentsPayload = pendingComponents
-        .map(
-          (c) => {
-            'id': c.id,
-            'product_id': c.productId,
-            'name': c.name,
-            'brand_id': c.brandId,
-            'manuf_code': c.manufCode,
-            'specification': c.specification,
-            'created_at': c.createdAt.toIso8601String(),
-            'updated_at': c.updatedAt.toIso8601String(),
-            'deleted_at': c.deletedAt?.toIso8601String(),
-          },
-        )
-        .toList();
-
-    // 🔧: pakai componentPhotosForPush
-    final componentPhotosPayload = componentPhotosForPush
-        .map(
-          (p) => {
-            'id': p.id,
-            'component_id': p.componentId,
-            'file_path': p.remoteUrl,
-            'sort_order': p.sortOrder,
-            'created_at': p.createdAt.toIso8601String(),
-            'updated_at': p.updatedAt.toIso8601String(),
-            'deleted_at': p.deletedAt?.toIso8601String(),
-          },
-        )
-        .toList();
-
-    final variantComponentsPayload = pendingVariantComponents
-        .map(
-          (vc) => {
-            'id': vc.id,
-            'variant_id': vc.variantId,
-            'component_id': vc.componentId,
-            'quantity_needed': vc.quantityNeeded,
-            'created_at': vc.createdAt.toIso8601String(),
-            'updated_at': vc.updatedAt.toIso8601String(),
-          },
-        )
-        .toList();
-
-    final unitsPayload = pendingUnits
-        .map(
-          (u) => {
-            'id': u.id,
-            'variant_id': u.variantId,
-            'component_id': u.componentId,
-            'parent_unit_id': u.parentUnitId,
-            'qr_value': u.qrValue,
-            'status': u.status,
-            'rack_id': u.rackId,
-            'print_count': u.printCount,
-            'last_printed_at': u.lastPrintedAt?.toIso8601String(),
-            'last_printed_by': u.lastPrintedBy,
-            'created_by': u.createdBy,
-            'updated_by': u.updatedBy,
-            'synced_at': u.syncedAt?.toIso8601String(),
-            'created_at': u.createdAt.toIso8601String(),
-            'updated_at': u.updatedAt.toIso8601String(),
-            'deleted_at': u.deletedAt?.toIso8601String(),
-          },
-        )
-        .toList();
-
+    // -----------------------------------------------------------
+    // PART 3: BUILD PAYLOAD (MENGGUNAKAN EXTENSIONS BARU)
+    // -----------------------------------------------------------
     final payload = {
-      'products': productsPayload,
-      'company_items': companyItemsPayload,
-      'variants': variantsPayload,
+      'products': pendingProducts.map((e) => e.toSyncJson()).toList(),
+      'company_items': pendingCompanyItems.map((e) => e.toSyncJson()).toList(),
+      'variants': pendingVariants.map((e) => e.toSyncJson()).toList(),
+      'components': pendingComponents.map((e) => e.toSyncJson()).toList(),
+      'variant_components': pendingVariantComponents
+          .map((e) => e.toSyncJson())
+          .toList(),
+      'units': pendingUnits.map((e) => e.toSyncJson()).toList(),
       'variant_photos': variantPhotosPayload,
-      'components': componentsPayload,
       'component_photos': componentPhotosPayload,
-      'variant_components': variantComponentsPayload,
-      'units': unitsPayload,
     };
 
+    // KIRIM KE SERVER
     final res = await api.push(payload);
 
     if (!res.isSuccess) {
       return Result.failed(res.errorMessage ?? 'Failed to push changes');
     }
 
-    // 3. Jika sukses, tandai mereka sebagai synced
-    await db.productDao.markProductsSynced(
-      pendingProducts.map((p) => p.id).toList(),
-    );
-    await db.companyItemDao.markCompanyItemsSynced(
-      pendingCompanyItems.map((ci) => ci.id).toList(),
-    );
-    await db.variantDao.markVariantsSynced(
-      pendingVariants.map((v) => v.id).toList(),
-    );
-    await db.componentDao.markComponentsSynced(
-      pendingComponents.map((c) => c.id).toList(),
-    );
-    await db.variantComponentDao.markVariantComponentsSynced(
-      pendingVariantComponents.map((vc) => vc.id).toList(),
-    );
+    // -----------------------------------------------------------
+    // PART 4: SMART ACKNOWLEDGEMENT (PROCESS SUCCESS_IDS)
+    // -----------------------------------------------------------
+    // Kita baca return dari server, ambil array 'success_ids' per tabel,
+    // lalu hanya update data lokal yang ID-nya ada di array tersebut.
 
-    // 🔧: hanya foto yang ikut di-push yang di-mark synced
-    await db.variantPhotoDao.markPhotosSynced(
-      variantPhotosForPush.map((p) => p.id).toList(),
-    );
-    await db.componentPhotoDao.markPhotosSynced(
-      componentPhotosForPush.map((p) => p.id).toList(),
-    );
+    final results = res.resultValue?['results'] as Map<String, dynamic>?;
+    final now = DateTime.now();
 
-    await db.unitDao.markUnitsSynced(
-      pendingUnits.map((u) => u.id).toList(),
-      DateTime.now(),
-    );
+    if (results != null) {
+      await db.transaction(() async {
+        // Helper kecil untuk extract success IDs
+        List<String> getSuccessIds(String key) {
+          if (results[key] is Map && results[key]['success_ids'] is List) {
+            return List<String>.from(results[key]['success_ids']);
+          }
+          return [];
+        }
+
+        // 1. Products
+        final successProducts = getSuccessIds(
+          'products',
+        ); // Sesuaikan key response controller
+        if (successProducts.isNotEmpty) {
+          await db.productDao.markProductsSynced(successProducts);
+        }
+
+        // 2. Company Items
+        final successCI = getSuccessIds('company_items');
+        if (successCI.isNotEmpty) {
+          await db.companyItemDao.markCompanyItemsSynced(successCI);
+        }
+
+        // 3. Variants
+        final successVariants = getSuccessIds('variants');
+        if (successVariants.isNotEmpty) {
+          await db.variantDao.markVariantsSynced(successVariants);
+        }
+
+        // 4. Components
+        final successComponents = getSuccessIds('components');
+        if (successComponents.isNotEmpty) {
+          await db.componentDao.markComponentsSynced(successComponents);
+        }
+
+        // 5. Variant Components
+        final successVC = getSuccessIds('variant_components');
+        if (successVC.isNotEmpty) {
+          await db.variantComponentDao.markVariantComponentsSynced(successVC);
+        }
+
+        // 6. Units (Paling Penting)
+        final successUnits = getSuccessIds('units');
+        if (successUnits.isNotEmpty) {
+          await db.unitDao.markUnitsSynced(successUnits, now);
+        }
+
+        // 7. Variant Photos
+        final successVariantPhotos = getSuccessIds('variant_photos');
+        if (successVariantPhotos.isNotEmpty) {
+          await db.variantPhotoDao.markPhotosSynced(successVariantPhotos);
+        }
+
+        // 8. Component Photos
+        final successComponentPhotos = getSuccessIds('component_photos');
+        if (successComponentPhotos.isNotEmpty) {
+          await db.componentPhotoDao.markPhotosSynced(successComponentPhotos);
+        }
+      });
+    }
 
     return const Result.success(null);
   }
