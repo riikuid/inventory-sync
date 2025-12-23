@@ -3,6 +3,8 @@ import 'package:drift/drift.dart' hide Component;
 import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
 import '../app_database.dart';
+import '../model/variant_component_row.dart';
+import '../model/variant_detail_row.dart';
 import '../tables.dart';
 
 part 'variant_dao.g.dart';
@@ -137,7 +139,9 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       final countsQuery = selectOnly(units)
         ..addColumns([units.componentId, units.id.count()])
         ..where(
-          units.status.equals('ACTIVE') & units.componentId.isIn(componentIds),
+          units.status.equals('ACTIVE') &
+              units.componentId.isIn(componentIds) &
+              units.variantId.equals(variantId), // <--- TAMBAHAN DI SINI
         )
         ..groupBy([units.componentId]);
 
@@ -436,61 +440,8 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
 }
 
 /// Per-barisan komponen yang dikembalikan ke UI
-class VariantComponentRow {
-  final String componentId;
-  final String name;
-  final String? manufCode;
-  final String? brandName;
-  final int totalUnits; // unit ACTIVE untuk komponen ini
-  final String type; // 'IN_BOX' or 'SEPARATE'
-
-  VariantComponentRow({
-    required this.componentId,
-    required this.name,
-    this.manufCode,
-    this.brandName,
-    required this.totalUnits,
-    required this.type,
-  });
-}
 
 /// DTO variant detail
-class VariantDetailRow {
-  final String variantId;
-  final String companyItemId;
-  final String productId;
-  final String companyCode;
-  final String name;
-  final String uom;
-  final String? manufCode;
-  final String? specification;
-  final String? rackId;
-  final String? rackName;
-  final String? brandId;
-  final String? brandName;
-  final int
-  totalUnits; // semua unit ACTIVE untuk variant ini (component_id IS NULL)
-  final List<VariantComponentRow> componentsInBox;
-  final List<VariantComponentRow> componentsSeparate;
-
-  VariantDetailRow({
-    required this.variantId,
-    required this.companyItemId,
-    required this.productId,
-    required this.name,
-    required this.uom,
-    this.manufCode,
-    this.brandId,
-    this.brandName,
-    this.rackId,
-    this.rackName,
-    this.specification,
-    required this.companyCode,
-    required this.totalUnits,
-    required this.componentsSeparate,
-    required this.componentsInBox,
-  });
-}
 
 class _VariantBaseInfo {
   final Variant variant;

@@ -10,6 +10,8 @@ import 'package:uuid/uuid.dart';
 import '../../../core/db/daos/category_dao.dart';
 import '../../../core/db/daos/company_item_dao.dart';
 import '../../../core/db/daos/variant_dao.dart';
+import '../../../core/db/model/variant_component_row.dart';
+import '../../../core/db/model/variant_detail_row.dart';
 import 'model/inventory_search_item.dart';
 
 class InventoryRepository {

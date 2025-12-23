@@ -7,6 +7,7 @@ import '../../../core/db/daos/company_item_dao.dart';
 import '../../../core/db/daos/unit_dao.dart';
 import '../../../core/db/daos/variant_dao.dart';
 import '../../../core/db/daos/variant_photo_dao.dart';
+import '../../../core/db/model/variant_component_row.dart';
 import 'models/assembly_result.dart';
 import 'models/scan_unit_result.dart';
 
@@ -270,7 +271,8 @@ class LabelingRepository {
     required String variantId,
     required List<String> componentUnitIds,
     required String userId,
-    String? location,
+    required String rackId,
+    required String rackName,
   }) async {
     // ... Logic The Boss (Assembly) nanti di sini
     // Saya biarkan dulu agar tidak error
@@ -288,7 +290,7 @@ class LabelingRepository {
         componentId: const Value(null),
         qrValue: Value(parentQr),
         status: const Value('PENDING'),
-        rackId: Value(location),
+        rackId: Value(rackId),
         createdBy: Value(userId),
         updatedBy: Value(userId),
         lastModifiedAt: Value(now),

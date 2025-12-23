@@ -1,12 +1,25 @@
 // lib/core/db/daos/company_item_dao.dart
 import 'package:drift/drift.dart';
+import 'package:rxdart/rxdart.dart';
 
 import '../app_database.dart';
+import '../model/variant_component_row.dart';
 import '../tables.dart'; // ini yg nge-export tables + generated
 
 part 'company_item_dao.g.dart';
 
-@DriftAccessor(tables: [CompanyItems, Products, Variants, Units, Brands, Racks])
+@DriftAccessor(
+  tables: [
+    CompanyItems,
+    Products,
+    Variants,
+    VariantComponents,
+    Components,
+    Units,
+    Brands,
+    Racks,
+  ],
+)
 class CompanyItemDao extends DatabaseAccessor<AppDatabase>
     with _$CompanyItemDaoMixin {
   CompanyItemDao(super.db);
@@ -34,119 +47,308 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
   Stream<List<CompanyItemListRow>> watchCompanyItemsWithStock({
     String? productId,
   }) {
-    final base = select(companyItems).join([
+    // 1. Query Base CompanyItems
+    var queryCI = select(companyItems).join([
       innerJoin(products, products.id.equalsExp(companyItems.productId)),
       leftOuterJoin(racks, racks.id.equalsExp(companyItems.defaultRackId)),
-      leftOuterJoin(
-        variants,
-        variants.companyItemId.equalsExp(companyItems.id),
-      ),
-      leftOuterJoin(
-        units,
-        units.variantId.equalsExp(variants.id) & units.status.equals('ACTIVE'),
-      ),
     ]);
 
     if (productId != null) {
-      base.where(products.id.equals(productId));
+      queryCI.where(products.id.equals(productId));
     }
 
-    return base.watch().map((rows) {
-      // map companyItemId -> Map dengan agregat
-      final map = <String, Map<String, dynamic>>{};
+    final ciStream = queryCI.watch();
 
-      for (final row in rows) {
-        final ci = row.readTable(companyItems);
-        final p = row.readTable(products);
-        final u = row.readTableOrNull(units);
-        final v = row.readTableOrNull(variants);
-        final r = row.readTableOrNull(racks);
+    // 2. Kita butuh data variants, components, dan units untuk menghitung stok agregat
+    // Peringatan: Jika datanya ribuan, query ini harus dioptimasi.
+    // Tapi untuk penggunaan wajar, kita fetch "Active Units" dan "Structure" nya.
 
-        final id = ci.id;
-        // jika belum ada, inisialisasi entri dengan struktur sederhana
-        map.putIfAbsent(id, () {
-          return {
-            'companyItemId': ci.id,
-            'companyCode': ci.companyCode,
-            'productName': p.name,
-            'defaultRackId': r?.id,
-            'defaultRackName': r?.name,
-            'totalUnits': 0,
-            'variantIds': <String>{}, // Set untuk hindari double-count
-          };
-        });
+    // Ambil semua variant related (untuk mapping ID)
+    final variantsStream = select(variants).watch();
 
-        final entry = map[id]!;
-        if (u != null) {
-          entry['totalUnits'] = (entry['totalUnits'] as int) + 1;
+    // Ambil structure component (type is important)
+    final componentsStream = select(variantComponents).join([
+      innerJoin(
+        components,
+        components.id.equalsExp(variantComponents.componentId),
+      ),
+    ]).watch();
+
+    // Ambil Active Units
+    final unitsStream = (select(
+      units,
+    )..where((u) => u.status.equals('ACTIVE'))).watch();
+
+    return Rx.combineLatest4(
+      ciStream,
+      variantsStream,
+      componentsStream,
+      unitsStream,
+      (ciRows, allVariants, allCompsRows, allUnits) {
+        // A. Pre-process Variants per CompanyItem
+        final varsByCI = <String, List<Variant>>{};
+        for (final v in allVariants) {
+          varsByCI.putIfAbsent(v.companyItemId, () => []).add(v);
         }
-        if (v != null) {
-          (entry['variantIds'] as Set<String>).add(v.id);
+
+        // B. Pre-process Components per Variant
+        final compsByVar = <String, List<VariantComponentRow>>{};
+        for (final row in allCompsRows) {
+          final vc = row.readTable(variantComponents);
+          final c = row.readTable(components);
+          compsByVar
+              .putIfAbsent(vc.variantId, () => [])
+              .add(
+                VariantComponentRow(
+                  componentId: c.id,
+                  name: c.name,
+                  type: c.type,
+                  // fields lain ignore dulu
+                  totalUnits: 0,
+                ),
+              );
         }
-      }
 
-      final result = map.values.map((entry) {
-        final variantIds = entry['variantIds'] as Set<String>;
-        return CompanyItemListRow(
-          companyItemId: entry['companyItemId'] as String,
-          companyCode: entry['companyCode'] as String,
-          productName: entry['productName'] as String,
-          defaultRackId: entry['defaultRackId'] as String?,
-          defaultRackName: entry['defaultRackName'] as String?,
-          categoryName: null,
-          totalUnits: entry['totalUnits'] as int,
-          totalVariants: variantIds.length,
-        );
-      }).toList()..sort((a, b) => a.companyCode.compareTo(b.companyCode));
+        // C. Pre-process Units per Variant
+        final unitsByVar = <String, List<Unit>>{};
+        for (final u in allUnits) {
+          unitsByVar.putIfAbsent(u.variantId!, () => []).add(u);
+        }
 
-      return result;
-    });
+        // D. Build Result
+        final result = <CompanyItemListRow>[];
+
+        for (final row in ciRows) {
+          final ci = row.readTable(companyItems);
+          final p = row.readTable(products);
+          final r = row.readTableOrNull(racks);
+
+          final myVariants = varsByCI[ci.id] ?? [];
+          int totalAggregatedStock = 0;
+
+          // Loop tiap variant di company item ini, hitung stok cerdas-nya, lalu jumlahkan
+          for (final v in myVariants) {
+            final stock = _calculateVariantStock(
+              variantId: v.id,
+              components: compsByVar[v.id] ?? [],
+              activeUnits: unitsByVar[v.id] ?? [],
+            );
+            totalAggregatedStock += stock;
+          }
+
+          result.add(
+            CompanyItemListRow(
+              companyItemId: ci.id,
+              companyCode: ci.companyCode,
+              productName: p.name,
+              defaultRackId: r?.id,
+              defaultRackName: r?.name,
+              categoryName: null, // Isi sesuai query category jika ada
+              totalUnits: totalAggregatedStock, // Total Stok Cerdas
+              totalVariants: myVariants.length,
+            ),
+          );
+        }
+
+        // Sort
+        result.sort((a, b) => a.companyCode.compareTo(b.companyCode));
+        return result;
+      },
+    );
   }
 
   Stream<List<CompanyItemVariantRow>> watchVariantsWithStock(
     String companyItemId,
   ) {
-    // join variants (per company item) + brand + units aktif
-    final query =
+    // ... (STREAM A: Variants - Tetap Sama)
+    final variantsStream =
         (select(
           variants,
         )..where((v) => v.companyItemId.equals(companyItemId))).join([
           leftOuterJoin(brands, brands.id.equalsExp(variants.brandId)),
-          leftOuterJoin(
-            units,
-            units.variantId.equalsExp(variants.id) &
-                units.status.equals('ACTIVE'),
+          leftOuterJoin(racks, racks.id.equalsExp(variants.rackId)),
+        ]).watch();
+
+    // ... (STREAM B: Components Definition - BALIK KE LOGIC LAMA TANPA QTY)
+    final componentsDefStream =
+        (select(variantComponents).join([
+          innerJoin(
+            components,
+            components.id.equalsExp(variantComponents.componentId),
           ),
-        ]);
+          innerJoin(
+            variants,
+            variants.id.equalsExp(variantComponents.variantId),
+          ),
+        ])..where(variants.companyItemId.equals(companyItemId))).watch().map((
+          rows,
+        ) {
+          final map = <String, List<VariantComponentRow>>{};
 
-    return query.watch().map((rows) {
-      final map = <String, CompanyItemVariantRow>{};
+          for (final row in rows) {
+            final vc = row.readTable(variantComponents);
+            final c = row.readTable(components);
 
-      for (final row in rows) {
+            if (!map.containsKey(vc.variantId)) map[vc.variantId] = [];
+
+            map[vc.variantId]!.add(
+              VariantComponentRow(
+                componentId: c.id,
+                name: c.name,
+                manufCode: c.manufCode,
+                totalUnits: 0,
+                type: c.type,
+                // HAPUS quantityNeeded di sini
+              ),
+            );
+          }
+          return map;
+        });
+
+    // ... (STREAM C: Units - Tetap Sama)
+    final unitsStream =
+        (select(units)..where(
+              (u) =>
+                  u.status.equals('ACTIVE') &
+                  // Ambil unit yang variantId-nya ada di daftar variant companyItem ini
+                  u.variantId.isInQuery(
+                    selectOnly(variants)
+                      ..addColumns([variants.id])
+                      ..where(variants.companyItemId.equals(companyItemId)),
+                  ),
+            ))
+            .watch()
+            .map((rows) {
+              final map = <String, List<Unit>>{};
+              for (final u in rows) {
+                // Karena tidak pakai JOIN, 'u' di sini adalah object Unit langsung
+                // Tidak perlu row.readTable(units)
+                if (u.variantId != null) {
+                  if (!map.containsKey(u.variantId)) map[u.variantId!] = [];
+                  map[u.variantId]!.add(u);
+                }
+              }
+              return map;
+            });
+
+    // GABUNGKAN
+    return Rx.combineLatest3(variantsStream, componentsDefStream, unitsStream, (
+      variantRows,
+      compsMap,
+      unitsMap,
+    ) {
+      return variantRows.map((row) {
         final v = row.readTable(variants);
         final b = row.readTableOrNull(brands);
-        final u = row.readTableOrNull(units);
         final r = row.readTableOrNull(racks);
 
-        map.putIfAbsent(
-          v.id,
-          () => CompanyItemVariantRow(
-            variantId: v.id,
-            name: v.name,
-            brandName: b?.name,
-            rackName: r?.name,
-            stock: 0,
-          ),
+        final variantComps = compsMap[v.id] ?? [];
+        final variantUnits = unitsMap[v.id] ?? [];
+
+        // Panggil Logic Baru
+        final calculatedStock = _calculateVariantStock(
+          variantId: v.id,
+          components: variantComps,
+          activeUnits: variantUnits,
         );
 
-        if (u != null) {
-          final current = map[v.id]!;
-          map[v.id] = current.copyWith(stock: current.stock + 1);
+        return CompanyItemVariantRow(
+          variantId: v.id,
+          name: v.name,
+          brandName: b?.name,
+          rackName: r?.name,
+          stock: calculatedStock,
+        );
+      }).toList();
+    });
+  }
+
+  /// Helper untuk menghitung stok berdasarkan Rules Anda
+  int _calculateVariantStock({
+    required String variantId,
+    required List<VariantComponentRow> components,
+    required List<Unit> activeUnits,
+  }) {
+    // ---------------------------------------------------------
+    // PERBAIKAN UTAMA: Handle NULL dan EMPTY STRING
+    // ---------------------------------------------------------
+
+    if (components.isNotEmpty) {
+      print("--- DEBUG VARIANT: $variantId ---");
+      print("Tipe: ${components.first.type}");
+      print("Total Units Active: ${activeUnits.length}");
+
+      for (var u in activeUnits) {
+        print(
+          "Unit ID: ${u.id} | CompID: '${u.componentId}' | IsEmpty: ${u.componentId?.isEmpty}",
+        );
+      }
+    }
+
+    // 1. Hitung Unit Parent (Unit yang componentId-nya NULL atau KOSONG)
+    final parentUnitsCount = activeUnits.where((u) {
+      final cId = u.componentId;
+      // Anggap parent jika null ATAU string kosong
+      return cId == null || cId.trim().isEmpty;
+    }).length;
+
+    // Jika tidak punya komponen, stok = stok parent
+    if (components.isEmpty) return parentUnitsCount;
+
+    // Deteksi Tipe (Case Insensitive agar aman)
+    final hasInBox = components.any((c) {
+      final type = c.type.trim().toUpperCase();
+      return type == 'IN_BOX';
+    });
+
+    // CASE 2: IN_BOX (Assembly)
+    if (hasInBox) {
+      // Abaikan stok komponen, HANYA hitung stok parent
+      return parentUnitsCount;
+    }
+
+    // CASE 3: SEPARATE (Komponen Terpisah)
+
+    // A. Definisi Kebutuhan
+    final definitionMap = <String, int>{};
+    for (final c in components) {
+      definitionMap[c.componentId] = (definitionMap[c.componentId] ?? 0) + 1;
+    }
+
+    // B. Hitung Stok Real Komponen
+    final stockMap = <String, int>{};
+    for (final u in activeUnits) {
+      final cId = u.componentId;
+      // Hanya hitung jika componentId VALID (tidak null & tidak kosong)
+      if (cId != null && cId.trim().isNotEmpty) {
+        stockMap[cId] = (stockMap[cId] ?? 0) + 1;
+      }
+    }
+
+    // C. Cari Bottleneck (Set Minimum)
+    int minComponentSets = 999999;
+
+    // Jika ada komponen tapi stok komponen kosong, maka set = 0
+    if (stockMap.isEmpty) {
+      minComponentSets = 0;
+    } else {
+      for (final entry in definitionMap.entries) {
+        final compId = entry.key;
+        final qtyNeeded = entry.value;
+        final qtyAvailable = stockMap[compId] ?? 0;
+
+        final possibleSets = qtyAvailable ~/ qtyNeeded;
+
+        if (possibleSets < minComponentSets) {
+          minComponentSets = possibleSets;
         }
       }
+    }
 
-      return map.values.toList();
-    });
+    if (minComponentSets == 999999) minComponentSets = 0;
+
+    // Total = Unit Jadi (Parent) + Unit Potensial (Komponen)
+    return parentUnitsCount + minComponentSets;
   }
 
   Future<CompanyItem?> getById(String id) {

@@ -19,6 +19,8 @@ class AssemblyItemState extends Equatable {
   final String componentId;
   final String name;
   final String manufCode;
+  final String rackName;
+  final String rackId;
   final int qtyNeeded;
 
   // State Tracking
@@ -30,6 +32,8 @@ class AssemblyItemState extends Equatable {
   const AssemblyItemState({
     required this.componentId,
     required this.name,
+    required this.rackName,
+    required this.rackId,
     required this.manufCode,
     this.qtyNeeded = 1,
     this.generatedUnitId,
@@ -45,6 +49,8 @@ class AssemblyItemState extends Equatable {
     bool? isScanned,
   }) {
     return AssemblyItemState(
+      rackName: rackName,
+      rackId: rackId,
       componentId: componentId,
       name: name,
       manufCode: manufCode,

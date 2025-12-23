@@ -5,6 +5,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../core/db/daos/variant_dao.dart';
+import '../../../../../core/db/model/variant_detail_row.dart';
 import '../../../../inventory/data/inventory_repository.dart';
 import '../../../../labeling/data/labeling_repository.dart';
 

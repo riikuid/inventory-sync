@@ -487,12 +487,13 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
     required Unit unit,
     required String itemName,
     required String companyCode,
+    required String rackName,
   }) {
     final item = LabelItem(
       id: unit.id,
       qrValue: unit.qrValue,
       itemName: itemName, // Atau ambil nama variant dari DB
-      rackName: unit.rackId ?? '-',
+      rackName: rackName,
       companyCode: companyCode, // Perlu di query/pass
       status: unit.status,
     );

@@ -49,7 +49,7 @@ class _HomeViewState extends State<_HomeView> {
         centerTitle: false,
         title: const Text(
           'MP Inventory',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
         ),
         actions: [
           IconButton(

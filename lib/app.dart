@@ -11,13 +11,21 @@ class App extends StatelessWidget {
     // final router = buildRouter(context);
 
     return MaterialApp(
-      title: 'HRIS Pentamoo',
+      title: 'MP Inventory Apps',
 
       theme: lightThemeData,
       themeMode: ThemeMode.light,
       home: AppRoot(),
       builder: (context, child) {
-        return UpgradeAlert(child: child);
+        if (child == null) return const SizedBox.shrink();
+
+        return SafeArea(
+          top: false,
+          left: false,
+          right: false,
+          bottom: true,
+          child: UpgradeAlert(child: child),
+        );
       },
     );
   }

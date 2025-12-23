@@ -84,8 +84,8 @@ class CompanyItemCard extends StatelessWidget {
                   Text(
                     row.companyCode,
                     style: AppTextStyles.mono.copyWith(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
                       letterSpacing: 1.0,
                       color: AppColors.primary,
                     ),
@@ -100,7 +100,7 @@ class CompanyItemCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          Icons.location_on_outlined,
+                          Icons.room_preferences_outlined,
                           size: 14,
                           color: cs.onSurface.withOpacity(0.6),
                         ),

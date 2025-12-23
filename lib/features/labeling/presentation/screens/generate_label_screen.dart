@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_sync_apps/core/db/daos/variant_dao.dart';
 import 'package:inventory_sync_apps/core/styles/text_theme.dart';
 
+import '../../../../core/db/model/variant_detail_row.dart';
 import '../../../../core/styles/app_style.dart';
 import '../../../../core/styles/color_scheme.dart';
 import '../../../../shared/presentation/widgets/primary_button.dart';
@@ -150,7 +151,7 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
               style: TextStyle(
                 color: AppColors.onSurface,
                 fontSize: 15,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
             SizedBox(height: 3),
@@ -159,7 +160,7 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
               style: AppTextStyles.mono.copyWith(
                 color: AppColors.primary,
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -179,11 +180,12 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
           color: AppColors.primary,
           onPressed: _onGenerate,
           child: Text(
-            'Selanjutnya',
+            'SELANJUTNYA',
             style: TextStyle(
+              letterSpacing: 1.2,
               color: AppColors.surface,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
             ),
           ),
         ),
@@ -195,6 +197,7 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
+                border: Border.all(width: 1.0, color: AppColors.border),
                 color: AppColors.primary.withAlpha(30),
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -210,8 +213,8 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
                         targetName,
                         style: AppTextStyles.mono.copyWith(
                           color: AppColors.primary,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       if (widget.variant.brandName != null &&
@@ -232,8 +235,8 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
                           child: Text(
                             widget.variant.brandName ?? '-',
                             style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                               color: AppColors.primary,
                             ),
                           ),
@@ -244,8 +247,8 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
                     widget.variant.companyCode,
                     style: TextStyle(
                       color: AppColors.onBackground,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
                     ),
                   ),
                   SizedBox(height: 2),
@@ -253,7 +256,7 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
                     '$targetManufCode${targetManufCode.isNotEmpty && widget.variant.rackName!.isNotEmpty ? '  •  ${widget.variant.rackName}' : ''}',
                     style: TextStyle(
                       color: AppColors.onBackground,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                       fontSize: 12,
                     ),
                   ),

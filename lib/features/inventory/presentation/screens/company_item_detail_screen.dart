@@ -70,7 +70,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                   style: AppTextStyles.mono.copyWith(
                     color: AppColors.onSurface,
                     fontSize: 16,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w600,
                   ),
                 );
               }
@@ -113,11 +113,11 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                   );
                 },
                 child: Text(
-                  '+ Tambah Varian',
+                  '+ TAMBAH VARIAN',
                   style: TextStyle(
                     color: AppColors.surface,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
                   ),
                 ),
               );
@@ -211,6 +211,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
   Widget _buildHeaderCard(CompanyItemDetail detail) {
     return Container(
       decoration: BoxDecoration(
+        border: Border.all(width: 1.0, color: AppColors.border),
         color: AppColors.onError,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [AppStyle.defaultBoxShadow],
@@ -237,7 +238,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                     // show last segment or short code from companyCode
                     detail.companyCode.split('-').last,
                     style: AppTextStyles.mono.copyWith(
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w600,
                       fontSize: 18,
                       color: AppColors.primary,
                     ),
@@ -250,9 +251,9 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                     children: [
                       Text(
                         detail.productName,
-                        style: const TextStyle(
+                        style: AppTextStyles.mono.copyWith(
                           fontWeight: FontWeight.w600,
-                          fontSize: 18,
+                          fontSize: 20,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -263,21 +264,22 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                           fontSize: 14,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       Row(
+                        spacing: 4,
                         children: [
                           const Icon(
-                            Icons.location_on_outlined,
+                            Icons.room_preferences_outlined,
                             size: 14,
                             color: AppColors.onMuted,
                           ),
-                          const SizedBox(width: 4),
                           Flexible(
                             child: Text(
                               detail.defaultRackName != null
                                   ? detail.defaultRackName!
                                   : 'Tidak ada lokasi',
                               style: TextStyle(
+                                fontWeight: FontWeight.w500,
                                 color: Colors.grey.shade700,
                                 fontSize: 14,
                               ),
@@ -443,9 +445,10 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                   children: [
                     Text(
                       v.name,
-                      style: const TextStyle(
+                      style: AppTextStyles.mono.copyWith(
                         fontWeight: FontWeight.w600,
-                        fontSize: 18,
+                        fontSize: 20,
+                        color: AppColors.primary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -457,7 +460,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: Colors.grey.shade700,
+                              color: AppColors.onSurface,
                             ),
                           ),
                         ],
@@ -467,7 +470,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                             '•',
                             style: TextStyle(
                               fontWeight: FontWeight.w500,
-                              color: Colors.grey.shade700,
+                              color: AppColors.onSurface,
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -478,21 +481,33 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: Colors.grey.shade700,
+                              color: AppColors.onSurface,
                             ),
                           ),
                         ],
                       ],
                     ),
-                    SizedBox(height: 3),
-                    if (v.brandName != null && v.brandName!.isNotEmpty)
-                      Text(
-                        '${v.brandName}',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 12,
-                        ),
+                    if (v.rackName != null && v.rackName!.isNotEmpty) ...[
+                      SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.room_preferences_outlined,
+                            size: 16,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${v.rackName}',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
+                    ],
                   ],
                 ),
               ),

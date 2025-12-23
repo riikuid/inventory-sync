@@ -92,6 +92,17 @@ class PrinterCubit extends Cubit<PrinterState> {
 
       String commands = "";
 
+      // --- LOGIC UKURAN QR DINAMIS ---
+      // Semakin panjang karakter, semakin kecil cell width-nya agar muat
+      int qrCellSize = 8;
+
+      if (qrValue.length > 20) {
+        qrCellSize = 7;
+      }
+      if (qrValue.length > 30) {
+        qrCellSize = 6; // Parent Unit (UUID/Long String) biasanya kena di sini
+      }
+
       // -- SETUP --
       commands += "SIZE 60 mm,40 mm\r\n";
       commands += "GAP 2 mm,0 mm\r\n";
@@ -102,7 +113,7 @@ class PrinterCubit extends Cubit<PrinterState> {
 
       // -- QR CODE --
       // Ukuran QR tetap 8 sesuai request terakhir
-      commands += "QRCODE $leftMargin,40,L,7,A,0,\"$qrValue\"\r\n";
+      commands += "QRCODE $leftMargin,40,L,$qrCellSize,A,0,\"$qrValue\"\r\n";
 
       // -- LOCATION (DIBOLD) --
       // 1. Nyalakan BOLD

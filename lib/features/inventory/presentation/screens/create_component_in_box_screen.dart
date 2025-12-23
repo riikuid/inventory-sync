@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/db/daos/variant_dao.dart';
+import '../../../../core/db/model/variant_detail_row.dart';
 import '../../../../core/styles/text_theme.dart';
 import '../../data/model/component_request.dart';
 import '../../../../core/styles/app_style.dart';
@@ -136,7 +137,7 @@ class _CreateComponentInBoxScreenState
               '${widget.variantDetailRow.companyCode} • ${widget.variantDetailRow.name}',
               style: AppTextStyles.mono.copyWith(
                 color: AppColors.primary,
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -223,7 +224,7 @@ class _CreateComponentInBoxScreenState
                           'Part in Box / Isi',
                           style: TextStyle(
                             color: AppColors.surface,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                             fontSize: 16,
                           ),
                         ),
@@ -245,7 +246,7 @@ class _CreateComponentInBoxScreenState
               children: [
                 Text(
                   'Foto Komponen',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
                 ),
                 Text(
                   ' *',

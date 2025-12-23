@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/db/daos/variant_dao.dart';
+import '../../../../core/db/model/variant_detail_row.dart';
 import '../../../../core/styles/text_theme.dart';
 import '../../data/model/component_request.dart';
 import '../../../../core/styles/app_style.dart';
@@ -139,7 +140,7 @@ class _CreateComponentSeparateScreenState
               '${widget.variantDetailRow.companyCode} • ${widget.variantDetailRow.name}',
               style: AppTextStyles.mono.copyWith(
                 color: AppColors.primary,
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -229,7 +230,7 @@ class _CreateComponentSeparateScreenState
                           'Komponen Box Terpisah',
                           style: TextStyle(
                             color: AppColors.onSurface,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                             fontSize: 16,
                           ),
                         ),
@@ -251,7 +252,7 @@ class _CreateComponentSeparateScreenState
               children: [
                 Text(
                   'Foto Komponen',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
                 ),
                 Text(
                   ' *',

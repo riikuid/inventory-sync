@@ -21,7 +21,7 @@ const TextTheme _baseTextTheme = TextTheme(
 final TextTheme customTextTheme = _baseTextTheme.apply(fontFamily: 'Poppins');
 
 class AppTextStyles {
-  static final TextStyle mono = TextStyle(fontFamily: 'Kode Mono');
+  static final TextStyle mono = TextStyle(fontFamily: 'Poppins');
 
   static final FontWeight regular = FontWeight.w400;
   static final FontWeight medium = FontWeight.w500;

@@ -8,6 +8,7 @@ import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
 import 'package:inventory_sync_apps/features/inventory/presentation/screens/create_component_separate_screen.dart';
 import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.dart';
 import 'package:inventory_sync_apps/shared/presentation/widgets/search_field_widget.dart';
+import '../../../../core/db/model/variant_detail_row.dart';
 import '../../../../core/styles/app_style.dart';
 import '../../../../core/db/app_database.dart';
 import '../../../../core/styles/text_theme.dart';
@@ -87,57 +88,115 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.mono.copyWith(
             color: AppColors.onSurface,
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
           ),
         ),
         foregroundColor: Colors.transparent,
       ),
-      floatingActionButton: CustomButton(
-        radius: 1000,
-        color: AppColors.primary,
-        width: 150,
-        child: Text(
-          '+  Tambah ${widget.type == 'IN_BOX' ? 'Isi' : 'Komponen'}',
-          style: TextStyle(
-            color: AppColors.surface,
-            fontWeight: FontWeight.w600,
+
+      // floatingActionButton: CustomButton(
+      //   radius: 1000,
+      //   color: AppColors.primary,
+      //   width: 150,
+      //   child: Text(
+      //     '+  Tambah ${widget.type == 'IN_BOX' ? 'Isi' : 'Komponen'}',
+      //     style: TextStyle(
+      //       color: AppColors.surface,
+      //       fontWeight: FontWeight.w600,
+      //     ),
+      //   ),
+      //   onPressed: () async {
+      //     final repo = context.read<InventoryRepository>();
+
+      //     final result = await Navigator.push<ComponentRequest>(
+      //       context,
+      //       MaterialPageRoute(
+      //         builder: (_) {
+      //           if (widget.type == 'IN_BOX') {
+      //             return CreateComponentInBoxScreen(
+      //               variantDetailRow: widget.variant,
+      //             );
+      //           } else {
+      //             return CreateComponentSeparateScreen(
+      //               variantDetailRow: widget.variant,
+      //             );
+      //           }
+      //         },
+      //       ),
+      //     );
+      //     if (result != null) {
+      //       await repo.createComponentAndAttach(
+      //         type: widget.type,
+      //         productId: widget.variant.productId,
+      //         brandId: widget.variant.brandId,
+      //         name: result.name.trim(),
+      //         manufCode: result.manufCode?.trim(),
+      //         specification: result.specification?.trim(),
+      //         variantId: widget.variant.variantId,
+      //         photos: result.pathPhotos,
+      //         // type: 'IN_BOX',
+      //       );
+      //       if (mounted) Navigator.pop(context);
+      //     }
+      //   },
+      // ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(16),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          border: Border(top: BorderSide(width: 0.2, color: AppColors.border)),
+        ),
+        child: CustomButton(
+          elevation: 0,
+          radius: 40,
+          height: 50,
+          color: AppColors.primary,
+          onPressed: () async {
+            final repo = context.read<InventoryRepository>();
+
+            final result = await Navigator.push<ComponentRequest>(
+              context,
+              MaterialPageRoute(
+                builder: (_) {
+                  if (widget.type == 'IN_BOX') {
+                    return CreateComponentInBoxScreen(
+                      variantDetailRow: widget.variant,
+                    );
+                  } else {
+                    return CreateComponentSeparateScreen(
+                      variantDetailRow: widget.variant,
+                    );
+                  }
+                },
+              ),
+            );
+            if (result != null) {
+              await repo.createComponentAndAttach(
+                type: widget.type,
+                productId: widget.variant.productId,
+                brandId: widget.variant.brandId,
+                name: result.name.trim(),
+                manufCode: result.manufCode?.trim(),
+                specification: result.specification?.trim(),
+                variantId: widget.variant.variantId,
+                photos: result.pathPhotos,
+                // type: 'IN_BOX',
+              );
+              if (mounted) Navigator.pop(context);
+            }
+          },
+          child: Text(
+            '+  TAMBAH ${widget.type == 'IN_BOX' ? 'ISI' : 'KOMPONEN'}',
+            style: TextStyle(
+              letterSpacing: 1.1,
+              color: AppColors.surface,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
           ),
         ),
-        onPressed: () async {
-          final repo = context.read<InventoryRepository>();
-
-          final result = await Navigator.push<ComponentRequest>(
-            context,
-            MaterialPageRoute(
-              builder: (_) {
-                if (widget.type == 'IN_BOX') {
-                  return CreateComponentInBoxScreen(
-                    variantDetailRow: widget.variant,
-                  );
-                } else {
-                  return CreateComponentSeparateScreen(
-                    variantDetailRow: widget.variant,
-                  );
-                }
-              },
-            ),
-          );
-          if (result != null) {
-            await repo.createComponentAndAttach(
-              type: widget.type,
-              productId: widget.variant.productId,
-              brandId: widget.variant.brandId,
-              name: result.name.trim(),
-              manufCode: result.manufCode?.trim(),
-              specification: result.specification?.trim(),
-              variantId: widget.variant.variantId,
-              photos: result.pathPhotos,
-              // type: 'IN_BOX',
-            );
-            if (mounted) Navigator.pop(context);
-          }
-        },
       ),
       body: Column(
         children: [
@@ -198,6 +257,7 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
   Widget _buildSeparateHeader() {
     return Container(
       decoration: BoxDecoration(
+        border: Border.all(width: 1.0, color: AppColors.border),
         color: AppColors.primary.withAlpha(30),
         borderRadius: BorderRadius.circular(16),
       ),
@@ -216,7 +276,7 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
                   'Komponen Box Terpisah',
                   style: TextStyle(
                     color: AppColors.onSurface,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     fontSize: 16,
                   ),
                 ),

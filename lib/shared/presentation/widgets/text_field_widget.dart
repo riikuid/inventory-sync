@@ -96,7 +96,7 @@ class TextFieldWidget extends StatelessWidget {
         if (label != null)
           Container(
             key: scrollAnchorKey,
-            margin: const EdgeInsets.only(bottom: 6),
+            margin: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
                 Text(
@@ -104,6 +104,7 @@ class TextFieldWidget extends StatelessWidget {
                   style: TextStyle(
                     color: labelColor ?? defaultColor,
                     fontWeight: FontWeight.w500,
+                    fontSize: 16,
                   ),
                 ),
                 Text(
@@ -151,6 +152,7 @@ class TextFieldWidget extends StatelessWidget {
           textAlign: textAlign ?? TextAlign.start,
           style: TextStyle(
             color: color ?? defaultColor,
+            fontSize: 16,
             fontWeight: fontWeight ?? FontWeight.w600,
           ),
           decoration: InputDecoration(

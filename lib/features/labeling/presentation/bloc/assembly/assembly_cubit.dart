@@ -6,6 +6,7 @@ import 'package:inventory_sync_apps/core/db/app_database.dart'; // Akses ke Unit
 import 'package:inventory_sync_apps/core/db/daos/variant_dao.dart';
 import 'package:inventory_sync_apps/features/labeling/data/labeling_repository.dart';
 
+import '../../../../../core/db/model/variant_component_row.dart';
 import '../create_labels/create_labels_cubit.dart';
 
 part 'assembly_state.dart';
@@ -17,28 +18,87 @@ class AssemblyCubit extends Cubit<AssemblyState> {
     : super(AssemblyState(variantId: variantId, variantName: variantName));
 
   /// 1. Load daftar komponen yang harus ada dalam box
-  Future<void> loadRequirements(
-    List<VariantComponentRow> inBoxComponents,
-  ) async {
+  Future<void> loadRequirements({
+    required List<VariantComponentRow> inBoxComponents,
+    required String variantRackId,
+    required String variantRackName,
+    required String userId, // Butuh userId untuk create unit
+    required String companyCode, // Butuh companyCode untuk create unit
+  }) async {
     emit(state.copyWith(status: AssemblyStatus.loading));
-    try {
-      // Mapping dari data DB (Component Row) ke State UI
-      final items = inBoxComponents
-          .map(
-            (c) => AssemblyItemState(
-              componentId: c.componentId,
-              name: c.name,
-              manufCode: c.manufCode ?? '-',
-              qtyNeeded:
-                  1, // Default 1, idealnya ambil dari VariantComponent.quantity
-            ),
-          )
-          .toList();
 
-      emit(state.copyWith(status: AssemblyStatus.loaded, components: items));
+    try {
+      // 1. Mapping awal (belum ada QR)
+      List<AssemblyItemState> initialItems = inBoxComponents.map((c) {
+        return AssemblyItemState(
+          componentId: c.componentId,
+          name: c.name,
+          manufCode: c.manufCode ?? '-',
+          rackId: variantRackId,
+          rackName: variantRackName,
+          qtyNeeded: 1,
+          isPrinted: false,
+          isScanned: false,
+          generatedUnitId: null, // Masih null
+          qrValue: null, // Masih null
+        );
+      }).toList();
+
+      // 2. AUTO-GENERATE UNITS KE DB (Looping)
+      List<AssemblyItemState> populatedItems = [];
+
+      for (var item in initialItems) {
+        // Panggil Repo untuk generate 1 unit PENDING
+        // Kita gunakan generateBatchLabels dg qty=1
+        final units = await repo.generateBatchLabels(
+          variantId: state.variantId, // ID Variant Parent
+          companyCode: companyCode,
+          rackId: variantRackId,
+          qty: 1,
+          userId: userId,
+          componentId: item.componentId, // Penting! ini unit komponen
+          manufCode: item.manufCode,
+        );
+
+        if (units.isNotEmpty) {
+          final createdUnit = units.first;
+          // Update item state dengan data dari DB
+          populatedItems.add(
+            item.copyWith(
+              generatedUnitId: createdUnit.id,
+              qrValue: createdUnit.qrValue,
+            ),
+          );
+        } else {
+          populatedItems.add(item); // Fallback jika gagal (jarang terjadi)
+        }
+      }
+
+      emit(
+        state.copyWith(
+          status: AssemblyStatus.loaded,
+          components: populatedItems, // State sekarang sudah punya QR semua
+        ),
+      );
     } catch (e) {
       emit(state.copyWith(status: AssemblyStatus.failure, error: e.toString()));
     }
+  }
+
+  // Tambahkan method ini di dalam class AssemblyCubit
+  void markAsPrinted(int index) {
+    // 1. Validasi index
+    if (index < 0 || index >= state.components.length) return;
+
+    // 2. Copy list lama agar immutability terjaga
+    final updatedList = List<AssemblyItemState>.from(state.components);
+
+    // 3. Update item spesifik menjadi isPrinted = true
+    final currentItem = updatedList[index];
+    updatedList[index] = currentItem.copyWith(isPrinted: true);
+
+    // 4. Emit state baru agar UI sadar ada perubahan
+    emit(state.copyWith(components: updatedList));
   }
 
   /// 2. Generate Unit untuk Komponen (Dipanggil saat user klik "Cetak" di baris komponen)
@@ -132,7 +192,12 @@ class AssemblyCubit extends Cubit<AssemblyState> {
     }
   }
 
-  Future<Unit?> createDraftSet(String userId, String companyCode) async {
+  Future<Unit?> createDraftSet({
+    required String userId,
+    required String companyCode,
+    required String rackId,
+    required String rackName,
+  }) async {
     if (!state.isAllComponentsScanned) return null;
 
     emit(state.copyWith(status: AssemblyStatus.assembling));
@@ -146,7 +211,8 @@ class AssemblyCubit extends Cubit<AssemblyState> {
         variantId: state.variantId,
         componentUnitIds: componentUnitIds,
         userId: userId,
-        location: 'ASSEMBLY_STAGING',
+        rackName: rackName,
+        rackId: rackId,
         // Logic di Repo harus memastikan Parent dibuat dengan status 'PENDING'
       );
 
@@ -162,7 +228,12 @@ class AssemblyCubit extends Cubit<AssemblyState> {
   }
 
   /// 4. Finalisasi: Buat Unit Parent (Set) & Link Children
-  Future<Unit?> createFinalSet(String userId, String companyCode) async {
+  Future<Unit?> createFinalSet({
+    required String userId,
+    required String companyCode,
+    required String rackId,
+    required String rackName,
+  }) async {
     if (!state.isAllComponentsScanned) return null;
 
     emit(state.copyWith(status: AssemblyStatus.assembling));
@@ -176,7 +247,8 @@ class AssemblyCubit extends Cubit<AssemblyState> {
         variantId: state.variantId,
         componentUnitIds: componentUnitIds,
         userId: userId,
-        location: 'DEFAULT',
+        rackId: rackId,
+        rackName: rackName,
       );
 
       // Kita butuh data lengkap parent unit untuk diprint

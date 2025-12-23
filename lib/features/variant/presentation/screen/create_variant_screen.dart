@@ -224,15 +224,15 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                     Icon(
                       Icons.save_outlined,
                       color: AppColors.surface,
-                      size: 16,
+                      size: 18,
                     ),
                     SizedBox(width: 8),
                     Text(
-                      'Simpan Variant',
+                      'SIMPAN VARIAN',
                       style: TextStyle(
                         color: AppColors.surface,
                         fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontSize: 16,
                       ),
                     ),
                   ],
@@ -248,7 +248,10 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                     children: [
                       Text(
                         'Foto Produk',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
                       ),
                       Text(
                         ' *',
@@ -321,6 +324,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                     readonly: true,
                     required: false,
                     label: 'Brand/Merk',
+
                     fillColor: Colors.transparent,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(15),

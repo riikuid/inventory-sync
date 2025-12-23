@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_sync_apps/core/db/app_database.dart';
-import 'package:inventory_sync_apps/core/db/daos/variant_dao.dart';
 
 import '../../../../core/db/daos/component_dao.dart';
 import '../../../../core/styles/app_style.dart';
@@ -14,6 +12,7 @@ class SeparateComponentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
+        border: Border.all(width: 1.0, color: AppColors.border),
         boxShadow: [AppStyle.defaultBoxShadow],
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
@@ -29,26 +28,37 @@ class SeparateComponentCard extends StatelessWidget {
                 item.component.name.isNotEmpty
                     ? item.component.name[0].toUpperCase()
                     : '?',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
+                // spacing: 2,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     item.component.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
 
                   if ((item.brandName != null) ||
-                      (item.component.manufCode != null)) ...[
-                    SizedBox(height: 3),
+                      (item.component.manufCode != null))
                     Text(
                       '${item.brandName}${item.component.manufCode != null && item.component.manufCode!.isNotEmpty ? '  •  ${item.component.manufCode}' : ''}',
-                      style: TextStyle(color: Colors.grey.shade700),
+                      style: TextStyle(
+                        color: AppColors.onSurface,
+                        fontSize: 14,
+                      ),
                     ),
-                  ],
                 ],
               ),
             ),
@@ -59,7 +69,10 @@ class SeparateComponentCard extends StatelessWidget {
                 color: AppColors.secondary,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('${item.totalUnits}'),
+              child: Text(
+                '${item.totalUnits}',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
             const SizedBox(width: 8),
           ],

@@ -1,5 +1,7 @@
 // lib/features/labeling/presentation/screens/preview_print_screen.dart
 
+import 'dart:developer';
+
 import 'package:ellipsized_text/ellipsized_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -62,6 +64,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
 
     // 2. Loop & Print
     for (var item in itemsToPrint) {
+      log(item.rackName, name: 'PRINT');
       bool success = await printerCubit.printLabel(
         company: "PT MANUNGGAL PERKASA",
         location: item.rackName,
@@ -147,19 +150,45 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
                 final leave = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Tinggalkan proses pencetakan?'),
+                    title: Text(
+                      'Tinggalkan proses pelabelan?',
+                      style: AppTextStyles.mono.copyWith(
+                        color: AppColors.onSurface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     content: const Text(
-                      'Label yang belum disimpan akan dihapus. Lanjutkan?',
+                      'Label yang belum disimpan akan dihapus. Tetap tinggalkan?',
+                      style: TextStyle(
+                        color: AppColors.onBackground,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                     actions: [
                       TextButton(
                         onPressed: () =>
                             Navigator.of(ctx).pop(false), // Tetap di halaman
-                        child: const Text('Batal'),
+                        child: const Text(
+                          'Batal',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                       TextButton(
                         onPressed: () => Navigator.of(ctx).pop(true), // Keluar
-                        child: const Text('Tinggalkan'),
+                        child: const Text(
+                          'Tinggalkan',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -198,17 +227,18 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
                   elevation: 0.5,
                   toolbarHeight: 60,
                   title: Column(
+                    spacing: 3,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Cetal Label',
+                        'Cetak Label',
                         style: TextStyle(
                           color: AppColors.onSurface,
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      SizedBox(height: 3),
+
                       Text(
                         widget.companyCode,
                         style: AppTextStyles.mono.copyWith(
@@ -404,14 +434,22 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        color: isConnected ? Colors.green.shade50 : Colors.red.shade50,
+        decoration: BoxDecoration(
+          color: isConnected ? Colors.green.shade50 : Colors.red.shade50,
+          border: Border.symmetric(
+            vertical: BorderSide(
+              color: isConnected ? Colors.green : Colors.red,
+              width: 0.5,
+            ),
+          ),
+        ),
         child: Row(
           children: [
             Icon(
               isConnected
                   ? Icons.bluetooth_connected
                   : Icons.bluetooth_searching,
-              size: 16,
+              size: 18,
               color: isConnected ? Colors.green : Colors.red,
             ),
             const SizedBox(width: 8),
@@ -421,7 +459,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
                     ? "Terhubung: ${state.selectedDevice?.name ?? 'Unknown'}"
                     : "Printer belum terhubung. Ketuk untuk pilih.",
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
                   color: isConnected
                       ? Colors.green.shade800
                       : Colors.red.shade800,
@@ -458,6 +496,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
             Expanded(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
+                  elevation: 0,
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -465,7 +504,14 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
                 onPressed: () {
                   context.read<CreateLabelsCubit>().finalize(widget.userId);
                 },
-                child: const Text("SIMPAN & SELESAI"),
+                child: const Text(
+                  "SIMPAN & SELESAI",
+                  style: TextStyle(
+                    color: AppColors.surface,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
               ),
             )
           else if (isAllPending)
@@ -501,13 +547,14 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
                                 : AppColors.onSurface,
                           ),
                           Text(
-                            'Cetak Label',
+                            'CETAK LABEL',
                             style: TextStyle(
+                              // letterSpacing: 1,
                               color: !printerState.isConnected
                                   ? AppColors.onSurface.withAlpha(100)
                                   : AppColors.onSurface,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
                             ),
                           ),
                         ],

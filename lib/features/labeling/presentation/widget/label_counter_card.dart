@@ -58,6 +58,7 @@ class _LabelCounterCardState extends State<LabelCounterCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
+        border: Border.all(width: 1.0, color: AppColors.border),
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [AppStyle.defaultBoxShadow],

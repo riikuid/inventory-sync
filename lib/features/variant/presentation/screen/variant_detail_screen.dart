@@ -9,6 +9,7 @@ import 'package:inventory_sync_apps/features/labeling/presentation/screens/gener
 import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.dart';
 import '../../../../core/db/app_database.dart';
 import '../../../../core/db/daos/variant_dao.dart';
+import '../../../../core/db/model/variant_detail_row.dart';
 import '../../../../core/styles/app_style.dart';
 import '../../../../core/styles/text_theme.dart';
 import '../../../labeling/data/labeling_repository.dart';
@@ -100,7 +101,7 @@ class _VariantDetailView extends StatelessWidget {
                 style: AppTextStyles.mono.copyWith(
                   color: AppColors.onSurface,
                   fontSize: 18,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               foregroundColor: Colors.transparent,
@@ -150,8 +151,9 @@ class _VariantDetailView extends StatelessWidget {
                             d.name,
                           ),
                           child: AssemblyScreen(
-                            variantManufCode: d.manufCode ?? '-',
-                            rackName: d.rackName ?? '-',
+                            variantManufCode: d.manufCode ?? '',
+                            rackName: d.rackName ?? '',
+                            rackId: d.rackId ?? '',
                             targetComponents: d.componentsInBox,
                             variantId: d.variantId,
                             variantName: d.name,
@@ -173,11 +175,11 @@ class _VariantDetailView extends StatelessWidget {
                       color: AppColors.onSurface,
                     ),
                     Text(
-                      'Cetak Label',
+                      'CETAK LABEL',
                       style: TextStyle(
                         color: AppColors.onSurface,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
                       ),
                     ),
                   ],
@@ -237,8 +239,9 @@ class _VariantDetailView extends StatelessWidget {
                   child: Text(
                     d.name,
                     style: AppTextStyles.mono.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                      fontSize: 22,
                     ),
                   ),
                 ),
@@ -266,17 +269,21 @@ class _VariantDetailView extends StatelessWidget {
             Text(
               d.companyCode,
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: AppColors.onSurface,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             // ignore: unnecessary_null_comparison
             if ((d.rackName != null) || (d.uom != null))
               Text(
                 '${d.uom}${'  •  ${d.rackName}'}',
-                style: TextStyle(color: Colors.grey.shade700),
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 16,
+                ),
               ),
 
             if (d.specification != null && d.specification!.isNotEmpty) ...[
@@ -466,6 +473,7 @@ class _VariantDetailView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          spacing: 10,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
@@ -486,7 +494,13 @@ class _VariantDetailView extends StatelessWidget {
                 ),
               ],
             ),
-            TextButton.icon(
+            CustomButton(
+              elevation: 0,
+              height: 25,
+              width: 60,
+              radius: 1000,
+              color: AppColors.secondary.withAlpha(70),
+              borderColor: AppColors.secondary,
               onPressed: () async {
                 final repo = context.read<InventoryRepository>();
 
@@ -506,13 +520,13 @@ class _VariantDetailView extends StatelessWidget {
                 }
               },
 
-              icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
-              label: Text(
-                'Isi',
+              // icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
+              child: Text(
+                '+ Isi',
                 style: TextStyle(
                   fontSize: 14,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
+                  color: AppColors.onAccent,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -543,8 +557,9 @@ class _VariantDetailView extends StatelessWidget {
                         title: Text(
                           c.name,
                           style: AppTextStyles.mono.copyWith(
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                             fontSize: 18,
+                            color: AppColors.primary,
                           ),
                         ),
                         subtitle: Column(
@@ -598,6 +613,8 @@ class _VariantDetailView extends StatelessWidget {
                           'Belum ada isi',
                           style: TextStyle(
                             color: const Color.fromARGB(255, 194, 194, 194),
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
                           ),
                         ),
                       ],
@@ -623,7 +640,7 @@ class _VariantDetailView extends StatelessWidget {
           children: [
             Icon(Icons.layers_outlined, size: 14, color: AppColors.primary),
             SizedBox(width: 6),
-            const Expanded(
+            Expanded(
               child: Text(
                 'PISAH PER KEMASAN',
                 style: TextStyle(
@@ -633,7 +650,45 @@ class _VariantDetailView extends StatelessWidget {
                 ),
               ),
             ),
-            TextButton.icon(
+            SizedBox(width: 10),
+            // TextButton.icon(
+            //   onPressed: () async {
+            //     final repo = context.read<InventoryRepository>();
+
+            //     // );
+
+            //     final result = await Navigator.push<String>(
+            //       context,
+            //       MaterialPageRoute(
+            //         builder: (_) =>
+            //             ComponentPickerScreen(type: 'SEPARATE', variant: d),
+            //       ),
+            //     );
+            //     if (result != null) {
+            //       await repo.attachComponentToVariant(
+            //         componentId: result,
+            //         variantId: d.variantId,
+            //         // type: 'SEPARATE',
+            //       );
+            //     }
+            //   },
+            //   icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
+            //   label: Text(
+            //     'Komponen',
+            //     style: TextStyle(
+            //       fontSize: 14,
+            //       color: AppColors.primary,
+            //       fontWeight: FontWeight.w600,
+            //     ),
+            //   ),
+            // ),
+            CustomButton(
+              elevation: 0,
+              height: 25,
+              width: 110,
+              radius: 1000,
+              color: AppColors.secondary.withAlpha(70),
+              borderColor: AppColors.secondary,
               onPressed: () async {
                 final repo = context.read<InventoryRepository>();
 
@@ -654,13 +709,14 @@ class _VariantDetailView extends StatelessWidget {
                   );
                 }
               },
-              icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
-              label: Text(
-                'Komponen',
+
+              // icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
+              child: Text(
+                '+ Komponen',
                 style: TextStyle(
                   fontSize: 14,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
+                  color: AppColors.onAccent,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -699,8 +755,9 @@ class _VariantDetailView extends StatelessWidget {
                           Text(
                             c.name,
                             style: AppTextStyles.mono.copyWith(
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
                               fontSize: 18,
+                              color: AppColors.primary,
                             ),
                           ),
 
@@ -802,7 +859,7 @@ class _VariantDetailView extends StatelessWidget {
               child: Center(
                 child: Text(
                   'Belum ada komponen terpisah',
-                  style: TextStyle(color: Colors.grey.shade600),
+                  style: TextStyle(color: AppColors.onSurface, fontSize: 14),
                 ),
               ),
             ),

@@ -1,26 +1,30 @@
+import 'package:ellipsized_text/ellipsized_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_sync_apps/core/db/daos/variant_dao.dart'; // VariantComponentRow
+import 'package:inventory_sync_apps/core/db/daos/variant_dao.dart';
+import 'package:inventory_sync_apps/features/labeling/data/labeling_repository.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:pretty_qr_code/pretty_qr_code.dart';
 
-// Import Cubits & Resources
+// Import Cubits & Styles
+import '../../../../core/db/model/variant_component_row.dart';
+import '../../../../core/styles/app_style.dart';
 import '../../../../core/styles/color_scheme.dart';
-import '../../../../core/db/app_database.dart';
+import '../../../../core/styles/text_theme.dart';
+import '../../../../shared/presentation/widgets/primary_button.dart';
 import '../../../printer/presentation/bloc/printer_cubit.dart';
 import '../bloc/assembly/assembly_cubit.dart';
-import '../bloc/create_labels/create_labels_cubit.dart'; // Butuh ini utk provider PreviewPrintScreen
-import '../../../labeling/data/labeling_repository.dart';
-import 'preview_print_screen.dart'; // Import layar preview
+import '../bloc/create_labels/create_labels_cubit.dart';
+import 'preview_print_screen.dart';
 
 class AssemblyScreen extends StatefulWidget {
   final String variantId;
   final String variantName;
   final String companyCode;
   final String userId;
-  final String variantManufCode; // Tambahan untuk info parent
-  final String rackName; // Tambahan untuk info parent
-
-  // Menggunakan VariantComponentRow sesuai request
+  final String variantManufCode;
+  final String rackId;
+  final String rackName;
   final List<VariantComponentRow> targetComponents;
 
   const AssemblyScreen({
@@ -31,6 +35,7 @@ class AssemblyScreen extends StatefulWidget {
     required this.userId,
     required this.targetComponents,
     required this.variantManufCode,
+    required this.rackId,
     required this.rackName,
   });
 
@@ -42,84 +47,116 @@ class _AssemblyScreenState extends State<AssemblyScreen> {
   @override
   void initState() {
     super.initState();
-    // Load data (Mapping VariantComponentRow ke Component logic di cubit)
-    // Note: Pastikan loadRequirements di Cubit sudah disesuaikan menerima tipe data ini
-    // atau lakukan mapping di sini sebelum kirim ke cubit.
-    context.read<AssemblyCubit>().loadRequirements(widget.targetComponents);
-    context.read<PrinterCubit>().scanPrinters();
-  }
-
-  // --- LOGIC 1: CETAK SATUAN ---
-  Future<void> _printSingleItem(int index) async {
-    final printerCubit = context.read<PrinterCubit>();
-    final assemblyCubit = context.read<AssemblyCubit>();
-
-    // 1. Generate Data Unit
-    final unit = await assemblyCubit.generateComponentUnit(
-      index: index,
+    // 1. Load & Auto Generate QR saat masuk
+    context.read<AssemblyCubit>().loadRequirements(
+      inBoxComponents: widget.targetComponents,
+      variantRackId: widget.rackId,
+      variantRackName: widget.rackName,
       userId: widget.userId,
       companyCode: widget.companyCode,
     );
 
-    if (unit != null) {
-      final itemState = assemblyCubit.state.components[index];
+    // 2. Scan printer
+    context.read<PrinterCubit>().scanPrinters();
+  }
 
-      // 2. Print
-      final success = await printerCubit.printLabel(
-        company: "PT MANUNGGAL PERKASA",
-        location: "ASSEMBLY",
-        name: itemState.name,
-        manufCode: itemState.manufCode,
-        qrValue: unit.qrValue,
-        companyCode: widget.companyCode,
+  // --- LOGIC PRINT ITEM SATUAN (Untuk Cetak Ulang) ---
+  // --- LOGIC PRINT ITEM SATUAN ---
+  Future<void> _printItem(int index) async {
+    final printerCubit = context.read<PrinterCubit>();
+    final assemblyCubit = context.read<AssemblyCubit>();
+    final item = assemblyCubit.state.components[index];
+
+    if (item.qrValue == null) return;
+
+    final success = await printerCubit.printLabel(
+      company: "PT MANUNGGAL PERKASA",
+      location: item
+          .rackName, // Pastikan field ini ada di AssemblyItemState atau ambil dari widget.rackName
+      name: item.name,
+      manufCode: item.manufCode,
+      qrValue: item.qrValue!,
+      companyCode: widget.companyCode,
+    );
+
+    if (success) {
+      // ✅ FIX: Kabari Cubit bahwa item ini sudah diprint!
+      assemblyCubit.markAsPrinted(index);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Label tercetak"),
+          backgroundColor: Colors.green,
+          duration: Duration(
+            milliseconds: 500,
+          ), // Durasi pendek agar tidak spam
+        ),
       );
-
-      if (success) {
-        _showSnack("Label tercetak", Colors.green);
-      } else {
-        _showSnack("Gagal print. Cek koneksi.", Colors.orange);
-      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Gagal print. Cek koneksi."),
+          backgroundColor: Colors.orange,
+        ),
+      );
     }
   }
 
-  // --- LOGIC 2: CETAK SEMUA ---
-  Future<void> _printAllItems() async {
+  // --- LOGIC PRINT SEMUA (Batch) ---
+  Future<void> _printAllItems({bool isReprint = false}) async {
     final printerCubit = context.read<PrinterCubit>();
     final assemblyCubit = context.read<AssemblyCubit>();
     final components = assemblyCubit.state.components;
 
     if (!printerCubit.state.isConnected) {
-      _showSnack("Printer belum terhubung!", Colors.red);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Printer belum terhubung!"),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
-    _showSnack("Mulai mencetak...", Colors.blue);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isReprint ? "Mencetak ulang semua..." : "Mencetak semua label...",
+        ),
+        backgroundColor: Colors.blue,
+      ),
+    );
 
     for (int i = 0; i < components.length; i++) {
-      // Cetak jika belum diprint
-      if (!components[i].isPrinted) {
-        await _printSingleItem(i);
-        // Jeda aman buffer printer
-        await Future.delayed(const Duration(milliseconds: 1200));
+      // Jika Reprint: Cetak semua
+      // Jika Print Awal: Cetak yang belum isPrinted saja (logic standar)
+      // Tapi karena user minta 'Cetak Ulang Semua', kita paksa cetak walau sudah printed
+
+      bool shouldPrint = isReprint ? true : !components[i].isPrinted;
+
+      if (shouldPrint) {
+        await _printItem(i);
+        // Kita perlu update status isPrinted di cubit agar UI berubah
+        // (Asumsi _printItem sukses, kita anggap printed)
+        // Idealnya ada method assemblyCubit.markAsPrinted(i)
+        await Future.delayed(const Duration(milliseconds: 300));
       }
     }
-    _showSnack("Antrian cetak selesai.", Colors.green);
   }
 
-  // --- LOGIC 3: FINALISASI & PINDAH KE PREVIEW PARENT ---
+  // --- LOGIC FINALISASI ---
   void _onProceedToParent() async {
     final assemblyCubit = context.read<AssemblyCubit>();
 
-    // 1. Buat Draft Parent Unit (Status PENDING)
+    // Create Draft Parent
     final parentUnit = await assemblyCubit.createDraftSet(
-      widget.userId,
-      widget.companyCode,
+      userId: widget.userId,
+      companyCode: widget.companyCode,
+      rackId: widget.rackId,
+      rackName: widget.rackName,
     );
 
     if (parentUnit != null && mounted) {
-      // 2. Lempar ke PreviewPrintScreen untuk Validasi Akhir Parent
-      // Kita perlu menyuntikkan CreateLabelsCubit yang "seolah-olah" baru generate parent ini
-
       final labelingRepo = RepositoryProvider.of<LabelingRepository>(context);
 
       bool? result = await Navigator.push(
@@ -131,12 +168,12 @@ class _AssemblyScreenState extends State<AssemblyScreen> {
                 unit: parentUnit,
                 itemName: widget.variantName,
                 companyCode: widget.companyCode,
-              ), // Anda butuh method ini di CreateLabelsCubit*
+                rackName: widget.rackName,
+              ),
             child: PreviewPrintScreen(
               userId: widget.userId,
-              // variantNae: widget.variantName,
               companyCode: widget.companyCode,
-              manufcode: widget.variantManufCode, // Manuf code parent
+              manufcode: widget.variantManufCode,
               rackName: widget.rackName,
             ),
           ),
@@ -144,189 +181,641 @@ class _AssemblyScreenState extends State<AssemblyScreen> {
       );
 
       if (result == true) {
-        if (mounted) Navigator.pop(context);
-      } else if (result == false) {
-        // Jika parent tidak jadi dicetak, pop ke halaman sebelumnya dan reset
-        if (mounted) {
-          await context.read<AssemblyCubit>().cancelAssembly();
-
-          Navigator.pop(context);
-        }
+        if (mounted) Navigator.pop(context); // Selesai total
+      } else if (result == false && mounted) {
+        await context.read<AssemblyCubit>().cancelAssembly();
+        Navigator.pop(context);
       }
     }
   }
 
-  void _showSnack(String msg, Color color) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<PrinterCubit, PrinterState>(
+      listener: (context, printerState) {
+        if (printerState.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(printerState.error!),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        // Tampilkan status message jika penting (Connect/Disconnect/Gagal)
+        if (printerState.statusMessage.isNotEmpty &&
+            printerState.statusMessage != "Siap Connect" &&
+            printerState.statusMessage != "Disconnected") {
+          // Filter pesan default
+
+          Color color = Colors.blue;
+          if (printerState.isConnected) color = Colors.green;
+          if (printerState.statusMessage.contains("Gagal")) color = Colors.red;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(printerState.statusMessage),
+              backgroundColor: color,
+            ),
+          );
+        }
+      },
+      child: BlocBuilder<PrinterCubit, PrinterState>(
+        builder: (context, printerState) {
+          return BlocConsumer<AssemblyCubit, AssemblyState>(
+            listener: (context, state) {
+              if (state.lastScanMessage != null) {
+                final isError = state.lastScanMessage!.contains('❌');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.lastScanMessage!),
+                    backgroundColor: isError ? Colors.red : Colors.green,
+                  ),
+                );
+              }
+            },
+            builder: (context, assemblyState) {
+              // --- LOGIC PENENTU STATE UI ---
+              final isComplete = assemblyState.isAllComponentsScanned;
+              // Cek apakah minimal 1 item sudah pernah diprint (status printed/scanned)
+              // Ini menandakan fase "Print Awal" sudah lewat
+              final hasStartedPrinting = assemblyState.components.any(
+                (c) => c.isPrinted || c.isScanned,
+              );
+
+              return WillPopScope(
+                onWillPop: () async {
+                  final leave = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text(
+                        'Batalkan Proses Pelabelan?',
+                        style: AppTextStyles.mono.copyWith(
+                          color: AppColors.onSurface,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      content: const Text(
+                        'Unit QR sudah dibuat. Keluar sekarang akan menghapus data tersebut.',
+                        style: TextStyle(
+                          color: AppColors.onBackground,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(false),
+                          child: const Text(
+                            'Tetap Lanjut',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(true),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.red,
+                          ),
+                          child: const Text(
+                            'Hapus & Keluar',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (leave == true && mounted) {
+                    await context.read<AssemblyCubit>().cancelAssembly();
+                    return true;
+                  }
+                  return false;
+                },
+                child: Scaffold(
+                  backgroundColor: AppColors.background,
+                  appBar: AppBar(
+                    iconTheme: IconThemeData(color: AppColors.onSurface),
+                    leading: IconButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: Icon(
+                        Icons.arrow_back_ios_rounded,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    backgroundColor: AppColors.background,
+                    elevation: 0.5,
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Isi Box Komponen',
+                          style: TextStyle(
+                            color: AppColors.onSurface,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          widget.variantName,
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  body: Column(
+                    children: [
+                      _buildConnectionBar(context, printerState),
+
+                      // Progress Info (Tetap Ada)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Status Box:",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.onBackground,
+                              ),
+                            ),
+                            Text(
+                              "${assemblyState.components.where((c) => c.isScanned).length} / ${assemblyState.components.length} Komponen Tervalidasi",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: isComplete
+                                    ? Colors.green
+                                    : Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Visual Progress Bar
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: LinearProgressIndicator(
+                          value: assemblyState.components.isEmpty
+                              ? 0
+                              : assemblyState.components
+                                        .where((c) => c.isScanned)
+                                        .length /
+                                    assemblyState.components.length,
+                          backgroundColor: Colors.grey.shade200,
+                          color: isComplete ? Colors.green : AppColors.primary,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Divider(height: 1),
+
+                      // LIST COMPONENT CARDS
+                      Expanded(
+                        child: assemblyState.status == AssemblyStatus.loading
+                            ? const Center(child: CircularProgressIndicator())
+                            : ListView.separated(
+                                padding: const EdgeInsets.all(16),
+                                itemCount: assemblyState.components.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 10),
+                                itemBuilder: (ctx, index) {
+                                  final item = assemblyState.components[index];
+                                  return _buildComponentCard(
+                                    item,
+                                    isPrinterConnected:
+                                        printerState.isConnected,
+                                    hasStartedPrinting:
+                                        hasStartedPrinting, // Logic visual button
+                                    onPrint: () => _printItem(index),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+
+                  // BOTTOM BAR (Logic Berubah di sini)
+                  bottomNavigationBar: _buildBottomBar(
+                    context,
+                    assemblyState,
+                    printerState.isConnected,
+                    isComplete,
+                    hasStartedPrinting,
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<PrinterCubit, PrinterState>(
-      builder: (context, printerState) {
-        return BlocConsumer<AssemblyCubit, AssemblyState>(
-          listener: (context, state) {
-            if (state.lastScanMessage != null) {
-              final isError = state.lastScanMessage!.contains('❌');
-              _showSnack(
-                state.lastScanMessage!,
-                isError ? Colors.red : Colors.green,
-              );
-            }
-            if (state.status == AssemblyStatus.failure) {
-              _showSnack(state.error ?? "Error", Colors.red);
-            }
-          },
-          builder: (context, assemblyState) {
-            final isComplete = assemblyState.isAllComponentsScanned;
-            // Cek apakah ada yang belum diprint
-            final hasPendingPrint = assemblyState.components.any(
-              (c) => !c.isPrinted,
-            );
+  // --- CARD COMPONENT ---
+  Widget _buildComponentCard(
+    AssemblyItemState item, {
+    required bool isPrinterConnected,
+    required bool hasStartedPrinting,
+    required VoidCallback onPrint,
+  }) {
+    Color statusColor;
+    IconData statusIcon;
+    String statusText;
 
-            return WillPopScope(
-              onWillPop: () async {
-                // Cek apakah user sudah melakukan progress (sudah ada yg dicetak/scan)
-                final hasProgress = context
-                    .read<AssemblyCubit>()
-                    .state
-                    .components
-                    .any(
-                      (c) =>
-                          c.isPrinted ||
-                          c.isScanned ||
-                          c.generatedUnitId != null,
-                    );
+    if (item.isScanned) {
+      statusColor = Colors.green;
+      statusIcon = Icons.check_circle;
+      statusText = "Valid";
+    } else if (item.isPrinted) {
+      statusColor = Colors.orange;
+      statusIcon = Icons.print;
+      statusText = "Tercetak";
+    } else {
+      statusColor = Colors.grey;
+      statusIcon = Icons.hourglass_empty;
+      statusText = "Pending";
+    }
 
-                // Jika belum ada progress, boleh langsung keluar
-                if (!hasProgress) return true;
-
-                // Jika ada progress, tampilkan Dialog Konfirmasi
-                final shouldExit = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Batalkan Perakitan?'),
-                    content: const Text(
-                      'Anda sudah mencetak beberapa label komponen.\n'
-                      'Jika keluar sekarang, label tersebut akan ditarik/dihapus dari sistem.\n\n'
-                      'Yakin ingin membatalkan?',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () =>
-                            Navigator.of(ctx).pop(false), // Jangan keluar
-                        child: const Text('Lanjut Kerja'),
-                      ),
-                      TextButton(
-                        onPressed: () =>
-                            Navigator.of(ctx).pop(true), // Ya, keluar
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.red,
-                        ),
-                        child: const Text('Batalkan & Hapus'),
-                      ),
-                    ],
-                  ),
-                );
-
-                if (shouldExit == true) {
-                  // Panggil fungsi bersih-bersih sebelum keluar
-                  if (mounted) {
-                    await context.read<AssemblyCubit>().cancelAssembly();
-                  }
-                  return true; // Izinkan pop
-                }
-
-                return false; // Tahan di halaman ini
-              },
-              child: Scaffold(
-                backgroundColor: AppColors.background,
-                appBar: AppBar(
-                  title: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Perakitan Set',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        widget.variantName,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                  actions: [
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 16.0),
-                        child: Text(
-                          widget.companyCode,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        boxShadow: [AppStyle.defaultBoxShadow],
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border, width: 1.2),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  borderRadius: BorderRadius.all(Radius.circular(20.0)),
                 ),
-                body: Column(
+                child: item.qrValue != null
+                    ? PrettyQrView.data(data: item.qrValue!)
+                    : const Center(child: CircularProgressIndicator()),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Status Printer
-                    _buildConnectionBar(context, printerState),
-
-                    // Progress
-                    _buildProgressInfo(assemblyState),
-
-                    // List
-                    Expanded(
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: assemblyState.components.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (ctx, index) {
-                          final item = assemblyState.components[index];
-                          return _buildComponentCard(
-                            item,
-                            isConnected: printerState.isConnected,
-                            onPrint: () => _printSingleItem(index),
-                          );
-                        },
+                    if (item.qrValue != null)
+                      EllipsizedText(
+                        item.qrValue!,
+                        type: EllipsisType.middle,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "LOK: ${item.rackName}",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.onSurface.withAlpha(150),
                       ),
                     ),
                   ],
-                ),
-
-                bottomNavigationBar: _buildBottomBar(
-                  context,
-                  assemblyState,
-                  printerState.isConnected,
-                  isComplete,
-                  hasPendingPrint,
                 ),
               ),
-            );
-          },
-        );
-      },
+            ],
+          ),
+
+          const SizedBox(height: 6),
+          const Divider(),
+          const SizedBox(height: 6),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // BADGE STATUS
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: statusColor.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(statusIcon, size: 12, color: statusColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      statusText,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // BUTTON: CETAK ULANG SATUAN
+              // Hanya muncul jika:
+              // 1. Fase awal sudah lewat (hasStartedPrinting == true)
+              // 2. Belum discan (masih printed/pending tapi butuh reprint)
+              if (hasStartedPrinting && !item.isScanned)
+                CustomButton(
+                  elevation: 0.2,
+                  width: 30,
+                  height: 30,
+                  padding: EdgeInsets.symmetric(vertical: 5, horizontal: 15),
+                  radius: 15,
+                  color: isPrinterConnected
+                      ? AppColors.surface
+                      : Colors.grey.shade300,
+                  borderColor: AppColors.border,
+
+                  onPressed: isPrinterConnected ? onPrint : null,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.print_outlined,
+                        size: 14,
+                        color: isPrinterConnected
+                            ? Colors.grey.shade500
+                            : AppColors.onBackground,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'Cetak Ulang',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isPrinterConnected
+                              ? Colors.grey.shade500
+                              : AppColors.onBackground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              // SizedBox(
+              //   height: 36,
+              //   child: ElevatedButton.icon(
+              //     style: ElevatedButton.styleFrom(
+              //       elevation: 0,
+              //       backgroundColor: isPrinterConnected
+              //           ? Colors.grey.shade700
+              //           : Colors.grey.shade300,
+              //       foregroundColor: Colors.white,
+              //       padding: const EdgeInsets.symmetric(horizontal: 12),
+              //       shape: RoundedRectangleBorder(
+              //         borderRadius: BorderRadius.circular(18),
+              //       ),
+              //     ),
+              //     onPressed: isPrinterConnected ? onPrint : null,
+              //     icon: const Icon(Icons.refresh, size: 16),
+              //     label: const Text(
+              //       "Cetak Ulang",
+              //       style: TextStyle(
+              //         fontSize: 12,
+              //         fontWeight: FontWeight.bold,
+              //       ),
+              //     ),
+              //   ),
+              // ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  // --- WIDGETS ---
+  // --- BOTTOM BAR ---
+  Widget _buildBottomBar(
+    BuildContext context,
+    AssemblyState state,
+    bool isPrinterConnected,
+    bool isComplete,
+    bool hasStartedPrinting,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.black12)),
+      ),
+      child: _buildBottomBarContent(
+        context,
+        state,
+        isPrinterConnected,
+        isComplete,
+        hasStartedPrinting,
+      ),
+    );
+  }
 
+  Widget _buildBottomBarContent(
+    BuildContext context,
+    AssemblyState state,
+    bool isPrinterConnected,
+    bool isComplete,
+    bool hasStartedPrinting,
+  ) {
+    // KONDISI 1: SUDAH SELESAI -> GENERATE BOX
+    if (isComplete) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            elevation: 0,
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+          onPressed: _onProceedToParent,
+          child: const Text(
+            "GENERATE LABEL BOX",
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+          ),
+        ),
+      );
+    }
+
+    // KONDISI 2: FASE VALIDASI (Sudah pernah print batch) -> ADA 2 BUTTON
+    if (hasStartedPrinting) {
+      return Row(
+        children: [
+          // Cetak Ulang Semua
+          Expanded(
+            child: CustomButton(
+              elevation: 0,
+              radius: 40,
+              height: 50,
+              color: !isPrinterConnected ? Colors.grey : AppColors.secondary,
+              onPressed: isPrinterConnected
+                  ? () => _printAllItems(isReprint: true)
+                  : null,
+
+              child: Row(
+                spacing: 5,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.local_print_shop_outlined,
+                    color: !isPrinterConnected
+                        ? AppColors.onSurface.withAlpha(100)
+                        : AppColors.onSurface,
+                  ),
+                  Text(
+                    "Cetak Ulang",
+                    style: TextStyle(
+                      color: !isPrinterConnected
+                          ? AppColors.onSurface.withAlpha(100)
+                          : AppColors.onSurface,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Expanded(
+          //   child: ElevatedButton.icon(
+          //     style: ElevatedButton.styleFrom(
+          //       backgroundColor:
+          //           Colors.grey.shade200, // Warna lebih pudar karena sekunder
+          //       foregroundColor: Colors.black87,
+          //       padding: const EdgeInsets.symmetric(vertical: 12),
+          //       disabledBackgroundColor: Colors.grey.shade100,
+          //     ),
+          //     onPressed: isPrinterConnected
+          //         ? () => _printAllItems(isReprint: true)
+          //         : null,
+          //     icon: const Icon(Icons.print_outlined),
+          //     label: const Text(
+          //       "Cetak Ulang Semua",
+          //       style: TextStyle(fontSize: 12),
+          //     ),
+          //   ),
+          // ),
+          const SizedBox(width: 12),
+          // Validasi QR
+          Expanded(
+            child: CustomButton(
+              color: AppColors.surface,
+              borderColor: AppColors.border,
+              elevation: 0,
+              radius: 40,
+              height: 50,
+              // Aktifkan validasi jika minimal 1 printed, ATAU user mau validasi manual boleh juga
+              onPressed: () => _openScanner(context.read<AssemblyCubit>()),
+              child: Row(
+                spacing: 5,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.qr_code_scanner, color: AppColors.primary),
+                  Text(
+                    "Validasi",
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return CustomButton(
+      elevation: 0,
+      radius: 40,
+      height: 50,
+      width: double.infinity,
+      color: isPrinterConnected ? AppColors.secondary : Colors.grey,
+      onPressed: isPrinterConnected
+          ? () => _printAllItems(isReprint: false)
+          : null,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: 10,
+        children: [
+          Icon(
+            Icons.print_outlined,
+            size: 18,
+            color: isPrinterConnected
+                ? AppColors.onSurface
+                : AppColors.onSurface.withAlpha(100),
+          ),
+          Text(
+            'CETAK SEMUA',
+            style: TextStyle(
+              // letterSpacing: 1,
+              color: isPrinterConnected
+                  ? AppColors.onSurface
+                  : AppColors.onSurface.withAlpha(100),
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // KONDISI 3: FASE AWAL (Belum print apapun) -> CETAK SEMUA
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.secondary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          disabledBackgroundColor: Colors.grey.shade300,
+        ),
+        onPressed: isPrinterConnected
+            ? () => _printAllItems(isReprint: false)
+            : null,
+        icon: const Icon(Icons.print),
+        label: const Text(
+          "CETAK SEMUA LABEL",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+      ),
+    );
+  }
+
+  // --- CONNECTION BAR (Same as PreviewPrintScreen) ---
   Widget _buildConnectionBar(BuildContext context, PrinterState state) {
     final isConnected = state.isConnected;
     return InkWell(
@@ -336,14 +825,22 @@ class _AssemblyScreenState extends State<AssemblyScreen> {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        color: isConnected ? Colors.green.shade50 : Colors.red.shade50,
+        decoration: BoxDecoration(
+          color: isConnected ? Colors.green.shade50 : Colors.red.shade50,
+          border: Border.symmetric(
+            vertical: BorderSide(
+              color: isConnected ? Colors.green : Colors.red,
+              width: 0.5,
+            ),
+          ),
+        ),
         child: Row(
           children: [
             Icon(
               isConnected
                   ? Icons.bluetooth_connected
                   : Icons.bluetooth_searching,
-              size: 16,
+              size: 18,
               color: isConnected ? Colors.green : Colors.red,
             ),
             const SizedBox(width: 8),
@@ -351,12 +848,13 @@ class _AssemblyScreenState extends State<AssemblyScreen> {
               child: Text(
                 isConnected
                     ? "Terhubung: ${state.selectedDevice?.name}"
-                    : "Printer belum terhubung. Ketuk untuk pilih.",
+                    : "Printer Disconnected",
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
                   color: isConnected
                       ? Colors.green.shade800
                       : Colors.red.shade800,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -366,255 +864,42 @@ class _AssemblyScreenState extends State<AssemblyScreen> {
     );
   }
 
-  Widget _buildProgressInfo(AssemblyState state) {
-    final total = state.components.length;
-    final scanned = state.components.where((c) => c.isScanned).length;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: Colors.white,
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  // ... (Method _showDevicePicker dan _openScanner sama seperti sebelumnya) ...
+  void _showDevicePicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => BlocBuilder<PrinterCubit, PrinterState>(
+        builder: (ctx, state) => Container(
+          height: 350,
+          padding: const EdgeInsets.all(16),
+          child: Column(
             children: [
-              Text(
-                "Kelengkapan Box:",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade700,
-                ),
+              const Text(
+                "Pilih Printer",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              Text(
-                "$scanned / $total Komponen",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+              const SizedBox(height: 10),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: state.availableDevices.length,
+                  itemBuilder: (c, i) {
+                    final d = state.availableDevices[i];
+                    return ListTile(
+                      leading: const Icon(Icons.print),
+                      title: Text(d.name),
+                      subtitle: Text(d.macAdress),
+                      onTap: () {
+                        Navigator.pop(context);
+                        ctx.read<PrinterCubit>().connect(d);
+                      },
+                    );
+                  },
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          LinearProgressIndicator(
-            value: total == 0 ? 0 : scanned / total,
-            backgroundColor: Colors.grey.shade100,
-            color: Colors.green,
-            minHeight: 6,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildComponentCard(
-    AssemblyItemState item, {
-    required bool isConnected,
-    required VoidCallback onPrint,
-  }) {
-    Color statusColor = Colors.grey;
-    IconData statusIcon = Icons.circle_outlined;
-    String statusText = "Pending";
-
-    if (item.isScanned) {
-      statusColor = Colors.green;
-      statusIcon = Icons.check_circle;
-      statusText = "OK (Masuk Box)";
-    } else if (item.isPrinted) {
-      statusColor = Colors.orange;
-      statusIcon = Icons.print;
-      statusText = "Printed (Scan Label)";
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: statusColor.withOpacity(0.1),
-            child: Icon(statusIcon, color: statusColor),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "${item.manufCode}",
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  statusText,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // FIX #1: Tombol Reprint Logic
-          // Tombol muncul jika BELUM discan.
-          // Tombol Aktif jika printer connect (walaupun sudah print, tetap bisa reprint).
-          if (!item.isScanned)
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: item.isPrinted
-                    ? Colors.grey
-                    : AppColors.secondary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                visualDensity: VisualDensity.compact,
-              ),
-              // CHANGE: Hilangkan "!item.isPrinted" agar bisa reprint
-              onPressed: isConnected ? onPrint : null,
-              icon: const Icon(Icons.print, size: 16),
-              label: Text(item.isPrinted ? "Cetak Ulang" : "Cetak"),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomBar(
-    BuildContext context,
-    AssemblyState state,
-    bool isPrinterConnected,
-    bool isComplete,
-    bool hasPendingPrint,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.black12)),
-      ),
-      child: Row(
-        children: [
-          if (isComplete)
-            // FIX #3: Tombol lanjut ke Parent Label
-            Expanded(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                onPressed: state.status == AssemblyStatus.assembling
-                    ? null
-                    : _onProceedToParent,
-                child: state.status == AssemblyStatus.assembling
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(color: Colors.white),
-                      )
-                    : const Text("GENERATE LABEL UTAMA (SET)"),
-              ),
-            )
-          else
-            Expanded(
-              child: Row(
-                children: [
-                  // CETAK SEMUA
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.secondary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        disabledBackgroundColor: Colors.grey.shade300,
-                      ),
-                      // Aktif jika printer connect dan masih ada yang belum diprint
-                      onPressed: (isPrinterConnected && hasPendingPrint)
-                          ? _printAllItems
-                          : null,
-                      icon: const Icon(Icons.print_outlined),
-                      label: const Text("Cetak Semua"),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // SCANNER
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      onPressed: () =>
-                          _openScanner(context.read<AssemblyCubit>()),
-                      icon: const Icon(Icons.qr_code_scanner),
-                      label: const Text("Scan Validasi"),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // --- MODALS ---
-
-  void _showDevicePicker(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) {
-        return BlocBuilder<PrinterCubit, PrinterState>(
-          builder: (ctx, state) {
-            return Container(
-              height: 350,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  const Text(
-                    "Pilih Printer",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(height: 10),
-                  if (state.availableDevices.isEmpty)
-                    const Text("Mencari printer..."),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: state.availableDevices.length,
-                      itemBuilder: (c, i) {
-                        final d = state.availableDevices[i];
-                        return ListTile(
-                          leading: const Icon(Icons.print),
-                          title: Text(d.name),
-                          subtitle: Text(d.macAdress),
-                          onTap: () {
-                            Navigator.pop(context);
-                            ctx.read<PrinterCubit>().connect(d);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
     );
   }
 
@@ -622,7 +907,6 @@ class _AssemblyScreenState extends State<AssemblyScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      // FIX #2: Scanner Modal sekarang menerima callback pop di dalamnya
       builder: (ctx) => SizedBox(
         height: MediaQuery.of(ctx).size.height * 0.85,
         child: AssemblyScannerModal(cubit: cubit),
