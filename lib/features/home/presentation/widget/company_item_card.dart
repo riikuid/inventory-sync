@@ -1,12 +1,15 @@
 import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:inventory_sync_apps/core/styles/text_theme.dart';
+import 'package:inventory_sync_apps/core/user_storage.dart';
 
 import '../../../../core/db/daos/company_item_dao.dart';
 import '../../../../core/styles/app_style.dart';
 import '../../../../core/styles/color_scheme.dart';
+import '../../../auth/models/user.dart';
 import '../../../inventory/presentation/screens/company_item_detail_screen.dart';
 import '../../../variant/presentation/screen/create_variant_screen.dart';
 
@@ -26,12 +29,13 @@ class CompanyItemCard extends StatelessWidget {
       onTap: () async {
         dev.log('TOTAL VARIANT: ${row.totalVariants}');
         if (row.totalVariants == 0) {
+          User _user = (await UserStorage.getUser())!;
           final result = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
               builder: (context) => CreateVariantScreen(
                 companyItemId: row.companyItemId,
-                userId: 'SDWDSD',
+                userId: _user.id!,
                 productName: row.productName,
                 companyCode: row.companyCode,
                 isSetUp: true,

@@ -4,13 +4,18 @@ import 'dart:developer' as dev;
 import 'package:drift/drift.dart';
 import 'package:inventory_sync_apps/core/db/app_database.dart';
 import 'package:inventory_sync_apps/core/result.dart';
+import 'package:rxdart/rxdart.dart';
 
+import '../bloc/sync_cubit.dart';
 import 'sync_service.dart';
 import 'sync_mapper.dart';
 
 class SyncRepository {
   final AppDatabase db;
   final SyncService api;
+
+  // 1. TAMBAHKAN VARIABLE INI (GEMBOK)
+  bool _isSyncing = false;
 
   SyncRepository({required this.db, required this.api});
 
@@ -37,6 +42,78 @@ class SyncRepository {
     }
 
     return const Result.success(null);
+  }
+
+  Stream<SyncCounts> watchAllPending() {
+    // 1. Stream Product
+    final s1 = (db.select(db.products)..where((t) => t.needSync.equals(true)))
+        .watch()
+        .map((rows) => rows.length);
+
+    // 2. Stream Company Items
+    final s2 =
+        (db.select(db.companyItems)..where((t) => t.needSync.equals(true)))
+            .watch()
+            .map((rows) => rows.length);
+
+    // 3. Stream Variants
+    final s3 = (db.select(db.variants)..where((t) => t.needSync.equals(true)))
+        .watch()
+        .map((rows) => rows.length);
+
+    // 4. Stream Components
+    final s4 = (db.select(db.components)..where((t) => t.needSync.equals(true)))
+        .watch()
+        .map((rows) => rows.length);
+
+    // 5. Stream Units
+    final s5 = (db.select(db.units)..where((t) => t.needSync.equals(true)))
+        .watch()
+        .map((rows) => rows.length);
+
+    // 6. Stream Photos (Variant + Component)
+    final sPhoto1 =
+        (db.select(db.variantPhotos)..where((t) => t.needSync.equals(true)))
+            .watch()
+            .map((rows) => rows.length);
+    final sPhoto2 =
+        (db.select(db.componentPhotos)..where((t) => t.needSync.equals(true)))
+            .watch()
+            .map((rows) => rows.length);
+
+    // Gabung Stream Photo jadi satu
+    final sTotalPhotos = Rx.combineLatest2<int, int, int>(
+      sPhoto1,
+      sPhoto2,
+      (a, b) => a + b,
+    );
+
+    // 7. Stream Variant Components
+    final s7 =
+        (db.select(db.variantComponents)..where((t) => t.needSync.equals(true)))
+            .watch()
+            .map((rows) => rows.length);
+
+    // GABUNGKAN SEMUANYA MENGGUNAKAN RXDART
+    return Rx.combineLatest7(s1, s2, s3, s4, s5, sTotalPhotos, s7, (
+      products,
+      items,
+      variants,
+      components,
+      units,
+      photos,
+      variantComponents,
+    ) {
+      return SyncCounts(
+        products: products,
+        companyItems: items,
+        variants: variants,
+        components: components,
+        units: units,
+        photos: photos,
+        variantComponents: variantComponents,
+      );
+    });
   }
 
   /// Pull delta: hanya data yang updated sejak last_pull_at.
@@ -76,193 +153,212 @@ class SyncRepository {
   }
 
   Future<Result<void>> pushPendingAll() async {
-    // -----------------------------------------------------------
-    // PART 1: AMBIL DATA PENDING DARI DATABASE LOKAL
-    // -----------------------------------------------------------
-    final pendingProducts = await db.productDao.getPendingProducts();
-    final pendingCompanyItems = await db.companyItemDao
-        .getPendingCompanyItems();
-    final pendingVariants = await db.variantDao.getPendingVariants();
-    final pendingComponents = await db.componentDao.getPendingComponents();
-    final pendingVariantComponents = await db.variantComponentDao
-        .getPendingVariantComponents();
-    final pendingUnits = await db.unitDao.getPendingUnits();
-
-    // Khusus Foto
-    final pendingVariantPhotos = await db.variantPhotoDao.getPendingPhotos();
-    final pendingComponentPhotos = await db.componentPhotoDao
-        .getPendingPhotos();
-
-    // Cek apakah ada data yang perlu dikirim?
-    if (pendingProducts.isEmpty &&
-        pendingCompanyItems.isEmpty &&
-        pendingVariants.isEmpty &&
-        pendingComponents.isEmpty &&
-        pendingVariantComponents.isEmpty &&
-        pendingUnits.isEmpty &&
-        pendingVariantPhotos.isEmpty &&
-        pendingComponentPhotos.isEmpty) {
-      return const Result.success(null);
+    // 2. CEK GEMBOK DI AWAL
+    if (_isSyncing) {
+      dev.log('Sync already in progress. Skipping duplicate trigger.');
+      return const Result.success(null); // Abaikan trigger kedua
     }
 
-    // -----------------------------------------------------------
-    // PART 2: UPLOAD FOTO TERLEBIH DAHULU (Logic Lama Dipertahankan)
-    // -----------------------------------------------------------
-    final failedUploads = <String, String>{};
-    var uploadTriedCount = 0;
+    // 3. KUNCI GEMBOK
+    _isSyncing = true;
+    try {
+      // -----------------------------------------------------------
+      // PART 1: AMBIL DATA PENDING DARI DATABASE LOKAL
+      // -----------------------------------------------------------
+      final pendingProducts = await db.productDao.getPendingProducts();
+      final pendingCompanyItems = await db.companyItemDao
+          .getPendingCompanyItems();
+      final pendingVariants = await db.variantDao.getPendingVariants();
+      final pendingComponents = await db.componentDao.getPendingComponents();
+      final pendingVariantComponents = await db.variantComponentDao
+          .getPendingVariantComponents();
+      final pendingUnits = await db.unitDao.getPendingUnits();
 
-    // A. Upload Variant Photos
-    for (final p in pendingVariantPhotos.where(
-      (p) => p.remoteUrl == null && p.localPath != null,
-    )) {
-      uploadTriedCount++;
-      final uploadRes = await api.uploadPhoto(
-        id: p.id,
-        type: 'variant',
-        filePath: p.localPath!,
-      );
+      // Khusus Foto
+      final pendingVariantPhotos = await db.variantPhotoDao.getPendingPhotos();
+      final pendingComponentPhotos = await db.componentPhotoDao
+          .getPendingPhotos();
 
-      if (uploadRes.isSuccess) {
-        await db.variantPhotoDao.markUploaded(
-          id: p.id,
-          uploadedUrl: uploadRes.resultValue?.filePath ?? '',
-          lastModifiedAt: DateTime.now(),
-        );
-      } else {
-        failedUploads[p.id] = uploadRes.errorMessage ?? 'Upload failed';
+      // Cek apakah ada data yang perlu dikirim?
+      if (pendingProducts.isEmpty &&
+          pendingCompanyItems.isEmpty &&
+          pendingVariants.isEmpty &&
+          pendingComponents.isEmpty &&
+          pendingVariantComponents.isEmpty &&
+          pendingUnits.isEmpty &&
+          pendingVariantPhotos.isEmpty &&
+          pendingComponentPhotos.isEmpty) {
+        return const Result.success(null);
       }
-    }
 
-    // B. Upload Component Photos
-    for (final p in pendingComponentPhotos.where(
-      (p) => p.remoteUrl == null && p.localPath != null,
-    )) {
-      uploadTriedCount++;
-      final uploadRes = await api.uploadPhoto(
-        id: p.id,
-        type: 'component',
-        filePath: p.localPath!,
-      );
+      // -----------------------------------------------------------
+      // PART 2: UPLOAD FOTO TERLEBIH DAHULU (Logic Lama Dipertahankan)
+      // -----------------------------------------------------------
+      final failedUploads = <String, String>{};
+      var uploadTriedCount = 0;
 
-      if (uploadRes.isSuccess) {
-        await db.componentPhotoDao.markUploaded(
+      // A. Upload Variant Photos
+      for (final p in pendingVariantPhotos.where(
+        (p) => p.remoteUrl == null && p.localPath != null,
+      )) {
+        uploadTriedCount++;
+        final uploadRes = await api.uploadPhoto(
           id: p.id,
-          uploadedUrl: uploadRes.resultValue?.filePath ?? '',
-          lastModifiedAt: DateTime.now(),
+          type: 'variant',
+          filePath: p.localPath!,
         );
-      } else {
-        failedUploads[p.id] = uploadRes.errorMessage ?? 'Upload failed';
+
+        if (uploadRes.isSuccess) {
+          await db.variantPhotoDao.markUploaded(
+            id: p.id,
+            uploadedUrl: uploadRes.resultValue?.filePath ?? '',
+            lastModifiedAt: DateTime.now(),
+          );
+        } else {
+          failedUploads[p.id] = uploadRes.errorMessage ?? 'Upload failed';
+        }
       }
-    }
 
-    // Ambil ulang foto yang sudah punya remoteUrl (siap sync data)
-    final readyVariantPhotos = await db.variantPhotoDao.getPendingPhotos();
-    final variantPhotosPayload = readyVariantPhotos
-        .where((p) => p.remoteUrl != null)
-        .map((p) => variantPhotoToSyncJson(p, p.remoteUrl!))
-        .toList();
+      // B. Upload Component Photos
+      for (final p in pendingComponentPhotos.where(
+        (p) => p.remoteUrl == null && p.localPath != null,
+      )) {
+        uploadTriedCount++;
+        final uploadRes = await api.uploadPhoto(
+          id: p.id,
+          type: 'component',
+          filePath: p.localPath!,
+        );
 
-    final readyComponentPhotos = await db.componentPhotoDao.getPendingPhotos();
-    final componentPhotosPayload = readyComponentPhotos
-        .where((p) => p.remoteUrl != null)
-        .map((p) => componentPhotoToSyncJson(p, p.remoteUrl!))
-        .toList();
+        if (uploadRes.isSuccess) {
+          await db.componentPhotoDao.markUploaded(
+            id: p.id,
+            uploadedUrl: uploadRes.resultValue?.filePath ?? '',
+            lastModifiedAt: DateTime.now(),
+          );
+        } else {
+          failedUploads[p.id] = uploadRes.errorMessage ?? 'Upload failed';
+        }
+      }
 
-    // -----------------------------------------------------------
-    // PART 3: BUILD PAYLOAD (MENGGUNAKAN EXTENSIONS BARU)
-    // -----------------------------------------------------------
-    final payload = {
-      'products': pendingProducts.map((e) => e.toSyncJson()).toList(),
-      'company_items': pendingCompanyItems.map((e) => e.toSyncJson()).toList(),
-      'variants': pendingVariants.map((e) => e.toSyncJson()).toList(),
-      'components': pendingComponents.map((e) => e.toSyncJson()).toList(),
-      'variant_components': pendingVariantComponents
-          .map((e) => e.toSyncJson())
-          .toList(),
-      'units': pendingUnits.map((e) => e.toSyncJson()).toList(),
-      'variant_photos': variantPhotosPayload,
-      'component_photos': componentPhotosPayload,
-    };
+      // Ambil ulang foto yang sudah punya remoteUrl (siap sync data)
+      final readyVariantPhotos = await db.variantPhotoDao.getPendingPhotos();
+      final variantPhotosPayload = readyVariantPhotos
+          .where((p) => p.remoteUrl != null)
+          .map((p) => variantPhotoToSyncJson(p, p.remoteUrl!))
+          .toList();
 
-    // KIRIM KE SERVER
-    final res = await api.push(payload);
+      final readyComponentPhotos = await db.componentPhotoDao
+          .getPendingPhotos();
+      final componentPhotosPayload = readyComponentPhotos
+          .where((p) => p.remoteUrl != null)
+          .map((p) => componentPhotoToSyncJson(p, p.remoteUrl!))
+          .toList();
 
-    if (!res.isSuccess) {
-      return Result.failed(res.errorMessage ?? 'Failed to push changes');
-    }
+      // -----------------------------------------------------------
+      // PART 3: BUILD PAYLOAD (MENGGUNAKAN EXTENSIONS BARU)
+      // -----------------------------------------------------------
+      final payload = {
+        'products': pendingProducts.map((e) => e.toSyncJson()).toList(),
+        'company_items': pendingCompanyItems
+            .map((e) => e.toSyncJson())
+            .toList(),
+        'variants': pendingVariants.map((e) => e.toSyncJson()).toList(),
+        'components': pendingComponents.map((e) => e.toSyncJson()).toList(),
+        'variant_components': pendingVariantComponents
+            .map((e) => e.toSyncJson())
+            .toList(),
+        'units': pendingUnits.map((e) => e.toSyncJson()).toList(),
+        'variant_photos': variantPhotosPayload,
+        'component_photos': componentPhotosPayload,
+      };
 
-    // -----------------------------------------------------------
-    // PART 4: SMART ACKNOWLEDGEMENT (PROCESS SUCCESS_IDS)
-    // -----------------------------------------------------------
-    // Kita baca return dari server, ambil array 'success_ids' per tabel,
-    // lalu hanya update data lokal yang ID-nya ada di array tersebut.
+      // KIRIM KE SERVER
+      final res = await api.push(payload);
 
-    final results = res.resultValue?['results'] as Map<String, dynamic>?;
-    final now = DateTime.now();
+      if (!res.isSuccess) {
+        return Result.failed(res.errorMessage ?? 'Failed to push changes');
+      }
 
-    if (results != null) {
-      await db.transaction(() async {
-        // Helper kecil untuk extract success IDs
-        List<String> getSuccessIds(String key) {
-          if (results[key] is Map && results[key]['success_ids'] is List) {
-            return List<String>.from(results[key]['success_ids']);
+      // -----------------------------------------------------------
+      // PART 4: SMART ACKNOWLEDGEMENT (PROCESS SUCCESS_IDS)
+      // -----------------------------------------------------------
+      // Kita baca return dari server, ambil array 'success_ids' per tabel,
+      // lalu hanya update data lokal yang ID-nya ada di array tersebut.
+
+      final results = res.resultValue?['results'] as Map<String, dynamic>?;
+      final now = DateTime.now();
+
+      if (results != null) {
+        await db.transaction(() async {
+          // Helper kecil untuk extract success IDs
+          List<String> getSuccessIds(String key) {
+            if (results[key] is Map && results[key]['success_ids'] is List) {
+              return List<String>.from(results[key]['success_ids']);
+            }
+            return [];
           }
-          return [];
-        }
 
-        // 1. Products
-        final successProducts = getSuccessIds(
-          'products',
-        ); // Sesuaikan key response controller
-        if (successProducts.isNotEmpty) {
-          await db.productDao.markProductsSynced(successProducts);
-        }
+          // 1. Products
+          final successProducts = getSuccessIds(
+            'products',
+          ); // Sesuaikan key response controller
+          if (successProducts.isNotEmpty) {
+            await db.productDao.markProductsSynced(successProducts);
+          }
 
-        // 2. Company Items
-        final successCI = getSuccessIds('company_items');
-        if (successCI.isNotEmpty) {
-          await db.companyItemDao.markCompanyItemsSynced(successCI);
-        }
+          // 2. Company Items
+          final successCI = getSuccessIds('company_items');
+          if (successCI.isNotEmpty) {
+            await db.companyItemDao.markCompanyItemsSynced(successCI);
+          }
 
-        // 3. Variants
-        final successVariants = getSuccessIds('variants');
-        if (successVariants.isNotEmpty) {
-          await db.variantDao.markVariantsSynced(successVariants);
-        }
+          // 3. Variants
+          final successVariants = getSuccessIds('variants');
+          if (successVariants.isNotEmpty) {
+            await db.variantDao.markVariantsSynced(successVariants);
+          }
 
-        // 4. Components
-        final successComponents = getSuccessIds('components');
-        if (successComponents.isNotEmpty) {
-          await db.componentDao.markComponentsSynced(successComponents);
-        }
+          // 4. Components
+          final successComponents = getSuccessIds('components');
+          if (successComponents.isNotEmpty) {
+            await db.componentDao.markComponentsSynced(successComponents);
+          }
 
-        // 5. Variant Components
-        final successVC = getSuccessIds('variant_components');
-        if (successVC.isNotEmpty) {
-          await db.variantComponentDao.markVariantComponentsSynced(successVC);
-        }
+          // 5. Variant Components
+          final successVC = getSuccessIds('variant_components');
+          if (successVC.isNotEmpty) {
+            await db.variantComponentDao.markVariantComponentsSynced(successVC);
+          }
 
-        // 6. Units (Paling Penting)
-        final successUnits = getSuccessIds('units');
-        if (successUnits.isNotEmpty) {
-          await db.unitDao.markUnitsSynced(successUnits, now);
-        }
+          // 6. Units (Paling Penting)
+          final successUnits = getSuccessIds('units');
+          if (successUnits.isNotEmpty) {
+            await db.unitDao.markUnitsSynced(successUnits, now);
+          }
 
-        // 7. Variant Photos
-        final successVariantPhotos = getSuccessIds('variant_photos');
-        if (successVariantPhotos.isNotEmpty) {
-          await db.variantPhotoDao.markPhotosSynced(successVariantPhotos);
-        }
+          // 7. Variant Photos
+          final successVariantPhotos = getSuccessIds('variant_photos');
+          if (successVariantPhotos.isNotEmpty) {
+            await db.variantPhotoDao.markPhotosSynced(successVariantPhotos);
+          }
 
-        // 8. Component Photos
-        final successComponentPhotos = getSuccessIds('component_photos');
-        if (successComponentPhotos.isNotEmpty) {
-          await db.componentPhotoDao.markPhotosSynced(successComponentPhotos);
-        }
-      });
+          // 8. Component Photos
+          final successComponentPhotos = getSuccessIds('component_photos');
+          if (successComponentPhotos.isNotEmpty) {
+            await db.componentPhotoDao.markPhotosSynced(successComponentPhotos);
+          }
+        });
+      }
+
+      return const Result.success(null);
+    } catch (e) {
+      return Result.failed(e.toString());
+    } finally {
+      // 4. BUKA GEMBOK (APAPUN YANG TERJADI)
+      // Ini wajib ditaruh di finally agar gembok terbuka meski error
+      _isSyncing = false;
     }
-
-    return const Result.success(null);
   }
 
   /// Full sync sekali jalan: push dulu, lalu pull delta.

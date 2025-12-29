@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../../core/routes/route_names.dart';
+import '../../../../core/styles/color_scheme.dart';
 import '../../../../core/styles/sizes.dart';
 import '../../../../core/utils/app_screen.dart';
 import '../../../../core/utils/custom_toast.dart';
@@ -43,12 +44,10 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary,
+        color: AppColors.onBackground,
         image: DecorationImage(
-          opacity: 0.4,
-          image: NetworkImage(
-            "https://images.unsplash.com/photo-1484517586036-ed3db9e3749e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=687&q=80",
-          ),
+          opacity: 0.3,
+          image: AssetImage("assets/images/bg-inventory.jpg"),
           fit: BoxFit.cover,
         ),
       ),
@@ -64,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   SizedBox(
                     width: AppScreen.width() * 0.3,
-                    // child: Image.asset('assets/logos/mp_logo.png'),
+                    child: Image.asset('assets/logos/mp_logo.png'),
                   ),
                   const SizedBox(height: 25),
                   Text(
@@ -76,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   Text(
-                    'Login Disini Sekarang',
+                    'MP Inventory',
                     style: TextStyle(fontSize: Sizes.xl, color: Colors.white),
                   ),
                   const SizedBox(height: 25),
@@ -112,28 +111,37 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10.0),
-                    child: Center(
-                      child: TextButton(
-                        onPressed: () {
-                          // context.push(RouteName.sendMailChangePasswordScreen);
-                        },
-                        child: const Text(
-                          'Lupa Password?',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ),
+                  const SizedBox(height: 30),
+                  // Padding(
+                  //   padding: const EdgeInsets.symmetric(vertical: 10.0),
+                  //   child: Center(
+                  //     child: TextButton(
+                  //       onPressed: () {
+                  //         // context.push(RouteName.sendMailChangePasswordScreen);
+                  //       },
+                  //       child: const Text(
+                  //         'Lupa Password?',
+                  //         style: TextStyle(color: Colors.white),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.secondary,
+                      ),
                       onPressed: () => storeLoginWithEmail(),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: const Text('Log In'),
+                        child: const Text(
+                          'Log In',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
                       ),
                     ),
                   ),

@@ -49,7 +49,10 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
 
   /// Semua unit yang butuh sync (needSync == true)
   Future<List<Unit>> getPendingUnits() {
-    return (select(units)..where((u) => u.needSync.equals(true))).get();
+    return (select(units)
+          ..where((u) => u.status.isNotIn(['PENDING', 'PRINTED', 'VALIDATED']))
+          ..where((u) => u.needSync.equals(true)))
+        .get();
   }
 
   Future<void> markUnitsSynced(List<String> ids, DateTime syncedAt) async {

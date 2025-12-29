@@ -10,6 +10,7 @@ import 'package:inventory_sync_apps/core/db/daos/company_item_dao.dart';
 import '../../../../core/styles/color_scheme.dart';
 import '../../../inventory/presentation/screens/company_item_detail_screen.dart';
 import '../../../search_item/presentation/screen/search_item_screen.dart';
+import '../../../sync/bloc/sync_cubit.dart';
 import '../../../variant/presentation/screen/create_variant_screen.dart';
 import '../bloc/home_cubit.dart';
 import '../widget/category_card.dart';
@@ -52,13 +53,13 @@ class _HomeViewState extends State<_HomeView> {
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
         ),
         actions: [
-          IconButton(
-            onPressed: () {
-              // TODO: sambungkan ke SyncRepository.pullSinceLast() kalau mau manual sync.
-              // final syncRepo = context.read<SyncRepository>();
-              // await syncRepo.pullSinceLast();
+          BlocBuilder<SyncCubit, SyncState>(
+            builder: (context, state) {
+              return IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                onPressed: () => _showSyncDetails(context, state.details),
+              );
             },
-            icon: const Icon(Icons.refresh_rounded),
           ),
         ],
       ),
@@ -100,6 +101,82 @@ class _HomeViewState extends State<_HomeView> {
             );
           },
         ),
+      ),
+    );
+  }
+
+  void _showSyncDetails(BuildContext context, SyncCounts counts) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Data Belum Sinkron",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 15),
+
+            if (counts.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: Text("Semua data sudah tersinkronisasi ✅"),
+                ),
+              )
+            else ...[
+              if (counts.companyItems > 0)
+                _buildRow("Item/Barang", counts.companyItems),
+              if (counts.variants > 0) _buildRow("Varian", counts.variants),
+              if (counts.variantComponents > 0)
+                _buildRow("Varian - Komponen", counts.variantComponents),
+              if (counts.components > 0)
+                _buildRow("Komponen", counts.components),
+              if (counts.units > 0) _buildRow("Unit Label", counts.units),
+              if (counts.photos > 0) _buildRow("Foto Upload", counts.photos),
+              const Divider(),
+              _buildRow("Total Antrian", counts.displayTotal, isBold: true),
+
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    context.read<SyncCubit>().pushData(); // Trigger Sync Manual
+                  },
+                  child: const Text("SYNC SEKARANG"),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRow(String label, int count, {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            "$count",
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -45,7 +45,7 @@ void main() async {
         ),
         RepositoryProvider<SyncRepository>(
           create: (ctx) =>
-              SyncRepository(db: ctx.read<AppDatabase>(), api: SyncApi()),
+              SyncRepository(db: ctx.read<AppDatabase>(), api: SyncService()),
         ),
         // nanti kalau ada SyncRepository, dsb, tinggal tambahkan di sini
       ],

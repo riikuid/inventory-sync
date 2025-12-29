@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 class User {
-  int? id;
+  String? id;
   String? name;
   String? email;
   DateTime? createdAt;

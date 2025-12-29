@@ -74,6 +74,7 @@ dependencies:
   print_bluetooth_thermal: ^1.1.9
   ellipsized_text: ^2.0.0
   bloc: ^9.1.0
+  connectivity_plus: ^7.0.0
 
 dev_dependencies:
   flutter_test:
@@ -100,6 +101,8 @@ flutter:
     - .env-development
     - assets/fonts/poppins/
     - assets/fonts/mono/
+    - assets/logos/
+    - assets/images/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+
 import 'package:drift/drift.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_sync_apps/core/db/app_database.dart';
@@ -191,6 +193,8 @@ class LabelingRepository {
       );
 
       await _variantDao.upsertVariants([variantCompanion]);
+
+      dev.log(variantCompanion.toString(), name: 'CREATE VARIANT');
 
       final photoCompanions = <VariantPhotosCompanion>[];
       for (var i = 0; i < photoLocalPaths.length; i++) {

@@ -1,4 +1,6 @@
 // lib/core/db/daos/variant_dao.dart
+import 'dart:developer' as dev;
+
 import 'package:drift/drift.dart' hide Component;
 import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
@@ -415,7 +417,11 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       componentId: componentId,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      needSync: Value(true),
+      lastModifiedAt: Value(DateTime.now()),
     );
+
+    dev.log(insertable.toString(), name: 'VARIANT COMPONENT');
 
     await into(variantComponents).insertOnConflictUpdate(insertable);
   }
@@ -425,12 +431,18 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
     required String variantId,
     required String componentId,
   }) async {
-    await (delete(variantComponents)..where(
+    await (update(variantComponents)..where(
           (vc) =>
               vc.variantId.equals(variantId) &
               vc.componentId.equals(componentId),
         ))
-        .go();
+        .write(
+          VariantComponentsCompanion(
+            deletedAt: Value(DateTime.now()), // Tandai terhapus
+            needSync: const Value(true), // Trigger sync
+            lastModifiedAt: Value(DateTime.now()),
+          ),
+        );
   }
 
   /// Optional: hapus komponen (kalau yakin tidak dipakai di variant lain)

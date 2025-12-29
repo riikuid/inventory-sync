@@ -92,7 +92,7 @@ ProductsCompanion productFromJson(Map<String, dynamic> json) {
     id: Value(json['id'] as String),
     name: Value(json['name'] as String),
     categoryId: Value(toStr(json['category_id'])),
-    machinePurchase: Value(toStr(json['machine_purchase'])),
+
     description: Value(toStr(json['description'])),
     createdAt: Value(_parseDate(json['created_at']) ?? DateTime.now()),
     updatedAt: Value(_parseDate(json['updated_at']) ?? DateTime.now()),
@@ -110,6 +110,7 @@ CompanyItemsCompanion companyItemFromJson(Map<String, dynamic> json) {
     defaultRackId: Value(toStr(json['default_rack_id'])),
     productId: Value(json['product_id'] as String),
     companyCode: Value(json['company_code'] as String),
+    machinePurchase: Value(toStr(json['machine_purchase'])),
     specification: Value(toStr(json['specification'])),
     notes: Value(toStr(json['notes'])),
     createdAt: Value(_parseDate(json['created_at']) ?? DateTime.now()),
@@ -247,7 +248,7 @@ extension ProductSyncX on Product {
     'id': id,
     'name': name,
     'category_id': categoryId,
-    'machine_purchase': machinePurchase,
+
     'description': description,
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
@@ -261,6 +262,7 @@ extension CompanyItemSyncX on CompanyItem {
     'default_rack_id': defaultRackId,
     'product_id': productId,
     'company_code': companyCode,
+    'machine_purchase': machinePurchase,
     'specification': specification,
     'notes': notes,
     'created_at': createdAt.toIso8601String(),

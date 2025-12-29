@@ -2013,17 +2013,6 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _machinePurchaseMeta = const VerificationMeta(
-    'machinePurchase',
-  );
-  @override
-  late final GeneratedColumn<String> machinePurchase = GeneratedColumn<String>(
-    'machine_purchase',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _descriptionMeta = const VerificationMeta(
     'description',
   );
@@ -2090,7 +2079,6 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     id,
     name,
     categoryId,
-    machinePurchase,
     description,
     createdAt,
     updatedAt,
@@ -2126,15 +2114,6 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
       context.handle(
         _categoryIdMeta,
         categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
-      );
-    }
-    if (data.containsKey('machine_purchase')) {
-      context.handle(
-        _machinePurchaseMeta,
-        machinePurchase.isAcceptableOrUnknown(
-          data['machine_purchase']!,
-          _machinePurchaseMeta,
-        ),
       );
     }
     if (data.containsKey('description')) {
@@ -2198,10 +2177,6 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         DriftSqlType.string,
         data['${effectivePrefix}category_id'],
       ),
-      machinePurchase: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}machine_purchase'],
-      ),
       description: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}description'],
@@ -2235,7 +2210,6 @@ class Product extends DataClass implements Insertable<Product> {
   final String id;
   final String name;
   final String? categoryId;
-  final String? machinePurchase;
   final String? description;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -2245,7 +2219,6 @@ class Product extends DataClass implements Insertable<Product> {
     required this.id,
     required this.name,
     this.categoryId,
-    this.machinePurchase,
     this.description,
     required this.createdAt,
     required this.updatedAt,
@@ -2259,9 +2232,6 @@ class Product extends DataClass implements Insertable<Product> {
     map['name'] = Variable<String>(name);
     if (!nullToAbsent || categoryId != null) {
       map['category_id'] = Variable<String>(categoryId);
-    }
-    if (!nullToAbsent || machinePurchase != null) {
-      map['machine_purchase'] = Variable<String>(machinePurchase);
     }
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
@@ -2280,9 +2250,6 @@ class Product extends DataClass implements Insertable<Product> {
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
           : Value(categoryId),
-      machinePurchase: machinePurchase == null && nullToAbsent
-          ? const Value.absent()
-          : Value(machinePurchase),
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
@@ -2302,7 +2269,6 @@ class Product extends DataClass implements Insertable<Product> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       categoryId: serializer.fromJson<String?>(json['categoryId']),
-      machinePurchase: serializer.fromJson<String?>(json['machinePurchase']),
       description: serializer.fromJson<String?>(json['description']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -2317,7 +2283,6 @@ class Product extends DataClass implements Insertable<Product> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'categoryId': serializer.toJson<String?>(categoryId),
-      'machinePurchase': serializer.toJson<String?>(machinePurchase),
       'description': serializer.toJson<String?>(description),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -2330,7 +2295,6 @@ class Product extends DataClass implements Insertable<Product> {
     String? id,
     String? name,
     Value<String?> categoryId = const Value.absent(),
-    Value<String?> machinePurchase = const Value.absent(),
     Value<String?> description = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -2340,9 +2304,6 @@ class Product extends DataClass implements Insertable<Product> {
     id: id ?? this.id,
     name: name ?? this.name,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
-    machinePurchase: machinePurchase.present
-        ? machinePurchase.value
-        : this.machinePurchase,
     description: description.present ? description.value : this.description,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -2356,9 +2317,6 @@ class Product extends DataClass implements Insertable<Product> {
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
-      machinePurchase: data.machinePurchase.present
-          ? data.machinePurchase.value
-          : this.machinePurchase,
       description: data.description.present
           ? data.description.value
           : this.description,
@@ -2377,7 +2335,6 @@ class Product extends DataClass implements Insertable<Product> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('categoryId: $categoryId, ')
-          ..write('machinePurchase: $machinePurchase, ')
           ..write('description: $description, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -2392,7 +2349,6 @@ class Product extends DataClass implements Insertable<Product> {
     id,
     name,
     categoryId,
-    machinePurchase,
     description,
     createdAt,
     updatedAt,
@@ -2406,7 +2362,6 @@ class Product extends DataClass implements Insertable<Product> {
           other.id == this.id &&
           other.name == this.name &&
           other.categoryId == this.categoryId &&
-          other.machinePurchase == this.machinePurchase &&
           other.description == this.description &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -2418,7 +2373,6 @@ class ProductsCompanion extends UpdateCompanion<Product> {
   final Value<String> id;
   final Value<String> name;
   final Value<String?> categoryId;
-  final Value<String?> machinePurchase;
   final Value<String?> description;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -2429,7 +2383,6 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.categoryId = const Value.absent(),
-    this.machinePurchase = const Value.absent(),
     this.description = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2441,7 +2394,6 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     required String id,
     required String name,
     this.categoryId = const Value.absent(),
-    this.machinePurchase = const Value.absent(),
     this.description = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -2456,7 +2408,6 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? categoryId,
-    Expression<String>? machinePurchase,
     Expression<String>? description,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -2468,7 +2419,6 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (categoryId != null) 'category_id': categoryId,
-      if (machinePurchase != null) 'machine_purchase': machinePurchase,
       if (description != null) 'description': description,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -2482,7 +2432,6 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Value<String>? id,
     Value<String>? name,
     Value<String?>? categoryId,
-    Value<String?>? machinePurchase,
     Value<String?>? description,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -2494,7 +2443,6 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       id: id ?? this.id,
       name: name ?? this.name,
       categoryId: categoryId ?? this.categoryId,
-      machinePurchase: machinePurchase ?? this.machinePurchase,
       description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -2515,9 +2463,6 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     }
     if (categoryId.present) {
       map['category_id'] = Variable<String>(categoryId.value);
-    }
-    if (machinePurchase.present) {
-      map['machine_purchase'] = Variable<String>(machinePurchase.value);
     }
     if (description.present) {
       map['description'] = Variable<String>(description.value);
@@ -2546,7 +2491,6 @@ class ProductsCompanion extends UpdateCompanion<Product> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('categoryId: $categoryId, ')
-          ..write('machinePurchase: $machinePurchase, ')
           ..write('description: $description, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -2605,6 +2549,17 @@ class $CompanyItemsTable extends CompanyItems
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _machinePurchaseMeta = const VerificationMeta(
+    'machinePurchase',
+  );
+  @override
+  late final GeneratedColumn<String> machinePurchase = GeneratedColumn<String>(
+    'machine_purchase',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _specificationMeta = const VerificationMeta(
     'specification',
@@ -2693,6 +2648,7 @@ class $CompanyItemsTable extends CompanyItems
     defaultRackId,
     productId,
     companyCode,
+    machinePurchase,
     specification,
     notes,
     createdAt,
@@ -2745,6 +2701,15 @@ class $CompanyItemsTable extends CompanyItems
       );
     } else if (isInserting) {
       context.missing(_companyCodeMeta);
+    }
+    if (data.containsKey('machine_purchase')) {
+      context.handle(
+        _machinePurchaseMeta,
+        machinePurchase.isAcceptableOrUnknown(
+          data['machine_purchase']!,
+          _machinePurchaseMeta,
+        ),
+      );
     }
     if (data.containsKey('specification')) {
       context.handle(
@@ -2823,6 +2788,10 @@ class $CompanyItemsTable extends CompanyItems
         DriftSqlType.string,
         data['${effectivePrefix}company_code'],
       )!,
+      machinePurchase: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}machine_purchase'],
+      ),
       specification: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}specification'],
@@ -2865,6 +2834,7 @@ class CompanyItem extends DataClass implements Insertable<CompanyItem> {
   final String? defaultRackId;
   final String productId;
   final String companyCode;
+  final String? machinePurchase;
   final String? specification;
   final String? notes;
   final DateTime createdAt;
@@ -2877,6 +2847,7 @@ class CompanyItem extends DataClass implements Insertable<CompanyItem> {
     this.defaultRackId,
     required this.productId,
     required this.companyCode,
+    this.machinePurchase,
     this.specification,
     this.notes,
     required this.createdAt,
@@ -2894,6 +2865,9 @@ class CompanyItem extends DataClass implements Insertable<CompanyItem> {
     }
     map['product_id'] = Variable<String>(productId);
     map['company_code'] = Variable<String>(companyCode);
+    if (!nullToAbsent || machinePurchase != null) {
+      map['machine_purchase'] = Variable<String>(machinePurchase);
+    }
     if (!nullToAbsent || specification != null) {
       map['specification'] = Variable<String>(specification);
     }
@@ -2918,6 +2892,9 @@ class CompanyItem extends DataClass implements Insertable<CompanyItem> {
           : Value(defaultRackId),
       productId: Value(productId),
       companyCode: Value(companyCode),
+      machinePurchase: machinePurchase == null && nullToAbsent
+          ? const Value.absent()
+          : Value(machinePurchase),
       specification: specification == null && nullToAbsent
           ? const Value.absent()
           : Value(specification),
@@ -2944,6 +2921,7 @@ class CompanyItem extends DataClass implements Insertable<CompanyItem> {
       defaultRackId: serializer.fromJson<String?>(json['defaultRackId']),
       productId: serializer.fromJson<String>(json['productId']),
       companyCode: serializer.fromJson<String>(json['companyCode']),
+      machinePurchase: serializer.fromJson<String?>(json['machinePurchase']),
       specification: serializer.fromJson<String?>(json['specification']),
       notes: serializer.fromJson<String?>(json['notes']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -2961,6 +2939,7 @@ class CompanyItem extends DataClass implements Insertable<CompanyItem> {
       'defaultRackId': serializer.toJson<String?>(defaultRackId),
       'productId': serializer.toJson<String>(productId),
       'companyCode': serializer.toJson<String>(companyCode),
+      'machinePurchase': serializer.toJson<String?>(machinePurchase),
       'specification': serializer.toJson<String?>(specification),
       'notes': serializer.toJson<String?>(notes),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -2976,6 +2955,7 @@ class CompanyItem extends DataClass implements Insertable<CompanyItem> {
     Value<String?> defaultRackId = const Value.absent(),
     String? productId,
     String? companyCode,
+    Value<String?> machinePurchase = const Value.absent(),
     Value<String?> specification = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     DateTime? createdAt,
@@ -2990,6 +2970,9 @@ class CompanyItem extends DataClass implements Insertable<CompanyItem> {
         : this.defaultRackId,
     productId: productId ?? this.productId,
     companyCode: companyCode ?? this.companyCode,
+    machinePurchase: machinePurchase.present
+        ? machinePurchase.value
+        : this.machinePurchase,
     specification: specification.present
         ? specification.value
         : this.specification,
@@ -3010,6 +2993,9 @@ class CompanyItem extends DataClass implements Insertable<CompanyItem> {
       companyCode: data.companyCode.present
           ? data.companyCode.value
           : this.companyCode,
+      machinePurchase: data.machinePurchase.present
+          ? data.machinePurchase.value
+          : this.machinePurchase,
       specification: data.specification.present
           ? data.specification.value
           : this.specification,
@@ -3031,6 +3017,7 @@ class CompanyItem extends DataClass implements Insertable<CompanyItem> {
           ..write('defaultRackId: $defaultRackId, ')
           ..write('productId: $productId, ')
           ..write('companyCode: $companyCode, ')
+          ..write('machinePurchase: $machinePurchase, ')
           ..write('specification: $specification, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
@@ -3048,6 +3035,7 @@ class CompanyItem extends DataClass implements Insertable<CompanyItem> {
     defaultRackId,
     productId,
     companyCode,
+    machinePurchase,
     specification,
     notes,
     createdAt,
@@ -3064,6 +3052,7 @@ class CompanyItem extends DataClass implements Insertable<CompanyItem> {
           other.defaultRackId == this.defaultRackId &&
           other.productId == this.productId &&
           other.companyCode == this.companyCode &&
+          other.machinePurchase == this.machinePurchase &&
           other.specification == this.specification &&
           other.notes == this.notes &&
           other.createdAt == this.createdAt &&
@@ -3078,6 +3067,7 @@ class CompanyItemsCompanion extends UpdateCompanion<CompanyItem> {
   final Value<String?> defaultRackId;
   final Value<String> productId;
   final Value<String> companyCode;
+  final Value<String?> machinePurchase;
   final Value<String?> specification;
   final Value<String?> notes;
   final Value<DateTime> createdAt;
@@ -3091,6 +3081,7 @@ class CompanyItemsCompanion extends UpdateCompanion<CompanyItem> {
     this.defaultRackId = const Value.absent(),
     this.productId = const Value.absent(),
     this.companyCode = const Value.absent(),
+    this.machinePurchase = const Value.absent(),
     this.specification = const Value.absent(),
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -3105,6 +3096,7 @@ class CompanyItemsCompanion extends UpdateCompanion<CompanyItem> {
     this.defaultRackId = const Value.absent(),
     required String productId,
     required String companyCode,
+    this.machinePurchase = const Value.absent(),
     this.specification = const Value.absent(),
     this.notes = const Value.absent(),
     required DateTime createdAt,
@@ -3123,6 +3115,7 @@ class CompanyItemsCompanion extends UpdateCompanion<CompanyItem> {
     Expression<String>? defaultRackId,
     Expression<String>? productId,
     Expression<String>? companyCode,
+    Expression<String>? machinePurchase,
     Expression<String>? specification,
     Expression<String>? notes,
     Expression<DateTime>? createdAt,
@@ -3137,6 +3130,7 @@ class CompanyItemsCompanion extends UpdateCompanion<CompanyItem> {
       if (defaultRackId != null) 'default_rack_id': defaultRackId,
       if (productId != null) 'product_id': productId,
       if (companyCode != null) 'company_code': companyCode,
+      if (machinePurchase != null) 'machine_purchase': machinePurchase,
       if (specification != null) 'specification': specification,
       if (notes != null) 'notes': notes,
       if (createdAt != null) 'created_at': createdAt,
@@ -3153,6 +3147,7 @@ class CompanyItemsCompanion extends UpdateCompanion<CompanyItem> {
     Value<String?>? defaultRackId,
     Value<String>? productId,
     Value<String>? companyCode,
+    Value<String?>? machinePurchase,
     Value<String?>? specification,
     Value<String?>? notes,
     Value<DateTime>? createdAt,
@@ -3167,6 +3162,7 @@ class CompanyItemsCompanion extends UpdateCompanion<CompanyItem> {
       defaultRackId: defaultRackId ?? this.defaultRackId,
       productId: productId ?? this.productId,
       companyCode: companyCode ?? this.companyCode,
+      machinePurchase: machinePurchase ?? this.machinePurchase,
       specification: specification ?? this.specification,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
@@ -3192,6 +3188,9 @@ class CompanyItemsCompanion extends UpdateCompanion<CompanyItem> {
     }
     if (companyCode.present) {
       map['company_code'] = Variable<String>(companyCode.value);
+    }
+    if (machinePurchase.present) {
+      map['machine_purchase'] = Variable<String>(machinePurchase.value);
     }
     if (specification.present) {
       map['specification'] = Variable<String>(specification.value);
@@ -3227,6 +3226,7 @@ class CompanyItemsCompanion extends UpdateCompanion<CompanyItem> {
           ..write('defaultRackId: $defaultRackId, ')
           ..write('productId: $productId, ')
           ..write('companyCode: $companyCode, ')
+          ..write('machinePurchase: $machinePurchase, ')
           ..write('specification: $specification, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
@@ -6027,6 +6027,17 @@ class $VariantComponentsTable extends VariantComponents
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _lastModifiedAtMeta = const VerificationMeta(
     'lastModifiedAt',
   );
@@ -6063,6 +6074,7 @@ class $VariantComponentsTable extends VariantComponents
     quantityNeeded,
     createdAt,
     updatedAt,
+    deletedAt,
     lastModifiedAt,
     needSync,
   ];
@@ -6127,6 +6139,12 @@ class $VariantComponentsTable extends VariantComponents
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
     if (data.containsKey('last_modified_at')) {
       context.handle(
         _lastModifiedAtMeta,
@@ -6175,6 +6193,10 @@ class $VariantComponentsTable extends VariantComponents
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
       lastModifiedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_modified_at'],
@@ -6200,6 +6222,7 @@ class VariantComponent extends DataClass
   final int quantityNeeded;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime? deletedAt;
   final DateTime lastModifiedAt;
   final bool needSync;
   const VariantComponent({
@@ -6209,6 +6232,7 @@ class VariantComponent extends DataClass
     required this.quantityNeeded,
     required this.createdAt,
     required this.updatedAt,
+    this.deletedAt,
     required this.lastModifiedAt,
     required this.needSync,
   });
@@ -6221,6 +6245,9 @@ class VariantComponent extends DataClass
     map['quantity_needed'] = Variable<int>(quantityNeeded);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
     map['last_modified_at'] = Variable<DateTime>(lastModifiedAt);
     map['need_sync'] = Variable<bool>(needSync);
     return map;
@@ -6234,6 +6261,9 @@ class VariantComponent extends DataClass
       quantityNeeded: Value(quantityNeeded),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
       lastModifiedAt: Value(lastModifiedAt),
       needSync: Value(needSync),
     );
@@ -6251,6 +6281,7 @@ class VariantComponent extends DataClass
       quantityNeeded: serializer.fromJson<int>(json['quantityNeeded']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       lastModifiedAt: serializer.fromJson<DateTime>(json['lastModifiedAt']),
       needSync: serializer.fromJson<bool>(json['needSync']),
     );
@@ -6265,6 +6296,7 @@ class VariantComponent extends DataClass
       'quantityNeeded': serializer.toJson<int>(quantityNeeded),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'lastModifiedAt': serializer.toJson<DateTime>(lastModifiedAt),
       'needSync': serializer.toJson<bool>(needSync),
     };
@@ -6277,6 +6309,7 @@ class VariantComponent extends DataClass
     int? quantityNeeded,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
     DateTime? lastModifiedAt,
     bool? needSync,
   }) => VariantComponent(
@@ -6286,6 +6319,7 @@ class VariantComponent extends DataClass
     quantityNeeded: quantityNeeded ?? this.quantityNeeded,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     lastModifiedAt: lastModifiedAt ?? this.lastModifiedAt,
     needSync: needSync ?? this.needSync,
   );
@@ -6301,6 +6335,7 @@ class VariantComponent extends DataClass
           : this.quantityNeeded,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       lastModifiedAt: data.lastModifiedAt.present
           ? data.lastModifiedAt.value
           : this.lastModifiedAt,
@@ -6317,6 +6352,7 @@ class VariantComponent extends DataClass
           ..write('quantityNeeded: $quantityNeeded, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
           ..write('lastModifiedAt: $lastModifiedAt, ')
           ..write('needSync: $needSync')
           ..write(')'))
@@ -6331,6 +6367,7 @@ class VariantComponent extends DataClass
     quantityNeeded,
     createdAt,
     updatedAt,
+    deletedAt,
     lastModifiedAt,
     needSync,
   );
@@ -6344,6 +6381,7 @@ class VariantComponent extends DataClass
           other.quantityNeeded == this.quantityNeeded &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
           other.lastModifiedAt == this.lastModifiedAt &&
           other.needSync == this.needSync);
 }
@@ -6355,6 +6393,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
   final Value<int> quantityNeeded;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
   final Value<DateTime> lastModifiedAt;
   final Value<bool> needSync;
   final Value<int> rowid;
@@ -6365,6 +6404,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
     this.quantityNeeded = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
     this.lastModifiedAt = const Value.absent(),
     this.needSync = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -6376,6 +6416,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
     this.quantityNeeded = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
     this.lastModifiedAt = const Value.absent(),
     this.needSync = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -6391,6 +6432,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
     Expression<int>? quantityNeeded,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
     Expression<DateTime>? lastModifiedAt,
     Expression<bool>? needSync,
     Expression<int>? rowid,
@@ -6402,6 +6444,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
       if (quantityNeeded != null) 'quantity_needed': quantityNeeded,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
       if (lastModifiedAt != null) 'last_modified_at': lastModifiedAt,
       if (needSync != null) 'need_sync': needSync,
       if (rowid != null) 'rowid': rowid,
@@ -6415,6 +6458,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
     Value<int>? quantityNeeded,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
     Value<DateTime>? lastModifiedAt,
     Value<bool>? needSync,
     Value<int>? rowid,
@@ -6426,6 +6470,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
       quantityNeeded: quantityNeeded ?? this.quantityNeeded,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
       lastModifiedAt: lastModifiedAt ?? this.lastModifiedAt,
       needSync: needSync ?? this.needSync,
       rowid: rowid ?? this.rowid,
@@ -6453,6 +6498,9 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
     if (lastModifiedAt.present) {
       map['last_modified_at'] = Variable<DateTime>(lastModifiedAt.value);
     }
@@ -6474,6 +6522,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
           ..write('quantityNeeded: $quantityNeeded, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
           ..write('lastModifiedAt: $lastModifiedAt, ')
           ..write('needSync: $needSync, ')
           ..write('rowid: $rowid')
@@ -8968,7 +9017,6 @@ typedef $$ProductsTableCreateCompanionBuilder =
       required String id,
       required String name,
       Value<String?> categoryId,
-      Value<String?> machinePurchase,
       Value<String?> description,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -8981,7 +9029,6 @@ typedef $$ProductsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> name,
       Value<String?> categoryId,
-      Value<String?> machinePurchase,
       Value<String?> description,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -9011,11 +9058,6 @@ class $$ProductsTableFilterComposer
 
   ColumnFilters<String> get categoryId => $composableBuilder(
     column: $table.categoryId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get machinePurchase => $composableBuilder(
-    column: $table.machinePurchase,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9069,11 +9111,6 @@ class $$ProductsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get machinePurchase => $composableBuilder(
-    column: $table.machinePurchase,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get description => $composableBuilder(
     column: $table.description,
     builder: (column) => ColumnOrderings(column),
@@ -9117,11 +9154,6 @@ class $$ProductsTableAnnotationComposer
 
   GeneratedColumn<String> get categoryId => $composableBuilder(
     column: $table.categoryId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get machinePurchase => $composableBuilder(
-    column: $table.machinePurchase,
     builder: (column) => column,
   );
 
@@ -9176,7 +9208,6 @@ class $$ProductsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String?> categoryId = const Value.absent(),
-                Value<String?> machinePurchase = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -9187,7 +9218,6 @@ class $$ProductsTableTableManager
                 id: id,
                 name: name,
                 categoryId: categoryId,
-                machinePurchase: machinePurchase,
                 description: description,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -9200,7 +9230,6 @@ class $$ProductsTableTableManager
                 required String id,
                 required String name,
                 Value<String?> categoryId = const Value.absent(),
-                Value<String?> machinePurchase = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -9211,7 +9240,6 @@ class $$ProductsTableTableManager
                 id: id,
                 name: name,
                 categoryId: categoryId,
-                machinePurchase: machinePurchase,
                 description: description,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -9247,6 +9275,7 @@ typedef $$CompanyItemsTableCreateCompanionBuilder =
       Value<String?> defaultRackId,
       required String productId,
       required String companyCode,
+      Value<String?> machinePurchase,
       Value<String?> specification,
       Value<String?> notes,
       required DateTime createdAt,
@@ -9262,6 +9291,7 @@ typedef $$CompanyItemsTableUpdateCompanionBuilder =
       Value<String?> defaultRackId,
       Value<String> productId,
       Value<String> companyCode,
+      Value<String?> machinePurchase,
       Value<String?> specification,
       Value<String?> notes,
       Value<DateTime> createdAt,
@@ -9298,6 +9328,11 @@ class $$CompanyItemsTableFilterComposer
 
   ColumnFilters<String> get companyCode => $composableBuilder(
     column: $table.companyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get machinePurchase => $composableBuilder(
+    column: $table.machinePurchase,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9366,6 +9401,11 @@ class $$CompanyItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get machinePurchase => $composableBuilder(
+    column: $table.machinePurchase,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get specification => $composableBuilder(
     column: $table.specification,
     builder: (column) => ColumnOrderings(column),
@@ -9424,6 +9464,11 @@ class $$CompanyItemsTableAnnotationComposer
 
   GeneratedColumn<String> get companyCode => $composableBuilder(
     column: $table.companyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get machinePurchase => $composableBuilder(
+    column: $table.machinePurchase,
     builder: (column) => column,
   );
 
@@ -9488,6 +9533,7 @@ class $$CompanyItemsTableTableManager
                 Value<String?> defaultRackId = const Value.absent(),
                 Value<String> productId = const Value.absent(),
                 Value<String> companyCode = const Value.absent(),
+                Value<String?> machinePurchase = const Value.absent(),
                 Value<String?> specification = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -9501,6 +9547,7 @@ class $$CompanyItemsTableTableManager
                 defaultRackId: defaultRackId,
                 productId: productId,
                 companyCode: companyCode,
+                machinePurchase: machinePurchase,
                 specification: specification,
                 notes: notes,
                 createdAt: createdAt,
@@ -9516,6 +9563,7 @@ class $$CompanyItemsTableTableManager
                 Value<String?> defaultRackId = const Value.absent(),
                 required String productId,
                 required String companyCode,
+                Value<String?> machinePurchase = const Value.absent(),
                 Value<String?> specification = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 required DateTime createdAt,
@@ -9529,6 +9577,7 @@ class $$CompanyItemsTableTableManager
                 defaultRackId: defaultRackId,
                 productId: productId,
                 companyCode: companyCode,
+                machinePurchase: machinePurchase,
                 specification: specification,
                 notes: notes,
                 createdAt: createdAt,
@@ -10859,6 +10908,7 @@ typedef $$VariantComponentsTableCreateCompanionBuilder =
       Value<int> quantityNeeded,
       required DateTime createdAt,
       required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
       Value<DateTime> lastModifiedAt,
       Value<bool> needSync,
       Value<int> rowid,
@@ -10871,6 +10921,7 @@ typedef $$VariantComponentsTableUpdateCompanionBuilder =
       Value<int> quantityNeeded,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
       Value<DateTime> lastModifiedAt,
       Value<bool> needSync,
       Value<int> rowid,
@@ -10912,6 +10963,11 @@ class $$VariantComponentsTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10965,6 +11021,11 @@ class $$VariantComponentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get lastModifiedAt => $composableBuilder(
     column: $table.lastModifiedAt,
     builder: (column) => ColumnOrderings(column),
@@ -11006,6 +11067,9 @@ class $$VariantComponentsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
   GeneratedColumn<DateTime> get lastModifiedAt => $composableBuilder(
     column: $table.lastModifiedAt,
@@ -11062,6 +11126,7 @@ class $$VariantComponentsTableTableManager
                 Value<int> quantityNeeded = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
                 Value<DateTime> lastModifiedAt = const Value.absent(),
                 Value<bool> needSync = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -11072,6 +11137,7 @@ class $$VariantComponentsTableTableManager
                 quantityNeeded: quantityNeeded,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                deletedAt: deletedAt,
                 lastModifiedAt: lastModifiedAt,
                 needSync: needSync,
                 rowid: rowid,
@@ -11084,6 +11150,7 @@ class $$VariantComponentsTableTableManager
                 Value<int> quantityNeeded = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
                 Value<DateTime> lastModifiedAt = const Value.absent(),
                 Value<bool> needSync = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -11094,6 +11161,7 @@ class $$VariantComponentsTableTableManager
                 quantityNeeded: quantityNeeded,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                deletedAt: deletedAt,
                 lastModifiedAt: lastModifiedAt,
                 needSync: needSync,
                 rowid: rowid,

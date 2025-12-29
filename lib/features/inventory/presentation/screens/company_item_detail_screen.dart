@@ -5,7 +5,9 @@ import 'package:inventory_sync_apps/core/styles/app_style.dart';
 import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
 import 'package:inventory_sync_apps/core/styles/text_theme.dart';
 import 'package:inventory_sync_apps/features/inventory/data/inventory_repository.dart';
+import '../../../../core/user_storage.dart';
 import '../../../../shared/presentation/widgets/primary_button.dart';
+import '../../../auth/models/user.dart';
 import '../../../variant/presentation/screen/create_variant_screen.dart';
 import '../bloc/company_item_detail/company_item_detail_cubit.dart';
 import '../../../variant/presentation/screen/variant_detail_screen.dart';
@@ -97,13 +99,14 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                 radius: 40,
                 height: 50,
                 color: AppColors.primary,
-                onPressed: () {
+                onPressed: () async {
+                  User _user = (await UserStorage.getUser())!;
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => CreateVariantScreen(
                         companyItemId: widget.companyItemId,
-                        userId: 'USER-1',
+                        userId: _user.id!,
                         companyCode: state.detail.companyCode,
                         productName: state.detail.productName,
                         defaultRackId: state.detail.defaultRackId,
@@ -357,16 +360,17 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed: () => {
+              onPressed: () async {
+                User _user = (await UserStorage.getUser())!;
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => CreateVariantScreen(
                       companyItemId: detail.companyItemId,
-                      userId: 'USER-1',
+                      userId: _user.id!,
                     ),
                   ),
-                ),
+                );
               },
               // onPressed: () => _openSetupScreen(),
               child: const Text('Setup', style: TextStyle(color: Colors.white)),
@@ -425,12 +429,15 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {
+        onTap: () async {
           // buka detail variant (jika ada)
+          User _user = (await UserStorage.getUser())!;
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) =>
-                  VariantDetailScreen(variantId: v.variantId, userId: 'USER'),
+              builder: (_) => VariantDetailScreen(
+                variantId: v.variantId,
+                userId: _user.id!,
+              ),
             ),
           );
         },
