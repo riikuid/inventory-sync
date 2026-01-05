@@ -312,6 +312,7 @@ extension VariantComponentSyncX on VariantComponent {
         quantityNeeded, // Backend pakai 'quantity'[cite: 18], Drift 'quantityNeeded'
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
+    'deleted_at': deletedAt?.toIso8601String(),
   };
 }
 

@@ -9,7 +9,7 @@ class ChangePassword
     implements UseCase<Result<Response>, ChangePasswordParams> {
   ChangePassword();
 
-  final AuthRepository _repository = AuthRepository();
+  final AuthService _repository = AuthService();
 
   @override
   Future<Result<Response>> call(ChangePasswordParams params) async {

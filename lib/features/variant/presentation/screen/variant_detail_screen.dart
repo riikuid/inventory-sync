@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
+import 'package:inventory_sync_apps/core/utils/loading_overlay.dart';
 import 'package:inventory_sync_apps/features/inventory/presentation/screens/component_picker_screen.dart';
 import 'package:inventory_sync_apps/features/labeling/presentation/bloc/create_labels/create_labels_cubit.dart';
 import 'package:inventory_sync_apps/features/labeling/presentation/screens/generate_label_screen.dart';
@@ -12,6 +13,7 @@ import '../../../../core/db/daos/variant_dao.dart';
 import '../../../../core/db/model/variant_detail_row.dart';
 import '../../../../core/styles/app_style.dart';
 import '../../../../core/styles/text_theme.dart';
+import '../../../../shared/presentation/widgets/image_carousel.dart';
 import '../../../labeling/data/labeling_repository.dart';
 import '../../../inventory/data/inventory_repository.dart';
 import '../../../labeling/presentation/bloc/assembly/assembly_cubit.dart';
@@ -121,49 +123,56 @@ class _VariantDetailView extends StatelessWidget {
                 height: 50,
                 color: AppColors.secondary,
                 onPressed: () {
-                  // If no in-box components => go to LabelSetScreen directly (Label Item)
-                  // else -> navigate to assembly/merge flow
-                  if (d.componentsInBox.where((c) => c != null).isEmpty) {
-                    // direct label (variant-level)
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => BlocProvider(
-                          create: (context) => CreateLabelsCubit(
-                            context.read<LabelingRepository>(),
-                          ),
+                  _verifyComponentCount(
+                    context,
+                    d,
+                    () {
+                      if (d.componentsInBox.where((c) => c != null).isEmpty) {
+                        // direct label (variant-level)
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider(
+                              create: (context) => CreateLabelsCubit(
+                                context.read<LabelingRepository>(),
+                              ),
 
-                          child: GenerateLabelsScreen(
-                            variant: d,
-                            userId: userId,
+                              child: GenerateLabelsScreen(
+                                variant: d,
+                                userId: userId,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    );
-                  } else {
-                    // open assembly flow
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => BlocProvider(
-                          create: (context) => AssemblyCubit(
-                            RepositoryProvider.of<LabelingRepository>(context),
-                            d.variantId,
-                            d.name,
+                        );
+                      } else {
+                        // open assembly flow
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider(
+                              create: (context) => AssemblyCubit(
+                                RepositoryProvider.of<LabelingRepository>(
+                                  context,
+                                ),
+                                d.variantId,
+                                d.name,
+                              ),
+                              child: AssemblyScreen(
+                                variantManufCode: d.manufCode ?? '',
+                                rackName: d.rackName ?? '',
+                                rackId: d.rackId ?? '',
+                                targetComponents: d.componentsInBox,
+                                variantId: d.variantId,
+                                variantName: d.name,
+                                companyCode: d.companyCode,
+                                userId: userId,
+                              ),
+                            ),
                           ),
-                          child: AssemblyScreen(
-                            variantManufCode: d.manufCode ?? '',
-                            rackName: d.rackName ?? '',
-                            rackId: d.rackId ?? '',
-                            targetComponents: d.componentsInBox,
-                            variantId: d.variantId,
-                            variantName: d.name,
-                            companyCode: d.companyCode,
-                            userId: userId,
-                          ),
-                        ),
-                      ),
-                    );
-                  }
+                        );
+                      }
+                    },
+                  ); // If no in-box components => go to LabelSetScreen directly (Label Item)
+                  // else -> navigate to assembly/merge flow
                 },
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -193,15 +202,27 @@ class _VariantDetailView extends StatelessWidget {
 
                   children: [
                     _buildDetailHeader(context, d),
-                    if (d.componentsSeparate.isEmpty) ...[
-                      const SizedBox(height: 20),
-                      _buildBoxSection(context, d),
+
+                    // --- LOGIC KONDISI 1: Hide Section jika Polos & Ada Stok ---
+                    // Jika tidak punya komponen sama sekali DAN sudah ada stok (totalUnits > 0),
+                    // maka anggap ini Varian Polos (Single Item). Jangan tampilkan section komponen.
+                    if (!(d.componentsInBox.isEmpty &&
+                        d.componentsSeparate.isEmpty &&
+                        d.totalUnits > 0)) ...[
+                      // Tampilkan Box Section (jika tidak ada separate)
+                      if (d.componentsSeparate.isEmpty) ...[
+                        const SizedBox(height: 20),
+                        _buildBoxSection(context, d),
+                      ],
+
+                      // Tampilkan Separate Section (jika tidak ada in-box)
+                      if (d.componentsInBox.isEmpty) ...[
+                        const SizedBox(height: 20),
+                        _buildSeparateComponentSection(context, d),
+                      ],
                     ],
-                    if (d.componentsInBox.isEmpty) ...[
-                      const SizedBox(height: 20),
-                      _buildSeparateComponentSection(context, d),
-                    ],
-                    const SizedBox(height: 120), // space for bottom bar
+
+                    const SizedBox(height: 120),
                   ],
                 ),
                 if (state.isBusy)
@@ -345,112 +366,14 @@ class _VariantDetailView extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                // Expanded(
-                //   child: FilledButton(
-                //     style: FilledButton.styleFrom(
-                //       backgroundColor: AppColors.secondary,
-                //       padding: const EdgeInsets.symmetric(vertical: 12),
-                //     ),
-                //     onPressed: () {
-                //       // If no in-box components => go to LabelSetScreen directly (Label Item)
-                //       // else -> navigate to assembly/merge flow
-                //       if (d.componentsInBox.where((c) => c != null).isEmpty) {
-                //         // direct label (variant-level)
-                //         Navigator.of(context).push(
-                //           MaterialPageRoute(
-                //             builder: (_) => BlocProvider(
-                //               create: (context) => CreateLabelsCubit(
-                //                 context.read<LabelingRepository>(),
-                //               ),
-
-                //               child: GenerateLabelsScreen(
-                //                 variant: d,
-                //                 userId: userId,
-                //               ),
-                //             ),
-                //           ),
-                //         );
-                //       } else {
-                //         // open assembly flow
-                //         Navigator.push(
-                //           context,
-                //           MaterialPageRoute(
-                //             builder: (_) => BlocProvider(
-                //               create: (context) => AssemblyCubit(
-                //                 RepositoryProvider.of<LabelingRepository>(
-                //                   context,
-                //                 ),
-                //                 d.variantId,
-                //                 d.name,
-                //               ),
-                //               child: AssemblyScreen(
-                //                 variantId: d.variantId,
-                //                 variantName: d.name,
-                //                 companyCode: d.companyCode,
-                //                 userId: userId,
-                //               ),
-                //             ),
-                //           ),
-                //         );
-                //       }
-                //     },
-                //     child: Row(
-                //       mainAxisAlignment: MainAxisAlignment.center,
-                //       children: [
-                //         Icon(
-                //           Icons.print_outlined,
-                //           size: 16,
-                //           color: AppColors.onBackground,
-                //         ),
-                //         const SizedBox(width: 8),
-                //         const Text(
-                //           'Cetak Label',
-
-                //           style: TextStyle(
-                //             color: AppColors.onBackground,
-                //             fontSize: 15,
-                //             fontWeight: FontWeight.w600,
-                //           ),
-                //         ),
-                //       ],
-                //     ),
-                //   ),
-                // ),
-                // const SizedBox(width: 12),
-                // FilledButton(
-                //   style: FilledButton.styleFrom(
-                //     backgroundColor: Colors.white,
-                //     padding: const EdgeInsets.symmetric(vertical: 12),
-                //     side: BorderSide(color: Colors.grey.shade300),
-                //   ),
-
-                //   onPressed: () async {
-                //     final repo = context.read<InventoryRepository>();
-
-                //     // );
-
-                //     final result = await Navigator.push<String>(
-                //       context,
-                //       MaterialPageRoute(
-                //         builder: (_) =>
-                //             ComponentPickerScreen(type: 'IN_BOX', variant: d),
-                //       ),
-                //     );
-                //     if (result != null) {
-                //       await repo.attachComponentToVariant(
-                //         componentId: result,
-                //         variantId: d.variantId,
-                //         // type: 'SEPARATE',
-                //       );
-                //     }
-                //   },
-                //   child: const Text(
-                //     '+ Isi',
-                //     style: TextStyle(color: Colors.black),
-                //   ),
-                // ),
               ],
+            ),
+            SizedBox(height: 20),
+            AspectRatio(
+              aspectRatio: 1,
+              child: ImageCarousel(
+                photos: d.photos, // Mengirim List<PhotoRow>
+              ),
             ),
           ],
         ),
@@ -469,6 +392,8 @@ class _VariantDetailView extends StatelessWidget {
     // In your VariantDetailRow you don't have 'type', so repo must provide IN_BOX vs SEPARATE by filtering earlier.
     // For safety, show all components here (in real app filter by type).
     final hasAny = d.componentsInBox.isNotEmpty;
+
+    final isLocked = _hasStock(d);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -494,42 +419,43 @@ class _VariantDetailView extends StatelessWidget {
                 ),
               ],
             ),
-            CustomButton(
-              elevation: 0,
-              height: 25,
-              width: 60,
-              radius: 1000,
-              color: AppColors.secondary.withAlpha(70),
-              borderColor: AppColors.secondary,
-              onPressed: () async {
-                final repo = context.read<InventoryRepository>();
+            if (!isLocked)
+              CustomButton(
+                elevation: 0,
+                height: 25,
+                width: 60,
+                radius: 1000,
+                color: AppColors.secondary.withAlpha(70),
+                borderColor: AppColors.secondary,
+                onPressed: () async {
+                  final repo = context.read<InventoryRepository>();
 
-                final result = await Navigator.push<String>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        ComponentPickerScreen(type: 'IN_BOX', variant: d),
-                  ),
-                );
-                if (result != null) {
-                  await repo.attachComponentToVariant(
-                    componentId: result,
-                    variantId: d.variantId,
-                    // type: 'SEPARATE',
+                  final result = await Navigator.push<String>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          ComponentPickerScreen(type: 'IN_BOX', variant: d),
+                    ),
                   );
-                }
-              },
+                  if (result != null) {
+                    await repo.attachComponentToVariant(
+                      componentId: result,
+                      variantId: d.variantId,
+                      // type: 'SEPARATE',
+                    );
+                  }
+                },
 
-              // icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
-              child: Text(
-                '+ Isi',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.onAccent,
-                  fontWeight: FontWeight.w500,
+                // icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
+                child: Text(
+                  '+ Isi',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.onAccent,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
         Container(
@@ -550,6 +476,15 @@ class _VariantDetailView extends StatelessWidget {
                       ),
                       // margin: EdgeInsets.only(bottom: 10),
                       child: ListTile(
+                        onLongPress: () {
+                          if (!isLocked) {
+                            _detachComponent(
+                              context,
+                              d.variantId,
+                              c.componentId,
+                            );
+                          } else {}
+                        },
                         tileColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -633,6 +568,7 @@ class _VariantDetailView extends StatelessWidget {
     // Ideally filter components by type == SEPARATE; repo currently returns components list
     // We'll display same components as sample; in real impl repo should split by type
     final separate = d.componentsSeparate; // assume already filtered
+    final isLocked = _hasStock(d);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -682,44 +618,45 @@ class _VariantDetailView extends StatelessWidget {
             //     ),
             //   ),
             // ),
-            CustomButton(
-              elevation: 0,
-              height: 25,
-              width: 110,
-              radius: 1000,
-              color: AppColors.secondary.withAlpha(70),
-              borderColor: AppColors.secondary,
-              onPressed: () async {
-                final repo = context.read<InventoryRepository>();
+            if (!isLocked)
+              CustomButton(
+                elevation: 0,
+                height: 25,
+                width: 110,
+                radius: 1000,
+                color: AppColors.secondary.withAlpha(70),
+                borderColor: AppColors.secondary,
+                onPressed: () async {
+                  final repo = context.read<InventoryRepository>();
 
-                // );
+                  // );
 
-                final result = await Navigator.push<String>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        ComponentPickerScreen(type: 'SEPARATE', variant: d),
-                  ),
-                );
-                if (result != null) {
-                  await repo.attachComponentToVariant(
-                    componentId: result,
-                    variantId: d.variantId,
-                    // type: 'SEPARATE',
+                  final result = await Navigator.push<String>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          ComponentPickerScreen(type: 'SEPARATE', variant: d),
+                    ),
                   );
-                }
-              },
+                  if (result != null) {
+                    await repo.attachComponentToVariant(
+                      componentId: result,
+                      variantId: d.variantId,
+                      // type: 'SEPARATE',
+                    );
+                  }
+                },
 
-              // icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
-              child: Text(
-                '+ Komponen',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.onAccent,
-                  fontWeight: FontWeight.w500,
+                // icon: const Icon(Icons.add, size: 14, color: AppColors.primary),
+                child: Text(
+                  '+ Komponen',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.onAccent,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
         // const SizedBox(height: 8),
@@ -952,167 +889,147 @@ class _VariantDetailView extends StatelessWidget {
   // }
 
   // Bottom sheet for adding component (existing or create new)
-  Future<void> _openAddComponentSheet(
+
+  // Helper 1: Cek apakah Varian ini sudah "terkunci" karena ada stok
+  bool _hasStock(VariantDetailRow d) {
+    // Cek stok parent
+    if (d.totalUnits > 0) return true;
+
+    // Cek stok komponen in box
+    if (d.componentsInBox.any((c) => c.totalUnits > 0)) return true;
+
+    // Cek stok komponen separate
+    if (d.componentsSeparate.any((c) => c.totalUnits > 0)) return true;
+
+    return false;
+  }
+
+  // Helper 2: Modal Warning jika komponen cuma 1
+  void _detachComponent(
     BuildContext context,
-    VariantDetailRow d,
-  ) async {
-    final repo = context.read<InventoryRepository>();
-    final cubit = context.read<VariantDetailCubit>();
-
-    final components = await repo.getComponentsForProduct(d.productId);
-    await showModalBottomSheet(
+    String variantId,
+    String componentId,
+  ) {
+    // Jika punya komponen TAPI jumlahnya cuma 1 -> Tampilkan Warning
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      builder: (ctx) {
-        final searchCtrl = TextEditingController();
-        List<Component> filtered = List.from(components);
-
-        void apply(String q) {
-          filtered = components.where((c) {
-            final ql = q.toLowerCase();
-            return c.name.toLowerCase().contains(ql) ||
-                (c.manufCode ?? '').toLowerCase().contains(ql);
-          }).toList();
-        }
-
-        apply('');
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          "Lepas Komponen?",
+          style: AppTextStyles.mono.copyWith(
+            color: AppColors.onSurface,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          "Apakah anda yakin ingin melepas komponen dari varian ini?",
+          style: TextStyle(
+            color: AppColors.onBackground,
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              "Tidak",
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
-              child: SizedBox(
-                height: 520,
-                child: Column(
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Text('Tambah Komponen'),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: TextField(
-                        controller: searchCtrl,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          hintText: 'Cari...',
-                        ),
-                        onChanged: (v) {
-                          setState(() => apply(v));
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: filtered.length + 1,
-                        itemBuilder: (ctx, idx) {
-                          if (idx == filtered.length) {
-                            return ListTile(
-                              leading: const Icon(Icons.add),
-                              title: const Text('Buat komponen baru'),
-                              onTap: () {
-                                Navigator.of(ctx).pop();
-                                _openCreateComponentDialog(context, d);
-                              },
-                            );
-                          }
-                          final c = filtered[idx];
-                          return ListTile(
-                            title: Text(c.name),
-                            subtitle: c.manufCode != null
-                                ? Text('Kode manuf: ${c.manufCode}')
-                                : null,
-                            onTap: () async {
-                              Navigator.of(ctx).pop();
-                              await cubit.addComponentFromExisting(
-                                variantId: d.variantId,
-                                componentId: c.id,
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              LoadingOverlay.show(context);
+              final repo = context.read<InventoryRepository>();
+
+              repo
+                  .detachComponentFromVariant(
+                    variantId: variantId,
+                    componentId: componentId,
+                  )
+                  .then((value) => LoadingOverlay.hide());
+            },
+            child: const Text(
+              "Ya, Lanjut",
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
-            );
-          },
-        );
-      },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Future<void> _openCreateComponentDialog(
+  void _verifyComponentCount(
     BuildContext context,
     VariantDetailRow d,
-  ) async {
-    final nameCtrl = TextEditingController();
-    final codeCtrl = TextEditingController();
-    final specCtrl = TextEditingController();
+    VoidCallback onProceed,
+  ) {
+    final totalComps = d.componentsInBox.length + d.componentsSeparate.length;
 
-    final repo = context.read<InventoryRepository>();
-    final cubit = context.read<VariantDetailCubit>();
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          title: const Text('Komponen baru'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Nama komponen'),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: codeCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Kode manuf (opsional)',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: specCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Spek (opsional)',
-                  ),
-                  maxLines: 3,
-                ),
-              ],
+    // Jika punya komponen TAPI jumlahnya cuma 1 -> Tampilkan Warning
+    if (totalComps == 1) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(
+            "Varian Hanya Memiliki 1 Komponen!",
+            style: AppTextStyles.mono.copyWith(
+              color: AppColors.onSurface,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Text(
+            "Biasanya varian memiliki minimal 2 komponen atau part. "
+            "Apakah Anda yakin datanya sudah benar?",
+            style: TextStyle(
+              color: AppColors.onBackground,
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Batal'),
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(
+                "Cek Lagi",
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
             TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Simpan'),
+              onPressed: () {
+                Navigator.pop(ctx);
+                onProceed();
+              },
+              child: const Text(
+                "Ya, Lanjut",
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
-        );
-      },
-    );
-
-    if (result != true) return;
-
-    final comp = await repo.createComponentForVariantProduct(
-      productId: d.productId,
-      brandId: d.brandId,
-      name: nameCtrl.text.trim(),
-      manufCode: codeCtrl.text.trim().isEmpty ? null : codeCtrl.text.trim(),
-      specification: specCtrl.text.trim().isEmpty ? null : specCtrl.text.trim(),
-    );
-
-    await cubit.addComponentFromExisting(
-      variantId: d.variantId,
-      componentId: comp.id,
-    );
+        ),
+      );
+    } else {
+      // Jika 0 (polos) atau > 1 (aman), langsung jalan
+      onProceed();
+    }
   }
 }

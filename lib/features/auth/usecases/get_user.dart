@@ -6,7 +6,7 @@ import '../repositories/auth_repository.dart';
 class GetUser implements UseCase<Result<User>, void> {
   GetUser();
 
-  final AuthRepository _repository = AuthRepository();
+  final AuthService _repository = AuthService();
 
   @override
   Future<Result<User>> call(void params) async {

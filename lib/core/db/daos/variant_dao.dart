@@ -2,6 +2,7 @@
 import 'dart:developer' as dev;
 
 import 'package:drift/drift.dart' hide Component;
+import 'package:inventory_sync_apps/core/db/model/photo_row.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
 import '../app_database.dart';
@@ -111,8 +112,9 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
 
     // 4) Definisi komponen (reaktif saat variantComponents/components berubah)
     final componentsDefStream =
-        (select(variantComponents)
-              ..where((vc) => vc.variantId.equals(variantId)))
+        (select(variantComponents)..where(
+              (vc) => vc.variantId.equals(variantId) & vc.deletedAt.isNull(),
+            ))
             .join([
               innerJoin(
                 components,
@@ -182,46 +184,81 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
     });
 
     // 6) Gabung semuanya -> VariantDetailRow (return sama kayak punyamu)
-    return Rx.combineLatest4<
+    // --- REVISI: 6) Stream Photos dari tabel VariantPhotos ---
+    final photosStream =
+        (select(variantPhotos)
+              ..where((t) => t.variantId.equals(variantId))
+              ..orderBy([
+                (t) => OrderingTerm(expression: t.sortOrder),
+              ])) // Urutkan 0,1,2..
+            .watch()
+            .map((rows) {
+              print(
+                'DEBUG DAO: Found ${rows.length} photos for variant $variantId',
+              );
+              return rows.map((row) {
+                print(
+                  'DEBUG DAO: Photo ID: ${row.id}, Local: ${row.localPath}, Remote: ${row.remoteUrl}',
+                );
+                return PhotoRow(
+                  id: row.id,
+                  localPath: row.localPath,
+                  remoteUrl: row.remoteUrl,
+                );
+              }).toList();
+            });
+
+    // --- REVISI: 7) CombineLatest5 ---
+    return Rx.combineLatest5<
       _VariantBaseInfo?,
       int,
       String?,
       List<VariantComponentRow>,
+      List<PhotoRow>, // Tipe data berubah
       VariantDetailRow?
-    >(infoStream, totalUnitsStream, rackNameStream, componentsStream, (
-      info,
-      totalUnits,
-      rackName,
-      comps,
-    ) {
-      if (info == null) return null;
+    >(
+      infoStream,
+      totalUnitsStream,
+      rackNameStream,
+      componentsStream,
+      photosStream,
+      (
+        info,
+        totalUnits,
+        rackName,
+        comps,
+        photos, // Variable baru
+      ) {
+        if (info == null) return null;
 
-      final variant = info.variant;
-      final ci = info.companyItem;
-      final p = info.product;
-      final b = info.brand;
+        final variant = info.variant;
+        final ci = info.companyItem;
+        final p = info.product;
+        final b = info.brand;
 
-      final compsSeparate = comps.where((c) => c.type == 'SEPARATE').toList();
-      final compsInBox = comps.where((c) => c.type == 'IN_BOX').toList();
+        final compsSeparate = comps.where((c) => c.type == 'SEPARATE').toList();
+        final compsInBox = comps.where((c) => c.type == 'IN_BOX').toList();
 
-      return VariantDetailRow(
-        variantId: variant.id,
-        companyItemId: ci.id,
-        productId: p.id,
-        name: variant.name,
-        uom: variant.uom,
-        manufCode: variant.manufCode,
-        brandId: variant.brandId,
-        brandName: b?.name,
-        rackId: variant.rackId,
-        rackName: rackName,
-        specification: variant.specification,
-        companyCode: ci.companyCode,
-        totalUnits: totalUnits,
-        componentsSeparate: compsSeparate,
-        componentsInBox: compsInBox,
-      );
-    });
+        return VariantDetailRow(
+          variantId: variant.id,
+          companyItemId: ci.id,
+          productId: p.id,
+          name: variant.name,
+          uom: variant.uom,
+          manufCode: variant.manufCode,
+          brandId: variant.brandId,
+          brandName: b?.name,
+          rackId: variant.rackId,
+          rackName: rackName,
+          specification: variant.specification,
+          companyCode: ci.companyCode,
+          totalUnits: totalUnits,
+          componentsSeparate: compsSeparate,
+          componentsInBox: compsInBox,
+          photos: photos, // Masukkan list VariantPhotoRow
+        );
+      },
+    );
   }
 
   Future<Component> createComponentForProduct({

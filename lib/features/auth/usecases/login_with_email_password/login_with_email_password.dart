@@ -9,12 +9,14 @@ class LoginWithEmailPassword
     implements UseCase<Result<AuthResponse>, LoginWithEmailPasswordParams> {
   LoginWithEmailPassword();
 
-  final AuthRepository _repository = AuthRepository();
+  final AuthService _repository = AuthService();
 
   @override
   Future<Result<AuthResponse>> call(LoginWithEmailPasswordParams params) async {
     var result = await _repository.loginWithEmailPassword(
-        email: params.email, password: params.password);
+      email: params.email,
+      password: params.password,
+    );
 
     return result;
   }

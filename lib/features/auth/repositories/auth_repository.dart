@@ -10,7 +10,7 @@ import '../models/user.dart';
 import '../usecases/change_passsword/change_password.dart';
 import '../usecases/register_with_email_password/register_with_email_password.dart';
 
-class AuthRepository {
+class AuthService {
   Future<Result<AuthResponse>> loginWithEmailPassword({
     required String email,
     required String password,

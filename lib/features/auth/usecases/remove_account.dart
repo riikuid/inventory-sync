@@ -6,7 +6,7 @@ import '../repositories/auth_repository.dart';
 class RemoveAccount implements UseCase<Result<Response>, void> {
   RemoveAccount();
 
-  final AuthRepository _repository = AuthRepository();
+  final AuthService _repository = AuthService();
 
   @override
   Future<Result<Response>> call(void params) async {

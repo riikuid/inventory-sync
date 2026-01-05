@@ -1,3 +1,4 @@
+import 'photo_row.dart';
 import 'variant_component_row.dart';
 
 class VariantDetailRow {
@@ -13,6 +14,7 @@ class VariantDetailRow {
   final String? rackName;
   final String? brandId;
   final String? brandName;
+  final List<PhotoRow> photos;
   final int
   totalUnits; // semua unit ACTIVE untuk variant ini (component_id IS NULL)
   final List<VariantComponentRow> componentsInBox;
@@ -31,6 +33,7 @@ class VariantDetailRow {
     this.rackName,
     this.specification,
     required this.companyCode,
+    required this.photos,
     required this.totalUnits,
     required this.componentsSeparate,
     required this.componentsInBox,

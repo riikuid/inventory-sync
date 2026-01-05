@@ -8,7 +8,7 @@ import '../repositories/auth_repository.dart';
 class LoginWithGoogle implements UseCase<Result<AuthResponse>, void> {
   LoginWithGoogle();
 
-  final AuthRepository _repository = AuthRepository();
+  final AuthService _repository = AuthService();
 
   @override
   Future<Result<AuthResponse>> call(void params) async {
@@ -17,9 +17,7 @@ class LoginWithGoogle implements UseCase<Result<AuthResponse>, void> {
       'https://www.googleapis.com/auth/contacts.readonly',
     ];
 
-    final GoogleSignIn googleSignIn = GoogleSignIn(
-      scopes: scopes,
-    );
+    final GoogleSignIn googleSignIn = GoogleSignIn(scopes: scopes);
 
     GoogleSignInAuthentication? googleSignInAuthentication;
 
@@ -31,7 +29,7 @@ class LoginWithGoogle implements UseCase<Result<AuthResponse>, void> {
     }
 
     String token = googleSignInAuthentication?.accessToken ?? '';
-    
+
     var result = await _repository.loginWithGoogle(token: token);
 
     return result;

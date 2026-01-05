@@ -9,7 +9,7 @@ class RegisterWithEmailPassword
     implements UseCase<Result<AuthResponse>, RegisterParam> {
   RegisterWithEmailPassword();
 
-  final AuthRepository _repository = AuthRepository();
+  final AuthService _repository = AuthService();
 
   @override
   Future<Result<AuthResponse>> call(RegisterParam params) async {

@@ -6,7 +6,7 @@ import '../repositories/auth_repository.dart';
 class SendEmailChangePassword implements UseCase<Result<Response>, String> {
   SendEmailChangePassword();
 
-  final AuthRepository _repository = AuthRepository();
+  final AuthService _repository = AuthService();
 
   @override
   Future<Result<Response>> call(String params) async {

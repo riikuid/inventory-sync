@@ -1,7 +1,6 @@
 // lib/features/sync/data/sync_api.dart
 import 'package:dio/dio.dart';
 import 'package:inventory_sync_apps/core/dio_call.dart';
-import 'package:inventory_sync_apps/core/dio.dart'; // DioClient
 import 'package:inventory_sync_apps/core/result.dart';
 
 import 'models/photo_upload_response.dart';
