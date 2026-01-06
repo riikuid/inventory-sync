@@ -3,6 +3,10 @@ import 'variant_component_row.dart';
 
 class VariantDetailRow {
   final String variantId;
+
+  // TAMBAHAN: ID incremental Variant dari server
+  final int? variantRemoteId;
+
   final String companyItemId;
   final String productId;
   final String companyCode;
@@ -22,6 +26,7 @@ class VariantDetailRow {
 
   VariantDetailRow({
     required this.variantId,
+    this.variantRemoteId,
     required this.companyItemId,
     required this.productId,
     required this.name,

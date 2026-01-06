@@ -1,5 +1,9 @@
 class VariantComponentRow {
   final String componentId;
+
+  // ID incremental Component dari server
+  final int? componentRemoteId;
+
   final String name;
   final String? manufCode;
   final String? brandName;
@@ -8,6 +12,7 @@ class VariantComponentRow {
 
   VariantComponentRow({
     required this.componentId,
+    this.componentRemoteId,
     required this.name,
     this.manufCode,
     this.brandName,

@@ -1109,6 +1109,18 @@ class $RacksTable extends Racks with TableInfo<$RacksTable, Rack> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'UNIQUE',
+  );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -1130,7 +1142,7 @@ class $RacksTable extends Racks with TableInfo<$RacksTable, Rack> {
     requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, warehouseId];
+  List<GeneratedColumn> get $columns => [id, remoteId, name, warehouseId];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1147,6 +1159,12 @@ class $RacksTable extends Racks with TableInfo<$RacksTable, Rack> {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -1180,6 +1198,10 @@ class $RacksTable extends Racks with TableInfo<$RacksTable, Rack> {
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
       name: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}name'],
@@ -1199,13 +1221,22 @@ class $RacksTable extends Racks with TableInfo<$RacksTable, Rack> {
 
 class Rack extends DataClass implements Insertable<Rack> {
   final String id;
+  final int? remoteId;
   final String name;
   final String warehouseId;
-  const Rack({required this.id, required this.name, required this.warehouseId});
+  const Rack({
+    required this.id,
+    this.remoteId,
+    required this.name,
+    required this.warehouseId,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
+    }
     map['name'] = Variable<String>(name);
     map['warehouse_id'] = Variable<String>(warehouseId);
     return map;
@@ -1214,6 +1245,9 @@ class Rack extends DataClass implements Insertable<Rack> {
   RacksCompanion toCompanion(bool nullToAbsent) {
     return RacksCompanion(
       id: Value(id),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
       name: Value(name),
       warehouseId: Value(warehouseId),
     );
@@ -1226,6 +1260,7 @@ class Rack extends DataClass implements Insertable<Rack> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Rack(
       id: serializer.fromJson<String>(json['id']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
       name: serializer.fromJson<String>(json['name']),
       warehouseId: serializer.fromJson<String>(json['warehouseId']),
     );
@@ -1235,19 +1270,27 @@ class Rack extends DataClass implements Insertable<Rack> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'remoteId': serializer.toJson<int?>(remoteId),
       'name': serializer.toJson<String>(name),
       'warehouseId': serializer.toJson<String>(warehouseId),
     };
   }
 
-  Rack copyWith({String? id, String? name, String? warehouseId}) => Rack(
+  Rack copyWith({
+    String? id,
+    Value<int?> remoteId = const Value.absent(),
+    String? name,
+    String? warehouseId,
+  }) => Rack(
     id: id ?? this.id,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
     name: name ?? this.name,
     warehouseId: warehouseId ?? this.warehouseId,
   );
   Rack copyWithCompanion(RacksCompanion data) {
     return Rack(
       id: data.id.present ? data.id.value : this.id,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
       name: data.name.present ? data.name.value : this.name,
       warehouseId: data.warehouseId.present
           ? data.warehouseId.value
@@ -1259,6 +1302,7 @@ class Rack extends DataClass implements Insertable<Rack> {
   String toString() {
     return (StringBuffer('Rack(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('name: $name, ')
           ..write('warehouseId: $warehouseId')
           ..write(')'))
@@ -1266,29 +1310,33 @@ class Rack extends DataClass implements Insertable<Rack> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, warehouseId);
+  int get hashCode => Object.hash(id, remoteId, name, warehouseId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Rack &&
           other.id == this.id &&
+          other.remoteId == this.remoteId &&
           other.name == this.name &&
           other.warehouseId == this.warehouseId);
 }
 
 class RacksCompanion extends UpdateCompanion<Rack> {
   final Value<String> id;
+  final Value<int?> remoteId;
   final Value<String> name;
   final Value<String> warehouseId;
   final Value<int> rowid;
   const RacksCompanion({
     this.id = const Value.absent(),
+    this.remoteId = const Value.absent(),
     this.name = const Value.absent(),
     this.warehouseId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RacksCompanion.insert({
     required String id,
+    this.remoteId = const Value.absent(),
     required String name,
     required String warehouseId,
     this.rowid = const Value.absent(),
@@ -1297,12 +1345,14 @@ class RacksCompanion extends UpdateCompanion<Rack> {
        warehouseId = Value(warehouseId);
   static Insertable<Rack> custom({
     Expression<String>? id,
+    Expression<int>? remoteId,
     Expression<String>? name,
     Expression<String>? warehouseId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (remoteId != null) 'remote_id': remoteId,
       if (name != null) 'name': name,
       if (warehouseId != null) 'warehouse_id': warehouseId,
       if (rowid != null) 'rowid': rowid,
@@ -1311,12 +1361,14 @@ class RacksCompanion extends UpdateCompanion<Rack> {
 
   RacksCompanion copyWith({
     Value<String>? id,
+    Value<int?>? remoteId,
     Value<String>? name,
     Value<String>? warehouseId,
     Value<int>? rowid,
   }) {
     return RacksCompanion(
       id: id ?? this.id,
+      remoteId: remoteId ?? this.remoteId,
       name: name ?? this.name,
       warehouseId: warehouseId ?? this.warehouseId,
       rowid: rowid ?? this.rowid,
@@ -1328,6 +1380,9 @@ class RacksCompanion extends UpdateCompanion<Rack> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
@@ -1345,6 +1400,7 @@ class RacksCompanion extends UpdateCompanion<Rack> {
   String toString() {
     return (StringBuffer('RacksCompanion(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('name: $name, ')
           ..write('warehouseId: $warehouseId, ')
           ..write('rowid: $rowid')
@@ -3254,6 +3310,18 @@ class $VariantsTable extends Variants with TableInfo<$VariantsTable, Variant> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'UNIQUE',
+  );
   static const VerificationMeta _companyItemIdMeta = const VerificationMeta(
     'companyItemId',
   );
@@ -3389,6 +3457,7 @@ class $VariantsTable extends Variants with TableInfo<$VariantsTable, Variant> {
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    remoteId,
     companyItemId,
     rackId,
     brandId,
@@ -3418,6 +3487,12 @@ class $VariantsTable extends Variants with TableInfo<$VariantsTable, Variant> {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
     }
     if (data.containsKey('company_item_id')) {
       context.handle(
@@ -3523,6 +3598,10 @@ class $VariantsTable extends Variants with TableInfo<$VariantsTable, Variant> {
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
       companyItemId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}company_item_id'],
@@ -3582,6 +3661,7 @@ class $VariantsTable extends Variants with TableInfo<$VariantsTable, Variant> {
 
 class Variant extends DataClass implements Insertable<Variant> {
   final String id;
+  final int? remoteId;
   final String companyItemId;
   final String? rackId;
   final String? brandId;
@@ -3596,6 +3676,7 @@ class Variant extends DataClass implements Insertable<Variant> {
   final bool needSync;
   const Variant({
     required this.id,
+    this.remoteId,
     required this.companyItemId,
     this.rackId,
     this.brandId,
@@ -3613,6 +3694,9 @@ class Variant extends DataClass implements Insertable<Variant> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
+    }
     map['company_item_id'] = Variable<String>(companyItemId);
     if (!nullToAbsent || rackId != null) {
       map['rack_id'] = Variable<String>(rackId);
@@ -3641,6 +3725,9 @@ class Variant extends DataClass implements Insertable<Variant> {
   VariantsCompanion toCompanion(bool nullToAbsent) {
     return VariantsCompanion(
       id: Value(id),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
       companyItemId: Value(companyItemId),
       rackId: rackId == null && nullToAbsent
           ? const Value.absent()
@@ -3673,6 +3760,7 @@ class Variant extends DataClass implements Insertable<Variant> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Variant(
       id: serializer.fromJson<String>(json['id']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
       companyItemId: serializer.fromJson<String>(json['companyItemId']),
       rackId: serializer.fromJson<String?>(json['rackId']),
       brandId: serializer.fromJson<String?>(json['brandId']),
@@ -3692,6 +3780,7 @@ class Variant extends DataClass implements Insertable<Variant> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'remoteId': serializer.toJson<int?>(remoteId),
       'companyItemId': serializer.toJson<String>(companyItemId),
       'rackId': serializer.toJson<String?>(rackId),
       'brandId': serializer.toJson<String?>(brandId),
@@ -3709,6 +3798,7 @@ class Variant extends DataClass implements Insertable<Variant> {
 
   Variant copyWith({
     String? id,
+    Value<int?> remoteId = const Value.absent(),
     String? companyItemId,
     Value<String?> rackId = const Value.absent(),
     Value<String?> brandId = const Value.absent(),
@@ -3723,6 +3813,7 @@ class Variant extends DataClass implements Insertable<Variant> {
     bool? needSync,
   }) => Variant(
     id: id ?? this.id,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
     companyItemId: companyItemId ?? this.companyItemId,
     rackId: rackId.present ? rackId.value : this.rackId,
     brandId: brandId.present ? brandId.value : this.brandId,
@@ -3741,6 +3832,7 @@ class Variant extends DataClass implements Insertable<Variant> {
   Variant copyWithCompanion(VariantsCompanion data) {
     return Variant(
       id: data.id.present ? data.id.value : this.id,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
       companyItemId: data.companyItemId.present
           ? data.companyItemId.value
           : this.companyItemId,
@@ -3766,6 +3858,7 @@ class Variant extends DataClass implements Insertable<Variant> {
   String toString() {
     return (StringBuffer('Variant(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('companyItemId: $companyItemId, ')
           ..write('rackId: $rackId, ')
           ..write('brandId: $brandId, ')
@@ -3785,6 +3878,7 @@ class Variant extends DataClass implements Insertable<Variant> {
   @override
   int get hashCode => Object.hash(
     id,
+    remoteId,
     companyItemId,
     rackId,
     brandId,
@@ -3803,6 +3897,7 @@ class Variant extends DataClass implements Insertable<Variant> {
       identical(this, other) ||
       (other is Variant &&
           other.id == this.id &&
+          other.remoteId == this.remoteId &&
           other.companyItemId == this.companyItemId &&
           other.rackId == this.rackId &&
           other.brandId == this.brandId &&
@@ -3819,6 +3914,7 @@ class Variant extends DataClass implements Insertable<Variant> {
 
 class VariantsCompanion extends UpdateCompanion<Variant> {
   final Value<String> id;
+  final Value<int?> remoteId;
   final Value<String> companyItemId;
   final Value<String?> rackId;
   final Value<String?> brandId;
@@ -3834,6 +3930,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
   final Value<int> rowid;
   const VariantsCompanion({
     this.id = const Value.absent(),
+    this.remoteId = const Value.absent(),
     this.companyItemId = const Value.absent(),
     this.rackId = const Value.absent(),
     this.brandId = const Value.absent(),
@@ -3850,6 +3947,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
   });
   VariantsCompanion.insert({
     required String id,
+    this.remoteId = const Value.absent(),
     required String companyItemId,
     this.rackId = const Value.absent(),
     this.brandId = const Value.absent(),
@@ -3871,6 +3969,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
        updatedAt = Value(updatedAt);
   static Insertable<Variant> custom({
     Expression<String>? id,
+    Expression<int>? remoteId,
     Expression<String>? companyItemId,
     Expression<String>? rackId,
     Expression<String>? brandId,
@@ -3887,6 +3986,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (remoteId != null) 'remote_id': remoteId,
       if (companyItemId != null) 'company_item_id': companyItemId,
       if (rackId != null) 'rack_id': rackId,
       if (brandId != null) 'brand_id': brandId,
@@ -3905,6 +4005,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
 
   VariantsCompanion copyWith({
     Value<String>? id,
+    Value<int?>? remoteId,
     Value<String>? companyItemId,
     Value<String?>? rackId,
     Value<String?>? brandId,
@@ -3921,6 +4022,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
   }) {
     return VariantsCompanion(
       id: id ?? this.id,
+      remoteId: remoteId ?? this.remoteId,
       companyItemId: companyItemId ?? this.companyItemId,
       rackId: rackId ?? this.rackId,
       brandId: brandId ?? this.brandId,
@@ -3942,6 +4044,9 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
     }
     if (companyItemId.present) {
       map['company_item_id'] = Variable<String>(companyItemId.value);
@@ -3989,6 +4094,7 @@ class VariantsCompanion extends UpdateCompanion<Variant> {
   String toString() {
     return (StringBuffer('VariantsCompanion(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('companyItemId: $companyItemId, ')
           ..write('rackId: $rackId, ')
           ..write('brandId: $brandId, ')
@@ -4021,6 +4127,18 @@ class $VariantPhotosTable extends VariantPhotos
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'UNIQUE',
   );
   static const VerificationMeta _variantIdMeta = const VerificationMeta(
     'variantId',
@@ -4131,6 +4249,7 @@ class $VariantPhotosTable extends VariantPhotos
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    remoteId,
     variantId,
     localPath,
     remoteUrl,
@@ -4157,6 +4276,12 @@ class $VariantPhotosTable extends VariantPhotos
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
     }
     if (data.containsKey('variant_id')) {
       context.handle(
@@ -4234,6 +4359,10 @@ class $VariantPhotosTable extends VariantPhotos
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
       variantId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}variant_id'],
@@ -4281,6 +4410,7 @@ class $VariantPhotosTable extends VariantPhotos
 
 class VariantPhoto extends DataClass implements Insertable<VariantPhoto> {
   final String id;
+  final int? remoteId;
   final String variantId;
   final String? localPath;
   final String? remoteUrl;
@@ -4292,6 +4422,7 @@ class VariantPhoto extends DataClass implements Insertable<VariantPhoto> {
   final bool needSync;
   const VariantPhoto({
     required this.id,
+    this.remoteId,
     required this.variantId,
     this.localPath,
     this.remoteUrl,
@@ -4306,6 +4437,9 @@ class VariantPhoto extends DataClass implements Insertable<VariantPhoto> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
+    }
     map['variant_id'] = Variable<String>(variantId);
     if (!nullToAbsent || localPath != null) {
       map['local_path'] = Variable<String>(localPath);
@@ -4327,6 +4461,9 @@ class VariantPhoto extends DataClass implements Insertable<VariantPhoto> {
   VariantPhotosCompanion toCompanion(bool nullToAbsent) {
     return VariantPhotosCompanion(
       id: Value(id),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
       variantId: Value(variantId),
       localPath: localPath == null && nullToAbsent
           ? const Value.absent()
@@ -4352,6 +4489,7 @@ class VariantPhoto extends DataClass implements Insertable<VariantPhoto> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return VariantPhoto(
       id: serializer.fromJson<String>(json['id']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
       variantId: serializer.fromJson<String>(json['variantId']),
       localPath: serializer.fromJson<String?>(json['localPath']),
       remoteUrl: serializer.fromJson<String?>(json['remoteUrl']),
@@ -4368,6 +4506,7 @@ class VariantPhoto extends DataClass implements Insertable<VariantPhoto> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'remoteId': serializer.toJson<int?>(remoteId),
       'variantId': serializer.toJson<String>(variantId),
       'localPath': serializer.toJson<String?>(localPath),
       'remoteUrl': serializer.toJson<String?>(remoteUrl),
@@ -4382,6 +4521,7 @@ class VariantPhoto extends DataClass implements Insertable<VariantPhoto> {
 
   VariantPhoto copyWith({
     String? id,
+    Value<int?> remoteId = const Value.absent(),
     String? variantId,
     Value<String?> localPath = const Value.absent(),
     Value<String?> remoteUrl = const Value.absent(),
@@ -4393,6 +4533,7 @@ class VariantPhoto extends DataClass implements Insertable<VariantPhoto> {
     bool? needSync,
   }) => VariantPhoto(
     id: id ?? this.id,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
     variantId: variantId ?? this.variantId,
     localPath: localPath.present ? localPath.value : this.localPath,
     remoteUrl: remoteUrl.present ? remoteUrl.value : this.remoteUrl,
@@ -4406,6 +4547,7 @@ class VariantPhoto extends DataClass implements Insertable<VariantPhoto> {
   VariantPhoto copyWithCompanion(VariantPhotosCompanion data) {
     return VariantPhoto(
       id: data.id.present ? data.id.value : this.id,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
       variantId: data.variantId.present ? data.variantId.value : this.variantId,
       localPath: data.localPath.present ? data.localPath.value : this.localPath,
       remoteUrl: data.remoteUrl.present ? data.remoteUrl.value : this.remoteUrl,
@@ -4424,6 +4566,7 @@ class VariantPhoto extends DataClass implements Insertable<VariantPhoto> {
   String toString() {
     return (StringBuffer('VariantPhoto(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('variantId: $variantId, ')
           ..write('localPath: $localPath, ')
           ..write('remoteUrl: $remoteUrl, ')
@@ -4440,6 +4583,7 @@ class VariantPhoto extends DataClass implements Insertable<VariantPhoto> {
   @override
   int get hashCode => Object.hash(
     id,
+    remoteId,
     variantId,
     localPath,
     remoteUrl,
@@ -4455,6 +4599,7 @@ class VariantPhoto extends DataClass implements Insertable<VariantPhoto> {
       identical(this, other) ||
       (other is VariantPhoto &&
           other.id == this.id &&
+          other.remoteId == this.remoteId &&
           other.variantId == this.variantId &&
           other.localPath == this.localPath &&
           other.remoteUrl == this.remoteUrl &&
@@ -4468,6 +4613,7 @@ class VariantPhoto extends DataClass implements Insertable<VariantPhoto> {
 
 class VariantPhotosCompanion extends UpdateCompanion<VariantPhoto> {
   final Value<String> id;
+  final Value<int?> remoteId;
   final Value<String> variantId;
   final Value<String?> localPath;
   final Value<String?> remoteUrl;
@@ -4480,6 +4626,7 @@ class VariantPhotosCompanion extends UpdateCompanion<VariantPhoto> {
   final Value<int> rowid;
   const VariantPhotosCompanion({
     this.id = const Value.absent(),
+    this.remoteId = const Value.absent(),
     this.variantId = const Value.absent(),
     this.localPath = const Value.absent(),
     this.remoteUrl = const Value.absent(),
@@ -4493,6 +4640,7 @@ class VariantPhotosCompanion extends UpdateCompanion<VariantPhoto> {
   });
   VariantPhotosCompanion.insert({
     required String id,
+    this.remoteId = const Value.absent(),
     required String variantId,
     this.localPath = const Value.absent(),
     this.remoteUrl = const Value.absent(),
@@ -4509,6 +4657,7 @@ class VariantPhotosCompanion extends UpdateCompanion<VariantPhoto> {
        updatedAt = Value(updatedAt);
   static Insertable<VariantPhoto> custom({
     Expression<String>? id,
+    Expression<int>? remoteId,
     Expression<String>? variantId,
     Expression<String>? localPath,
     Expression<String>? remoteUrl,
@@ -4522,6 +4671,7 @@ class VariantPhotosCompanion extends UpdateCompanion<VariantPhoto> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (remoteId != null) 'remote_id': remoteId,
       if (variantId != null) 'variant_id': variantId,
       if (localPath != null) 'local_path': localPath,
       if (remoteUrl != null) 'remote_url': remoteUrl,
@@ -4537,6 +4687,7 @@ class VariantPhotosCompanion extends UpdateCompanion<VariantPhoto> {
 
   VariantPhotosCompanion copyWith({
     Value<String>? id,
+    Value<int?>? remoteId,
     Value<String>? variantId,
     Value<String?>? localPath,
     Value<String?>? remoteUrl,
@@ -4550,6 +4701,7 @@ class VariantPhotosCompanion extends UpdateCompanion<VariantPhoto> {
   }) {
     return VariantPhotosCompanion(
       id: id ?? this.id,
+      remoteId: remoteId ?? this.remoteId,
       variantId: variantId ?? this.variantId,
       localPath: localPath ?? this.localPath,
       remoteUrl: remoteUrl ?? this.remoteUrl,
@@ -4568,6 +4720,9 @@ class VariantPhotosCompanion extends UpdateCompanion<VariantPhoto> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
     }
     if (variantId.present) {
       map['variant_id'] = Variable<String>(variantId.value);
@@ -4606,6 +4761,7 @@ class VariantPhotosCompanion extends UpdateCompanion<VariantPhoto> {
   String toString() {
     return (StringBuffer('VariantPhotosCompanion(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('variantId: $variantId, ')
           ..write('localPath: $localPath, ')
           ..write('remoteUrl: $remoteUrl, ')
@@ -4635,6 +4791,18 @@ class $ComponentsTable extends Components
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'UNIQUE',
   );
   static const VerificationMeta _productIdMeta = const VerificationMeta(
     'productId',
@@ -4762,6 +4930,7 @@ class $ComponentsTable extends Components
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    remoteId,
     productId,
     name,
     type,
@@ -4790,6 +4959,12 @@ class $ComponentsTable extends Components
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
     }
     if (data.containsKey('product_id')) {
       context.handle(
@@ -4886,6 +5061,10 @@ class $ComponentsTable extends Components
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
       productId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}product_id'],
@@ -4941,6 +5120,7 @@ class $ComponentsTable extends Components
 
 class Component extends DataClass implements Insertable<Component> {
   final String id;
+  final int? remoteId;
   final String productId;
   final String name;
   final String type;
@@ -4954,6 +5134,7 @@ class Component extends DataClass implements Insertable<Component> {
   final bool needSync;
   const Component({
     required this.id,
+    this.remoteId,
     required this.productId,
     required this.name,
     required this.type,
@@ -4970,6 +5151,9 @@ class Component extends DataClass implements Insertable<Component> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
+    }
     map['product_id'] = Variable<String>(productId);
     map['name'] = Variable<String>(name);
     map['type'] = Variable<String>(type);
@@ -4995,6 +5179,9 @@ class Component extends DataClass implements Insertable<Component> {
   ComponentsCompanion toCompanion(bool nullToAbsent) {
     return ComponentsCompanion(
       id: Value(id),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
       productId: Value(productId),
       name: Value(name),
       type: Value(type),
@@ -5024,6 +5211,7 @@ class Component extends DataClass implements Insertable<Component> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Component(
       id: serializer.fromJson<String>(json['id']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
       productId: serializer.fromJson<String>(json['productId']),
       name: serializer.fromJson<String>(json['name']),
       type: serializer.fromJson<String>(json['type']),
@@ -5042,6 +5230,7 @@ class Component extends DataClass implements Insertable<Component> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'remoteId': serializer.toJson<int?>(remoteId),
       'productId': serializer.toJson<String>(productId),
       'name': serializer.toJson<String>(name),
       'type': serializer.toJson<String>(type),
@@ -5058,6 +5247,7 @@ class Component extends DataClass implements Insertable<Component> {
 
   Component copyWith({
     String? id,
+    Value<int?> remoteId = const Value.absent(),
     String? productId,
     String? name,
     String? type,
@@ -5071,6 +5261,7 @@ class Component extends DataClass implements Insertable<Component> {
     bool? needSync,
   }) => Component(
     id: id ?? this.id,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
     productId: productId ?? this.productId,
     name: name ?? this.name,
     type: type ?? this.type,
@@ -5088,6 +5279,7 @@ class Component extends DataClass implements Insertable<Component> {
   Component copyWithCompanion(ComponentsCompanion data) {
     return Component(
       id: data.id.present ? data.id.value : this.id,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
       productId: data.productId.present ? data.productId.value : this.productId,
       name: data.name.present ? data.name.value : this.name,
       type: data.type.present ? data.type.value : this.type,
@@ -5110,6 +5302,7 @@ class Component extends DataClass implements Insertable<Component> {
   String toString() {
     return (StringBuffer('Component(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('productId: $productId, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
@@ -5128,6 +5321,7 @@ class Component extends DataClass implements Insertable<Component> {
   @override
   int get hashCode => Object.hash(
     id,
+    remoteId,
     productId,
     name,
     type,
@@ -5145,6 +5339,7 @@ class Component extends DataClass implements Insertable<Component> {
       identical(this, other) ||
       (other is Component &&
           other.id == this.id &&
+          other.remoteId == this.remoteId &&
           other.productId == this.productId &&
           other.name == this.name &&
           other.type == this.type &&
@@ -5160,6 +5355,7 @@ class Component extends DataClass implements Insertable<Component> {
 
 class ComponentsCompanion extends UpdateCompanion<Component> {
   final Value<String> id;
+  final Value<int?> remoteId;
   final Value<String> productId;
   final Value<String> name;
   final Value<String> type;
@@ -5174,6 +5370,7 @@ class ComponentsCompanion extends UpdateCompanion<Component> {
   final Value<int> rowid;
   const ComponentsCompanion({
     this.id = const Value.absent(),
+    this.remoteId = const Value.absent(),
     this.productId = const Value.absent(),
     this.name = const Value.absent(),
     this.type = const Value.absent(),
@@ -5189,6 +5386,7 @@ class ComponentsCompanion extends UpdateCompanion<Component> {
   });
   ComponentsCompanion.insert({
     required String id,
+    this.remoteId = const Value.absent(),
     required String productId,
     required String name,
     required String type,
@@ -5209,6 +5407,7 @@ class ComponentsCompanion extends UpdateCompanion<Component> {
        updatedAt = Value(updatedAt);
   static Insertable<Component> custom({
     Expression<String>? id,
+    Expression<int>? remoteId,
     Expression<String>? productId,
     Expression<String>? name,
     Expression<String>? type,
@@ -5224,6 +5423,7 @@ class ComponentsCompanion extends UpdateCompanion<Component> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (remoteId != null) 'remote_id': remoteId,
       if (productId != null) 'product_id': productId,
       if (name != null) 'name': name,
       if (type != null) 'type': type,
@@ -5241,6 +5441,7 @@ class ComponentsCompanion extends UpdateCompanion<Component> {
 
   ComponentsCompanion copyWith({
     Value<String>? id,
+    Value<int?>? remoteId,
     Value<String>? productId,
     Value<String>? name,
     Value<String>? type,
@@ -5256,6 +5457,7 @@ class ComponentsCompanion extends UpdateCompanion<Component> {
   }) {
     return ComponentsCompanion(
       id: id ?? this.id,
+      remoteId: remoteId ?? this.remoteId,
       productId: productId ?? this.productId,
       name: name ?? this.name,
       type: type ?? this.type,
@@ -5276,6 +5478,9 @@ class ComponentsCompanion extends UpdateCompanion<Component> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
     }
     if (productId.present) {
       map['product_id'] = Variable<String>(productId.value);
@@ -5320,6 +5525,7 @@ class ComponentsCompanion extends UpdateCompanion<Component> {
   String toString() {
     return (StringBuffer('ComponentsCompanion(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('productId: $productId, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
@@ -5351,6 +5557,18 @@ class $ComponentPhotosTable extends ComponentPhotos
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'UNIQUE',
   );
   static const VerificationMeta _componentIdMeta = const VerificationMeta(
     'componentId',
@@ -5461,6 +5679,7 @@ class $ComponentPhotosTable extends ComponentPhotos
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    remoteId,
     componentId,
     localPath,
     remoteUrl,
@@ -5487,6 +5706,12 @@ class $ComponentPhotosTable extends ComponentPhotos
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
     }
     if (data.containsKey('component_id')) {
       context.handle(
@@ -5567,6 +5792,10 @@ class $ComponentPhotosTable extends ComponentPhotos
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
       componentId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}component_id'],
@@ -5614,6 +5843,7 @@ class $ComponentPhotosTable extends ComponentPhotos
 
 class ComponentPhoto extends DataClass implements Insertable<ComponentPhoto> {
   final String id;
+  final int? remoteId;
   final String componentId;
   final String? localPath;
   final String? remoteUrl;
@@ -5625,6 +5855,7 @@ class ComponentPhoto extends DataClass implements Insertable<ComponentPhoto> {
   final bool needSync;
   const ComponentPhoto({
     required this.id,
+    this.remoteId,
     required this.componentId,
     this.localPath,
     this.remoteUrl,
@@ -5639,6 +5870,9 @@ class ComponentPhoto extends DataClass implements Insertable<ComponentPhoto> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
+    }
     map['component_id'] = Variable<String>(componentId);
     if (!nullToAbsent || localPath != null) {
       map['local_path'] = Variable<String>(localPath);
@@ -5660,6 +5894,9 @@ class ComponentPhoto extends DataClass implements Insertable<ComponentPhoto> {
   ComponentPhotosCompanion toCompanion(bool nullToAbsent) {
     return ComponentPhotosCompanion(
       id: Value(id),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
       componentId: Value(componentId),
       localPath: localPath == null && nullToAbsent
           ? const Value.absent()
@@ -5685,6 +5922,7 @@ class ComponentPhoto extends DataClass implements Insertable<ComponentPhoto> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ComponentPhoto(
       id: serializer.fromJson<String>(json['id']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
       componentId: serializer.fromJson<String>(json['componentId']),
       localPath: serializer.fromJson<String?>(json['localPath']),
       remoteUrl: serializer.fromJson<String?>(json['remoteUrl']),
@@ -5701,6 +5939,7 @@ class ComponentPhoto extends DataClass implements Insertable<ComponentPhoto> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'remoteId': serializer.toJson<int?>(remoteId),
       'componentId': serializer.toJson<String>(componentId),
       'localPath': serializer.toJson<String?>(localPath),
       'remoteUrl': serializer.toJson<String?>(remoteUrl),
@@ -5715,6 +5954,7 @@ class ComponentPhoto extends DataClass implements Insertable<ComponentPhoto> {
 
   ComponentPhoto copyWith({
     String? id,
+    Value<int?> remoteId = const Value.absent(),
     String? componentId,
     Value<String?> localPath = const Value.absent(),
     Value<String?> remoteUrl = const Value.absent(),
@@ -5726,6 +5966,7 @@ class ComponentPhoto extends DataClass implements Insertable<ComponentPhoto> {
     bool? needSync,
   }) => ComponentPhoto(
     id: id ?? this.id,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
     componentId: componentId ?? this.componentId,
     localPath: localPath.present ? localPath.value : this.localPath,
     remoteUrl: remoteUrl.present ? remoteUrl.value : this.remoteUrl,
@@ -5739,6 +5980,7 @@ class ComponentPhoto extends DataClass implements Insertable<ComponentPhoto> {
   ComponentPhoto copyWithCompanion(ComponentPhotosCompanion data) {
     return ComponentPhoto(
       id: data.id.present ? data.id.value : this.id,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
       componentId: data.componentId.present
           ? data.componentId.value
           : this.componentId,
@@ -5759,6 +6001,7 @@ class ComponentPhoto extends DataClass implements Insertable<ComponentPhoto> {
   String toString() {
     return (StringBuffer('ComponentPhoto(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('componentId: $componentId, ')
           ..write('localPath: $localPath, ')
           ..write('remoteUrl: $remoteUrl, ')
@@ -5775,6 +6018,7 @@ class ComponentPhoto extends DataClass implements Insertable<ComponentPhoto> {
   @override
   int get hashCode => Object.hash(
     id,
+    remoteId,
     componentId,
     localPath,
     remoteUrl,
@@ -5790,6 +6034,7 @@ class ComponentPhoto extends DataClass implements Insertable<ComponentPhoto> {
       identical(this, other) ||
       (other is ComponentPhoto &&
           other.id == this.id &&
+          other.remoteId == this.remoteId &&
           other.componentId == this.componentId &&
           other.localPath == this.localPath &&
           other.remoteUrl == this.remoteUrl &&
@@ -5803,6 +6048,7 @@ class ComponentPhoto extends DataClass implements Insertable<ComponentPhoto> {
 
 class ComponentPhotosCompanion extends UpdateCompanion<ComponentPhoto> {
   final Value<String> id;
+  final Value<int?> remoteId;
   final Value<String> componentId;
   final Value<String?> localPath;
   final Value<String?> remoteUrl;
@@ -5815,6 +6061,7 @@ class ComponentPhotosCompanion extends UpdateCompanion<ComponentPhoto> {
   final Value<int> rowid;
   const ComponentPhotosCompanion({
     this.id = const Value.absent(),
+    this.remoteId = const Value.absent(),
     this.componentId = const Value.absent(),
     this.localPath = const Value.absent(),
     this.remoteUrl = const Value.absent(),
@@ -5828,6 +6075,7 @@ class ComponentPhotosCompanion extends UpdateCompanion<ComponentPhoto> {
   });
   ComponentPhotosCompanion.insert({
     required String id,
+    this.remoteId = const Value.absent(),
     required String componentId,
     this.localPath = const Value.absent(),
     this.remoteUrl = const Value.absent(),
@@ -5844,6 +6092,7 @@ class ComponentPhotosCompanion extends UpdateCompanion<ComponentPhoto> {
        updatedAt = Value(updatedAt);
   static Insertable<ComponentPhoto> custom({
     Expression<String>? id,
+    Expression<int>? remoteId,
     Expression<String>? componentId,
     Expression<String>? localPath,
     Expression<String>? remoteUrl,
@@ -5857,6 +6106,7 @@ class ComponentPhotosCompanion extends UpdateCompanion<ComponentPhoto> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (remoteId != null) 'remote_id': remoteId,
       if (componentId != null) 'component_id': componentId,
       if (localPath != null) 'local_path': localPath,
       if (remoteUrl != null) 'remote_url': remoteUrl,
@@ -5872,6 +6122,7 @@ class ComponentPhotosCompanion extends UpdateCompanion<ComponentPhoto> {
 
   ComponentPhotosCompanion copyWith({
     Value<String>? id,
+    Value<int?>? remoteId,
     Value<String>? componentId,
     Value<String?>? localPath,
     Value<String?>? remoteUrl,
@@ -5885,6 +6136,7 @@ class ComponentPhotosCompanion extends UpdateCompanion<ComponentPhoto> {
   }) {
     return ComponentPhotosCompanion(
       id: id ?? this.id,
+      remoteId: remoteId ?? this.remoteId,
       componentId: componentId ?? this.componentId,
       localPath: localPath ?? this.localPath,
       remoteUrl: remoteUrl ?? this.remoteUrl,
@@ -5903,6 +6155,9 @@ class ComponentPhotosCompanion extends UpdateCompanion<ComponentPhoto> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
     }
     if (componentId.present) {
       map['component_id'] = Variable<String>(componentId.value);
@@ -5941,6 +6196,7 @@ class ComponentPhotosCompanion extends UpdateCompanion<ComponentPhoto> {
   String toString() {
     return (StringBuffer('ComponentPhotosCompanion(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('componentId: $componentId, ')
           ..write('localPath: $localPath, ')
           ..write('remoteUrl: $remoteUrl, ')
@@ -5970,6 +6226,18 @@ class $VariantComponentsTable extends VariantComponents
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'UNIQUE',
   );
   static const VerificationMeta _variantIdMeta = const VerificationMeta(
     'variantId',
@@ -6069,6 +6337,7 @@ class $VariantComponentsTable extends VariantComponents
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    remoteId,
     variantId,
     componentId,
     quantityNeeded,
@@ -6094,6 +6363,12 @@ class $VariantComponentsTable extends VariantComponents
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
     }
     if (data.containsKey('variant_id')) {
       context.handle(
@@ -6173,6 +6448,10 @@ class $VariantComponentsTable extends VariantComponents
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
       variantId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}variant_id'],
@@ -6217,6 +6496,7 @@ class $VariantComponentsTable extends VariantComponents
 class VariantComponent extends DataClass
     implements Insertable<VariantComponent> {
   final String id;
+  final int? remoteId;
   final String variantId;
   final String componentId;
   final int quantityNeeded;
@@ -6227,6 +6507,7 @@ class VariantComponent extends DataClass
   final bool needSync;
   const VariantComponent({
     required this.id,
+    this.remoteId,
     required this.variantId,
     required this.componentId,
     required this.quantityNeeded,
@@ -6240,6 +6521,9 @@ class VariantComponent extends DataClass
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
+    }
     map['variant_id'] = Variable<String>(variantId);
     map['component_id'] = Variable<String>(componentId);
     map['quantity_needed'] = Variable<int>(quantityNeeded);
@@ -6256,6 +6540,9 @@ class VariantComponent extends DataClass
   VariantComponentsCompanion toCompanion(bool nullToAbsent) {
     return VariantComponentsCompanion(
       id: Value(id),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
       variantId: Value(variantId),
       componentId: Value(componentId),
       quantityNeeded: Value(quantityNeeded),
@@ -6276,6 +6563,7 @@ class VariantComponent extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return VariantComponent(
       id: serializer.fromJson<String>(json['id']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
       variantId: serializer.fromJson<String>(json['variantId']),
       componentId: serializer.fromJson<String>(json['componentId']),
       quantityNeeded: serializer.fromJson<int>(json['quantityNeeded']),
@@ -6291,6 +6579,7 @@ class VariantComponent extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'remoteId': serializer.toJson<int?>(remoteId),
       'variantId': serializer.toJson<String>(variantId),
       'componentId': serializer.toJson<String>(componentId),
       'quantityNeeded': serializer.toJson<int>(quantityNeeded),
@@ -6304,6 +6593,7 @@ class VariantComponent extends DataClass
 
   VariantComponent copyWith({
     String? id,
+    Value<int?> remoteId = const Value.absent(),
     String? variantId,
     String? componentId,
     int? quantityNeeded,
@@ -6314,6 +6604,7 @@ class VariantComponent extends DataClass
     bool? needSync,
   }) => VariantComponent(
     id: id ?? this.id,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
     variantId: variantId ?? this.variantId,
     componentId: componentId ?? this.componentId,
     quantityNeeded: quantityNeeded ?? this.quantityNeeded,
@@ -6326,6 +6617,7 @@ class VariantComponent extends DataClass
   VariantComponent copyWithCompanion(VariantComponentsCompanion data) {
     return VariantComponent(
       id: data.id.present ? data.id.value : this.id,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
       variantId: data.variantId.present ? data.variantId.value : this.variantId,
       componentId: data.componentId.present
           ? data.componentId.value
@@ -6347,6 +6639,7 @@ class VariantComponent extends DataClass
   String toString() {
     return (StringBuffer('VariantComponent(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('variantId: $variantId, ')
           ..write('componentId: $componentId, ')
           ..write('quantityNeeded: $quantityNeeded, ')
@@ -6362,6 +6655,7 @@ class VariantComponent extends DataClass
   @override
   int get hashCode => Object.hash(
     id,
+    remoteId,
     variantId,
     componentId,
     quantityNeeded,
@@ -6376,6 +6670,7 @@ class VariantComponent extends DataClass
       identical(this, other) ||
       (other is VariantComponent &&
           other.id == this.id &&
+          other.remoteId == this.remoteId &&
           other.variantId == this.variantId &&
           other.componentId == this.componentId &&
           other.quantityNeeded == this.quantityNeeded &&
@@ -6388,6 +6683,7 @@ class VariantComponent extends DataClass
 
 class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
   final Value<String> id;
+  final Value<int?> remoteId;
   final Value<String> variantId;
   final Value<String> componentId;
   final Value<int> quantityNeeded;
@@ -6399,6 +6695,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
   final Value<int> rowid;
   const VariantComponentsCompanion({
     this.id = const Value.absent(),
+    this.remoteId = const Value.absent(),
     this.variantId = const Value.absent(),
     this.componentId = const Value.absent(),
     this.quantityNeeded = const Value.absent(),
@@ -6411,6 +6708,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
   });
   VariantComponentsCompanion.insert({
     required String id,
+    this.remoteId = const Value.absent(),
     required String variantId,
     required String componentId,
     this.quantityNeeded = const Value.absent(),
@@ -6427,6 +6725,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
        updatedAt = Value(updatedAt);
   static Insertable<VariantComponent> custom({
     Expression<String>? id,
+    Expression<int>? remoteId,
     Expression<String>? variantId,
     Expression<String>? componentId,
     Expression<int>? quantityNeeded,
@@ -6439,6 +6738,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (remoteId != null) 'remote_id': remoteId,
       if (variantId != null) 'variant_id': variantId,
       if (componentId != null) 'component_id': componentId,
       if (quantityNeeded != null) 'quantity_needed': quantityNeeded,
@@ -6453,6 +6753,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
 
   VariantComponentsCompanion copyWith({
     Value<String>? id,
+    Value<int?>? remoteId,
     Value<String>? variantId,
     Value<String>? componentId,
     Value<int>? quantityNeeded,
@@ -6465,6 +6766,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
   }) {
     return VariantComponentsCompanion(
       id: id ?? this.id,
+      remoteId: remoteId ?? this.remoteId,
       variantId: variantId ?? this.variantId,
       componentId: componentId ?? this.componentId,
       quantityNeeded: quantityNeeded ?? this.quantityNeeded,
@@ -6482,6 +6784,9 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
     }
     if (variantId.present) {
       map['variant_id'] = Variable<String>(variantId.value);
@@ -6517,6 +6822,7 @@ class VariantComponentsCompanion extends UpdateCompanion<VariantComponent> {
   String toString() {
     return (StringBuffer('VariantComponentsCompanion(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('variantId: $variantId, ')
           ..write('componentId: $componentId, ')
           ..write('quantityNeeded: $quantityNeeded, ')
@@ -6544,6 +6850,18 @@ class $UnitsTable extends Units with TableInfo<$UnitsTable, Unit> {
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _remoteIdMeta = const VerificationMeta(
+    'remoteId',
+  );
+  @override
+  late final GeneratedColumn<int> remoteId = GeneratedColumn<int>(
+    'remote_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'UNIQUE',
   );
   static const VerificationMeta _variantIdMeta = const VerificationMeta(
     'variantId',
@@ -6740,6 +7058,7 @@ class $UnitsTable extends Units with TableInfo<$UnitsTable, Unit> {
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    remoteId,
     variantId,
     componentId,
     parentUnitId,
@@ -6774,6 +7093,12 @@ class $UnitsTable extends Units with TableInfo<$UnitsTable, Unit> {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('remote_id')) {
+      context.handle(
+        _remoteIdMeta,
+        remoteId.isAcceptableOrUnknown(data['remote_id']!, _remoteIdMeta),
+      );
     }
     if (data.containsKey('variant_id')) {
       context.handle(
@@ -6911,6 +7236,10 @@ class $UnitsTable extends Units with TableInfo<$UnitsTable, Unit> {
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      remoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remote_id'],
+      ),
       variantId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}variant_id'],
@@ -6990,6 +7319,7 @@ class $UnitsTable extends Units with TableInfo<$UnitsTable, Unit> {
 
 class Unit extends DataClass implements Insertable<Unit> {
   final String id;
+  final int? remoteId;
   final String? variantId;
   final String? componentId;
   final String? parentUnitId;
@@ -7009,6 +7339,7 @@ class Unit extends DataClass implements Insertable<Unit> {
   final bool needSync;
   const Unit({
     required this.id,
+    this.remoteId,
     this.variantId,
     this.componentId,
     this.parentUnitId,
@@ -7031,6 +7362,9 @@ class Unit extends DataClass implements Insertable<Unit> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || remoteId != null) {
+      map['remote_id'] = Variable<int>(remoteId);
+    }
     if (!nullToAbsent || variantId != null) {
       map['variant_id'] = Variable<String>(variantId);
     }
@@ -7074,6 +7408,9 @@ class Unit extends DataClass implements Insertable<Unit> {
   UnitsCompanion toCompanion(bool nullToAbsent) {
     return UnitsCompanion(
       id: Value(id),
+      remoteId: remoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteId),
       variantId: variantId == null && nullToAbsent
           ? const Value.absent()
           : Value(variantId),
@@ -7121,6 +7458,7 @@ class Unit extends DataClass implements Insertable<Unit> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Unit(
       id: serializer.fromJson<String>(json['id']),
+      remoteId: serializer.fromJson<int?>(json['remoteId']),
       variantId: serializer.fromJson<String?>(json['variantId']),
       componentId: serializer.fromJson<String?>(json['componentId']),
       parentUnitId: serializer.fromJson<String?>(json['parentUnitId']),
@@ -7145,6 +7483,7 @@ class Unit extends DataClass implements Insertable<Unit> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'remoteId': serializer.toJson<int?>(remoteId),
       'variantId': serializer.toJson<String?>(variantId),
       'componentId': serializer.toJson<String?>(componentId),
       'parentUnitId': serializer.toJson<String?>(parentUnitId),
@@ -7167,6 +7506,7 @@ class Unit extends DataClass implements Insertable<Unit> {
 
   Unit copyWith({
     String? id,
+    Value<int?> remoteId = const Value.absent(),
     Value<String?> variantId = const Value.absent(),
     Value<String?> componentId = const Value.absent(),
     Value<String?> parentUnitId = const Value.absent(),
@@ -7186,6 +7526,7 @@ class Unit extends DataClass implements Insertable<Unit> {
     bool? needSync,
   }) => Unit(
     id: id ?? this.id,
+    remoteId: remoteId.present ? remoteId.value : this.remoteId,
     variantId: variantId.present ? variantId.value : this.variantId,
     componentId: componentId.present ? componentId.value : this.componentId,
     parentUnitId: parentUnitId.present ? parentUnitId.value : this.parentUnitId,
@@ -7211,6 +7552,7 @@ class Unit extends DataClass implements Insertable<Unit> {
   Unit copyWithCompanion(UnitsCompanion data) {
     return Unit(
       id: data.id.present ? data.id.value : this.id,
+      remoteId: data.remoteId.present ? data.remoteId.value : this.remoteId,
       variantId: data.variantId.present ? data.variantId.value : this.variantId,
       componentId: data.componentId.present
           ? data.componentId.value
@@ -7247,6 +7589,7 @@ class Unit extends DataClass implements Insertable<Unit> {
   String toString() {
     return (StringBuffer('Unit(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('variantId: $variantId, ')
           ..write('componentId: $componentId, ')
           ..write('parentUnitId: $parentUnitId, ')
@@ -7271,6 +7614,7 @@ class Unit extends DataClass implements Insertable<Unit> {
   @override
   int get hashCode => Object.hash(
     id,
+    remoteId,
     variantId,
     componentId,
     parentUnitId,
@@ -7294,6 +7638,7 @@ class Unit extends DataClass implements Insertable<Unit> {
       identical(this, other) ||
       (other is Unit &&
           other.id == this.id &&
+          other.remoteId == this.remoteId &&
           other.variantId == this.variantId &&
           other.componentId == this.componentId &&
           other.parentUnitId == this.parentUnitId &&
@@ -7315,6 +7660,7 @@ class Unit extends DataClass implements Insertable<Unit> {
 
 class UnitsCompanion extends UpdateCompanion<Unit> {
   final Value<String> id;
+  final Value<int?> remoteId;
   final Value<String?> variantId;
   final Value<String?> componentId;
   final Value<String?> parentUnitId;
@@ -7335,6 +7681,7 @@ class UnitsCompanion extends UpdateCompanion<Unit> {
   final Value<int> rowid;
   const UnitsCompanion({
     this.id = const Value.absent(),
+    this.remoteId = const Value.absent(),
     this.variantId = const Value.absent(),
     this.componentId = const Value.absent(),
     this.parentUnitId = const Value.absent(),
@@ -7356,6 +7703,7 @@ class UnitsCompanion extends UpdateCompanion<Unit> {
   });
   UnitsCompanion.insert({
     required String id,
+    this.remoteId = const Value.absent(),
     this.variantId = const Value.absent(),
     this.componentId = const Value.absent(),
     this.parentUnitId = const Value.absent(),
@@ -7380,6 +7728,7 @@ class UnitsCompanion extends UpdateCompanion<Unit> {
        updatedAt = Value(updatedAt);
   static Insertable<Unit> custom({
     Expression<String>? id,
+    Expression<int>? remoteId,
     Expression<String>? variantId,
     Expression<String>? componentId,
     Expression<String>? parentUnitId,
@@ -7401,6 +7750,7 @@ class UnitsCompanion extends UpdateCompanion<Unit> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (remoteId != null) 'remote_id': remoteId,
       if (variantId != null) 'variant_id': variantId,
       if (componentId != null) 'component_id': componentId,
       if (parentUnitId != null) 'parent_unit_id': parentUnitId,
@@ -7424,6 +7774,7 @@ class UnitsCompanion extends UpdateCompanion<Unit> {
 
   UnitsCompanion copyWith({
     Value<String>? id,
+    Value<int?>? remoteId,
     Value<String?>? variantId,
     Value<String?>? componentId,
     Value<String?>? parentUnitId,
@@ -7445,6 +7796,7 @@ class UnitsCompanion extends UpdateCompanion<Unit> {
   }) {
     return UnitsCompanion(
       id: id ?? this.id,
+      remoteId: remoteId ?? this.remoteId,
       variantId: variantId ?? this.variantId,
       componentId: componentId ?? this.componentId,
       parentUnitId: parentUnitId ?? this.parentUnitId,
@@ -7471,6 +7823,9 @@ class UnitsCompanion extends UpdateCompanion<Unit> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (remoteId.present) {
+      map['remote_id'] = Variable<int>(remoteId.value);
     }
     if (variantId.present) {
       map['variant_id'] = Variable<String>(variantId.value);
@@ -7533,6 +7888,7 @@ class UnitsCompanion extends UpdateCompanion<Unit> {
   String toString() {
     return (StringBuffer('UnitsCompanion(')
           ..write('id: $id, ')
+          ..write('remoteId: $remoteId, ')
           ..write('variantId: $variantId, ')
           ..write('componentId: $componentId, ')
           ..write('parentUnitId: $parentUnitId, ')
@@ -8504,6 +8860,7 @@ typedef $$SectionWarehousesTableProcessedTableManager =
 typedef $$RacksTableCreateCompanionBuilder =
     RacksCompanion Function({
       required String id,
+      Value<int?> remoteId,
       required String name,
       required String warehouseId,
       Value<int> rowid,
@@ -8511,6 +8868,7 @@ typedef $$RacksTableCreateCompanionBuilder =
 typedef $$RacksTableUpdateCompanionBuilder =
     RacksCompanion Function({
       Value<String> id,
+      Value<int?> remoteId,
       Value<String> name,
       Value<String> warehouseId,
       Value<int> rowid,
@@ -8526,6 +8884,11 @@ class $$RacksTableFilterComposer extends Composer<_$AppDatabase, $RacksTable> {
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8554,6 +8917,11 @@ class $$RacksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get name => $composableBuilder(
     column: $table.name,
     builder: (column) => ColumnOrderings(column),
@@ -8576,6 +8944,9 @@ class $$RacksTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
@@ -8615,11 +8986,13 @@ class $$RacksTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> warehouseId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RacksCompanion(
                 id: id,
+                remoteId: remoteId,
                 name: name,
                 warehouseId: warehouseId,
                 rowid: rowid,
@@ -8627,11 +9000,13 @@ class $$RacksTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<int?> remoteId = const Value.absent(),
                 required String name,
                 required String warehouseId,
                 Value<int> rowid = const Value.absent(),
               }) => RacksCompanion.insert(
                 id: id,
+                remoteId: remoteId,
                 name: name,
                 warehouseId: warehouseId,
                 rowid: rowid,
@@ -9615,6 +9990,7 @@ typedef $$CompanyItemsTableProcessedTableManager =
 typedef $$VariantsTableCreateCompanionBuilder =
     VariantsCompanion Function({
       required String id,
+      Value<int?> remoteId,
       required String companyItemId,
       Value<String?> rackId,
       Value<String?> brandId,
@@ -9632,6 +10008,7 @@ typedef $$VariantsTableCreateCompanionBuilder =
 typedef $$VariantsTableUpdateCompanionBuilder =
     VariantsCompanion Function({
       Value<String> id,
+      Value<int?> remoteId,
       Value<String> companyItemId,
       Value<String?> rackId,
       Value<String?> brandId,
@@ -9658,6 +10035,11 @@ class $$VariantsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9736,6 +10118,11 @@ class $$VariantsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get companyItemId => $composableBuilder(
     column: $table.companyItemId,
     builder: (column) => ColumnOrderings(column),
@@ -9809,6 +10196,9 @@ class $$VariantsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
+
   GeneratedColumn<String> get companyItemId => $composableBuilder(
     column: $table.companyItemId,
     builder: (column) => column,
@@ -9881,6 +10271,7 @@ class $$VariantsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
                 Value<String> companyItemId = const Value.absent(),
                 Value<String?> rackId = const Value.absent(),
                 Value<String?> brandId = const Value.absent(),
@@ -9896,6 +10287,7 @@ class $$VariantsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => VariantsCompanion(
                 id: id,
+                remoteId: remoteId,
                 companyItemId: companyItemId,
                 rackId: rackId,
                 brandId: brandId,
@@ -9913,6 +10305,7 @@ class $$VariantsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<int?> remoteId = const Value.absent(),
                 required String companyItemId,
                 Value<String?> rackId = const Value.absent(),
                 Value<String?> brandId = const Value.absent(),
@@ -9928,6 +10321,7 @@ class $$VariantsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => VariantsCompanion.insert(
                 id: id,
+                remoteId: remoteId,
                 companyItemId: companyItemId,
                 rackId: rackId,
                 brandId: brandId,
@@ -9967,6 +10361,7 @@ typedef $$VariantsTableProcessedTableManager =
 typedef $$VariantPhotosTableCreateCompanionBuilder =
     VariantPhotosCompanion Function({
       required String id,
+      Value<int?> remoteId,
       required String variantId,
       Value<String?> localPath,
       Value<String?> remoteUrl,
@@ -9981,6 +10376,7 @@ typedef $$VariantPhotosTableCreateCompanionBuilder =
 typedef $$VariantPhotosTableUpdateCompanionBuilder =
     VariantPhotosCompanion Function({
       Value<String> id,
+      Value<int?> remoteId,
       Value<String> variantId,
       Value<String?> localPath,
       Value<String?> remoteUrl,
@@ -10004,6 +10400,11 @@ class $$VariantPhotosTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10067,6 +10468,11 @@ class $$VariantPhotosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get variantId => $composableBuilder(
     column: $table.variantId,
     builder: (column) => ColumnOrderings(column),
@@ -10124,6 +10530,9 @@ class $$VariantPhotosTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
 
   GeneratedColumn<String> get variantId =>
       $composableBuilder(column: $table.variantId, builder: (column) => column);
@@ -10187,6 +10596,7 @@ class $$VariantPhotosTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
                 Value<String> variantId = const Value.absent(),
                 Value<String?> localPath = const Value.absent(),
                 Value<String?> remoteUrl = const Value.absent(),
@@ -10199,6 +10609,7 @@ class $$VariantPhotosTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => VariantPhotosCompanion(
                 id: id,
+                remoteId: remoteId,
                 variantId: variantId,
                 localPath: localPath,
                 remoteUrl: remoteUrl,
@@ -10213,6 +10624,7 @@ class $$VariantPhotosTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<int?> remoteId = const Value.absent(),
                 required String variantId,
                 Value<String?> localPath = const Value.absent(),
                 Value<String?> remoteUrl = const Value.absent(),
@@ -10225,6 +10637,7 @@ class $$VariantPhotosTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => VariantPhotosCompanion.insert(
                 id: id,
+                remoteId: remoteId,
                 variantId: variantId,
                 localPath: localPath,
                 remoteUrl: remoteUrl,
@@ -10264,6 +10677,7 @@ typedef $$VariantPhotosTableProcessedTableManager =
 typedef $$ComponentsTableCreateCompanionBuilder =
     ComponentsCompanion Function({
       required String id,
+      Value<int?> remoteId,
       required String productId,
       required String name,
       required String type,
@@ -10280,6 +10694,7 @@ typedef $$ComponentsTableCreateCompanionBuilder =
 typedef $$ComponentsTableUpdateCompanionBuilder =
     ComponentsCompanion Function({
       Value<String> id,
+      Value<int?> remoteId,
       Value<String> productId,
       Value<String> name,
       Value<String> type,
@@ -10305,6 +10720,11 @@ class $$ComponentsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10378,6 +10798,11 @@ class $$ComponentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get productId => $composableBuilder(
     column: $table.productId,
     builder: (column) => ColumnOrderings(column),
@@ -10445,6 +10870,9 @@ class $$ComponentsTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
 
   GeneratedColumn<String> get productId =>
       $composableBuilder(column: $table.productId, builder: (column) => column);
@@ -10516,6 +10944,7 @@ class $$ComponentsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
                 Value<String> productId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> type = const Value.absent(),
@@ -10530,6 +10959,7 @@ class $$ComponentsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => ComponentsCompanion(
                 id: id,
+                remoteId: remoteId,
                 productId: productId,
                 name: name,
                 type: type,
@@ -10546,6 +10976,7 @@ class $$ComponentsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<int?> remoteId = const Value.absent(),
                 required String productId,
                 required String name,
                 required String type,
@@ -10560,6 +10991,7 @@ class $$ComponentsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => ComponentsCompanion.insert(
                 id: id,
+                remoteId: remoteId,
                 productId: productId,
                 name: name,
                 type: type,
@@ -10598,6 +11030,7 @@ typedef $$ComponentsTableProcessedTableManager =
 typedef $$ComponentPhotosTableCreateCompanionBuilder =
     ComponentPhotosCompanion Function({
       required String id,
+      Value<int?> remoteId,
       required String componentId,
       Value<String?> localPath,
       Value<String?> remoteUrl,
@@ -10612,6 +11045,7 @@ typedef $$ComponentPhotosTableCreateCompanionBuilder =
 typedef $$ComponentPhotosTableUpdateCompanionBuilder =
     ComponentPhotosCompanion Function({
       Value<String> id,
+      Value<int?> remoteId,
       Value<String> componentId,
       Value<String?> localPath,
       Value<String?> remoteUrl,
@@ -10635,6 +11069,11 @@ class $$ComponentPhotosTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10698,6 +11137,11 @@ class $$ComponentPhotosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get componentId => $composableBuilder(
     column: $table.componentId,
     builder: (column) => ColumnOrderings(column),
@@ -10755,6 +11199,9 @@ class $$ComponentPhotosTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
 
   GeneratedColumn<String> get componentId => $composableBuilder(
     column: $table.componentId,
@@ -10826,6 +11273,7 @@ class $$ComponentPhotosTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
                 Value<String> componentId = const Value.absent(),
                 Value<String?> localPath = const Value.absent(),
                 Value<String?> remoteUrl = const Value.absent(),
@@ -10838,6 +11286,7 @@ class $$ComponentPhotosTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => ComponentPhotosCompanion(
                 id: id,
+                remoteId: remoteId,
                 componentId: componentId,
                 localPath: localPath,
                 remoteUrl: remoteUrl,
@@ -10852,6 +11301,7 @@ class $$ComponentPhotosTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<int?> remoteId = const Value.absent(),
                 required String componentId,
                 Value<String?> localPath = const Value.absent(),
                 Value<String?> remoteUrl = const Value.absent(),
@@ -10864,6 +11314,7 @@ class $$ComponentPhotosTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => ComponentPhotosCompanion.insert(
                 id: id,
+                remoteId: remoteId,
                 componentId: componentId,
                 localPath: localPath,
                 remoteUrl: remoteUrl,
@@ -10903,6 +11354,7 @@ typedef $$ComponentPhotosTableProcessedTableManager =
 typedef $$VariantComponentsTableCreateCompanionBuilder =
     VariantComponentsCompanion Function({
       required String id,
+      Value<int?> remoteId,
       required String variantId,
       required String componentId,
       Value<int> quantityNeeded,
@@ -10916,6 +11368,7 @@ typedef $$VariantComponentsTableCreateCompanionBuilder =
 typedef $$VariantComponentsTableUpdateCompanionBuilder =
     VariantComponentsCompanion Function({
       Value<String> id,
+      Value<int?> remoteId,
       Value<String> variantId,
       Value<String> componentId,
       Value<int> quantityNeeded,
@@ -10938,6 +11391,11 @@ class $$VariantComponentsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10996,6 +11454,11 @@ class $$VariantComponentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get variantId => $composableBuilder(
     column: $table.variantId,
     builder: (column) => ColumnOrderings(column),
@@ -11048,6 +11511,9 @@ class $$VariantComponentsTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
 
   GeneratedColumn<String> get variantId =>
       $composableBuilder(column: $table.variantId, builder: (column) => column);
@@ -11121,6 +11587,7 @@ class $$VariantComponentsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
                 Value<String> variantId = const Value.absent(),
                 Value<String> componentId = const Value.absent(),
                 Value<int> quantityNeeded = const Value.absent(),
@@ -11132,6 +11599,7 @@ class $$VariantComponentsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => VariantComponentsCompanion(
                 id: id,
+                remoteId: remoteId,
                 variantId: variantId,
                 componentId: componentId,
                 quantityNeeded: quantityNeeded,
@@ -11145,6 +11613,7 @@ class $$VariantComponentsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<int?> remoteId = const Value.absent(),
                 required String variantId,
                 required String componentId,
                 Value<int> quantityNeeded = const Value.absent(),
@@ -11156,6 +11625,7 @@ class $$VariantComponentsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => VariantComponentsCompanion.insert(
                 id: id,
+                remoteId: remoteId,
                 variantId: variantId,
                 componentId: componentId,
                 quantityNeeded: quantityNeeded,
@@ -11198,6 +11668,7 @@ typedef $$VariantComponentsTableProcessedTableManager =
 typedef $$UnitsTableCreateCompanionBuilder =
     UnitsCompanion Function({
       required String id,
+      Value<int?> remoteId,
       Value<String?> variantId,
       Value<String?> componentId,
       Value<String?> parentUnitId,
@@ -11220,6 +11691,7 @@ typedef $$UnitsTableCreateCompanionBuilder =
 typedef $$UnitsTableUpdateCompanionBuilder =
     UnitsCompanion Function({
       Value<String> id,
+      Value<int?> remoteId,
       Value<String?> variantId,
       Value<String?> componentId,
       Value<String?> parentUnitId,
@@ -11250,6 +11722,11 @@ class $$UnitsTableFilterComposer extends Composer<_$AppDatabase, $UnitsTable> {
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11353,6 +11830,11 @@ class $$UnitsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get remoteId => $composableBuilder(
+    column: $table.remoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get variantId => $composableBuilder(
     column: $table.variantId,
     builder: (column) => ColumnOrderings(column),
@@ -11451,6 +11933,9 @@ class $$UnitsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<int> get remoteId =>
+      $composableBuilder(column: $table.remoteId, builder: (column) => column);
+
   GeneratedColumn<String> get variantId =>
       $composableBuilder(column: $table.variantId, builder: (column) => column);
 
@@ -11544,6 +12029,7 @@ class $$UnitsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<int?> remoteId = const Value.absent(),
                 Value<String?> variantId = const Value.absent(),
                 Value<String?> componentId = const Value.absent(),
                 Value<String?> parentUnitId = const Value.absent(),
@@ -11564,6 +12050,7 @@ class $$UnitsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => UnitsCompanion(
                 id: id,
+                remoteId: remoteId,
                 variantId: variantId,
                 componentId: componentId,
                 parentUnitId: parentUnitId,
@@ -11586,6 +12073,7 @@ class $$UnitsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<int?> remoteId = const Value.absent(),
                 Value<String?> variantId = const Value.absent(),
                 Value<String?> componentId = const Value.absent(),
                 Value<String?> parentUnitId = const Value.absent(),
@@ -11606,6 +12094,7 @@ class $$UnitsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => UnitsCompanion.insert(
                 id: id,
+                remoteId: remoteId,
                 variantId: variantId,
                 componentId: componentId,
                 parentUnitId: parentUnitId,
