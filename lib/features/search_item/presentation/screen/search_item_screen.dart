@@ -7,7 +7,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
 import 'package:inventory_sync_apps/features/inventory/data/inventory_repository.dart';
 import 'package:inventory_sync_apps/core/db/daos/company_item_dao.dart';
+import 'package:inventory_sync_apps/shared/presentation/widgets/text_field_widget.dart';
 
+import '../../../../shared/presentation/widgets/search_field_widget.dart';
 import '../../../home/presentation/widget/company_item_card.dart';
 import '../../../inventory/data/model/inventory_search_item.dart';
 import '../../../inventory/presentation/screens/company_item_detail_screen.dart';
@@ -72,82 +74,105 @@ class _SearchItemViewState extends State<_SearchItemView> {
         elevation: 0,
         backgroundColor: cs.background,
         foregroundColor: cs.onBackground,
-        title: const Text(
-          'MP Inventory',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        title: Hero(
+          tag: 'mp-title',
+          child: Material(
+            child: const Text(
+              'MP Inventory',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+          ),
         ),
       ),
       body: SafeArea(
         child: Column(
           children: [
-            // SEARCH BAR
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsetsGeometry.symmetric(horizontal: 16),
               child: Hero(
                 tag: 'inventory-search-bar',
                 child: Material(
-                  color: Colors.transparent,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: cs.surface,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.search_rounded,
-                          color: cs.onSurface.withOpacity(0.5),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            focusNode: _focusNode,
-                            textInputAction: TextInputAction.search,
-                            onSubmitted: _onSubmitted,
-                            decoration: InputDecoration(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 12,
-                              ),
-                              hintText:
-                                  'Cari kode / nama barang (mis. 030, Bearing...)',
-                              border: InputBorder.none,
-                              isDense: true,
-                              hintStyle: TextStyle(
-                                color: cs.onSurface.withOpacity(0.45),
-                                fontSize: 14,
-                              ),
-                            ),
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        ),
-                        if (_controller.text.isNotEmpty)
-                          GestureDetector(
-                            onTap: _onClear,
-                            child: Icon(
-                              Icons.close_rounded,
-                              size: 18,
-                              color: cs.onSurface.withOpacity(0.5),
-                            ),
-                          ),
-                      ],
-                    ),
+                  child: SearchFieldWidget(
+                    hintText: 'Cari kode / nama barang (mis. 030, Bearing...)',
+                    controller: _controller,
+                    focusNode: _focusNode, // pass focus node
+                    onClear: () {
+                      _controller.clear();
+                      // optionally keep focus after clear:
+                      _focusNode.requestFocus();
+                    },
                   ),
                 ),
               ),
             ),
+            // SEARCH BAR
+            // Padding(
+            //   padding: const EdgeInsets.symmetric(horizontal: 16),
+            //   child: Hero(
+            //     tag: 'inventory-search-bar',
+            //     child: Material(
+            //       color: Colors.transparent,
+            //       child: Container(
+            //         padding: const EdgeInsets.symmetric(
+            //           horizontal: 16,
+            //           vertical: 4,
+            //         ),
+            //         decoration: BoxDecoration(
+            //           color: cs.surface,
+            //           borderRadius: BorderRadius.circular(24),
+            //           boxShadow: [
+            //             BoxShadow(
+            //               color: Colors.black.withOpacity(0.04),
+            //               blurRadius: 18,
+            //               offset: const Offset(0, 8),
+            //             ),
+            //           ],
+            //         ),
+            //         child: Row(
+            //           children: [
+            //             Icon(
+            //               Icons.search_rounded,
+            //               color: cs.onSurface.withOpacity(0.5),
+            //             ),
+            //             const SizedBox(width: 8),
+            //             Expanded(
+            //               child: TextField(
+            //                 controller: _controller,
+            //                 focusNode: _focusNode,
+            //                 textInputAction: TextInputAction.search,
+            //                 onSubmitted: _onSubmitted,
+            //                 decoration: InputDecoration(
+            //                   contentPadding: const EdgeInsets.symmetric(
+            //                     horizontal: 6,
+            //                     vertical: 12,
+            //                   ),
+            //                   hintText:
+            //                       'Cari kode / nama barang (mis. 030, Bearing...)',
+            //                   border: InputBorder.none,
+            //                   isDense: true,
+            //                   hintStyle: TextStyle(
+            //                     color: cs.onSurface.withOpacity(0.45),
+            //                     fontSize: 14,
+            //                   ),
+            //                 ),
+            //                 style: const TextStyle(fontSize: 14),
+            //               ),
+            //             ),
+            //             if (_controller.text.isNotEmpty)
+            //               GestureDetector(
+            //                 onTap: _onClear,
+            //                 child: Icon(
+            //                   Icons.close_rounded,
+            //                   size: 18,
+            //                   color: cs.onSurface.withOpacity(0.5),
+            //                 ),
+            //               ),
+            //           ],
+            //         ),
+            //       ),
+            //     ),
+            //   ),
+            // ),
             const SizedBox(height: 16),
 
             // BODY

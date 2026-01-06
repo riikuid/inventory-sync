@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_sync_apps/features/inventory/data/inventory_repository.dart';
 import 'package:inventory_sync_apps/core/db/daos/category_dao.dart';
 import 'package:inventory_sync_apps/core/db/daos/company_item_dao.dart';
+import 'package:inventory_sync_apps/shared/presentation/widgets/search_field_widget.dart';
 
 import '../../../../core/styles/color_scheme.dart';
 import '../../../inventory/presentation/screens/company_item_detail_screen.dart';
@@ -48,9 +49,14 @@ class _HomeViewState extends State<_HomeView> {
         backgroundColor: cs.background,
         foregroundColor: cs.onBackground,
         centerTitle: false,
-        title: const Text(
-          'MP Inventory',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        title: Hero(
+          tag: 'mp-title',
+          child: Material(
+            child: const Text(
+              'MP Inventory',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+          ),
         ),
         actions: [
           BlocBuilder<SyncCubit, SyncState>(
@@ -92,8 +98,8 @@ class _HomeViewState extends State<_HomeView> {
                 ),
                 children: [
                   _SearchBar(),
-                  const SizedBox(height: 20),
-                  _CategorySection(categories: loaded.categories),
+                  // const SizedBox(height: 20),
+                  // _CategorySection(categories: loaded.categories),
                   const SizedBox(height: 20),
                   _CompanyItemSection(items: loaded.companyItems),
                 ],
@@ -191,49 +197,14 @@ class _SearchBar extends StatelessWidget {
       tag: 'inventory-search-bar',
       child: Material(
         color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
+        child: GestureDetector(
+          // borderRadius: BorderRadius.circular(24),
           onTap: () {
             Navigator.of(
               context,
             ).push(MaterialPageRoute(builder: (_) => const SearchItemScreen()));
           },
-          child: Container(
-            padding: EdgeInsets.only(left: 6, right: 16, top: 4, bottom: 4),
-            decoration: BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: AppColors.background,
-                  child: Icon(
-                    Icons.search_rounded,
-                    color: AppColors.onSurface.withOpacity(0.5),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Cari kode / nama barang (mis. 030, Bearing...)',
-                    style: TextStyle(
-                      color: cs.onSurface.withOpacity(0.45),
-                      fontSize: 14,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          child: Material(child: SearchFieldWidget()),
         ),
       ),
     );
@@ -320,7 +291,7 @@ class _CompanyItemSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'BARANG TERBARU',
+              'LIST BARANG',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,

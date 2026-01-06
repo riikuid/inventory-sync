@@ -461,7 +461,7 @@ class _VariantDetailView extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             boxShadow: [AppStyle.defaultBoxShadow],
-            color: Color(0xff482f23),
+            color: Color(0xff3E466E),
             borderRadius: BorderRadius.circular(18),
           ),
           padding: const EdgeInsets.all(12),

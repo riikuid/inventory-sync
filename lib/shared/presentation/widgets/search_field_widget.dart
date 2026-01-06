@@ -25,7 +25,7 @@ class SearchFieldWidget extends StatelessWidget {
       padding: EdgeInsets.only(left: 6, right: 16, top: 4, bottom: 4),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(100),
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
@@ -37,8 +37,11 @@ class SearchFieldWidget extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(width: 8),
-          Icon(Icons.search_rounded, color: AppColors.primary),
+          // SizedBox(width: 8),
+          CircleAvatar(
+            backgroundColor: AppColors.primary,
+            child: Icon(Icons.search_rounded, color: AppColors.surface),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(

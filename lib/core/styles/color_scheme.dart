@@ -2,33 +2,33 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   /// PRIMARY
-  static const Color primary = Color(0xff78443B);
+  static const Color primary = Color(0xff0E184A); //DONE
   static const Color onPrimary = Color(0xffF8F6F2);
 
   /// SECONDARY
-  static const Color secondary = Color(0xffF0C400);
+  static const Color secondary = Color(0xffFFCC00);
   static const Color onSecondary = Color(0xff161412);
 
   /// ACCENT / TERTIARY
-  static const Color accent = Color(0xffEBE4E0);
+  static const Color accent = Color(0xffe7e8ed);
   static const Color onAccent = Color(0xff161412);
 
   /// BASE
-  static const Color background = Color(0xffF4F1EC);
+  static const Color background = Color(0xffF8F8FA);
   static const Color onBackground = Color(0xff161412);
 
   /// SURFACE (Card/Popover)
-  static const Color surface = Color(0xffFBFAF8);
+  static const Color surface = Color.fromARGB(255, 248, 248, 251);
   static const Color onSurface = Color(0xff161412);
 
   /// MUTED
-  static const Color muted = Color(0xffE5E0DC);
-  static const Color onMuted = Color(0xff70635C);
+  static const Color muted = Color.fromARGB(255, 220, 221, 229);
+  static const Color onMuted = Color.fromARGB(255, 92, 95, 112);
 
   /// BORDER / INPUT / FOCUS
-  static const Color border = Color(0xffC9BCB6);
-  static const Color input = Color(0xffC9BCB6);
-  static const Color focusRing = Color(0xff78443B);
+  static const Color border = Color(0xff9095ac);
+  static const Color input = Color(0xff9095ac);
+  static const Color focusRing = AppColors.primary;
 
   /// DESTRUCTIVE / ERROR
   static const Color error = Color(0xffD92626);
