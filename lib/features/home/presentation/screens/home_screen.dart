@@ -121,7 +121,7 @@ class _HomeViewState extends State<_HomeView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Data Belum Sinkron",
+              "Sinkronisasi Data",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 15),
@@ -129,9 +129,7 @@ class _HomeViewState extends State<_HomeView> {
             if (counts.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
-                child: Center(
-                  child: Text("Semua data sudah tersinkronisasi ✅"),
-                ),
+                child: Center(child: Text("Semua data telah tersinkronisasi")),
               )
             else ...[
               if (counts.companyItems > 0)

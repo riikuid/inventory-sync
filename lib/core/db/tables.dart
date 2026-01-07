@@ -2,25 +2,17 @@
 import 'package:drift/drift.dart';
 
 class Categories extends Table {
-  TextColumn get uuid => text()(); // UUID string
-
-  // 👉 TAMBAHAN: Simpan ID Incremental dari Server
-  IntColumn get remoteId => integer().nullable().customConstraint('UNIQUE')();
-
+  TextColumn get id => text()(); // UUID string
   TextColumn get name => text()();
   TextColumn get code => text()();
-  TextColumn get categoryParentUuid => text().nullable()();
+  TextColumn get categoryParentId => text().nullable()();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 class Brands extends Table {
-  TextColumn get uuid => text()(); // UUID
-
-  // 👉 TAMBAHAN: Simpan ID Incremental dari Server
-  IntColumn get remoteId => integer().nullable().customConstraint('UNIQUE')();
-
+  TextColumn get id => text()(); // UUID
   TextColumn get name => text()();
 
   // ======== 👉 flag untuk sync =======
@@ -29,77 +21,61 @@ class Brands extends Table {
   BoolColumn get needSync => boolean().withDefault(const Constant(false))();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 class Departments extends Table {
-  TextColumn get uuid => text()(); // UUID
-
-  // 👉 TAMBAHAN: Simpan ID Incremental dari Server
-  IntColumn get remoteId => integer().nullable().customConstraint('UNIQUE')();
-
+  TextColumn get id => text()(); // UUID
   TextColumn get name => text()();
   TextColumn get code => text()();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 class Sections extends Table {
-  TextColumn get uuid => text()(); // UUID
-
-  // 👉 TAMBAHAN: Simpan ID Incremental dari Server
-  IntColumn get remoteId => integer().nullable().customConstraint('UNIQUE')();
-
-  TextColumn get departmentUuid => text()();
+  TextColumn get id => text()(); // UUID
+  TextColumn get departmentId => text()();
   TextColumn get departmentCode => text()();
   TextColumn get name => text()();
   TextColumn get code => text()();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 class Warehouses extends Table {
-  TextColumn get uuid => text()(); // UUID
+  TextColumn get id => text()(); // UUID
   TextColumn get name => text()();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 class SectionWarehouses extends Table {
   // TextColumn get sectionId => text().references(Sections, #id)();
   // TextColumn get warehouseId => text().references(Warehouses, #id)();
-  TextColumn get uuid => text()(); // UUID
-  TextColumn get sectionUuid => text()();
-  TextColumn get warehouseUuid => text()();
+  TextColumn get id => text()(); // UUID
+  TextColumn get sectionId => text()();
+  TextColumn get warehouseId => text()();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {sectionId, warehouseId};
 }
 
 class Racks extends Table {
-  TextColumn get uuid => text()(); // UUID -> LOKAL ID
-
-  // 👉 TAMBAHAN: Simpan ID Incremental dari Server
-  IntColumn get remoteId => integer().nullable().customConstraint('UNIQUE')();
-
+  TextColumn get id => text()(); // UUID
   TextColumn get name => text()();
-  TextColumn get warehouseUuid => text()();
+  TextColumn get warehouseId => text()();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 class Products extends Table {
-  TextColumn get uuid => text()(); // UUID
-
-  // 👉 TAMBAHAN: Simpan ID Incremental dari Server
-  IntColumn get remoteId => integer().nullable().customConstraint('UNIQUE')();
-
+  TextColumn get id => text()(); // UUID
   TextColumn get name => text()();
-  TextColumn get categoryUuid => text().nullable()();
+  TextColumn get categoryId => text().nullable()();
   TextColumn get description => text().nullable()();
 
   DateTimeColumn get createdAt => dateTime()();
@@ -111,17 +87,13 @@ class Products extends Table {
   BoolColumn get needSync => boolean().withDefault(const Constant(false))();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 class CompanyItems extends Table {
-  TextColumn get uuid => text()(); // UUID
-
-  // 👉 TAMBAHAN: Simpan ID Incremental dari Server
-  IntColumn get remoteId => integer().nullable().customConstraint('UNIQUE')();
-
-  TextColumn get defaultRackUuid => text().nullable()();
-  TextColumn get productUuid => text()(); // FK -> Products.uuid
+  TextColumn get id => text()(); // UUID
+  TextColumn get defaultRackId => text().nullable()();
+  TextColumn get productId => text()(); // FK -> Products.id
   TextColumn get companyCode => text()();
   TextColumn get machinePurchase => text().nullable()();
   TextColumn get specification => text().nullable()();
@@ -137,19 +109,14 @@ class CompanyItems extends Table {
   BoolColumn get needSync => boolean().withDefault(const Constant(false))();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 class Variants extends Table {
-  TextColumn get uuid => text()(); // UUID
-
-  // 👉 TAMBAHAN: Simpan ID Incremental dari Server
-  IntColumn get remoteId => integer().nullable().customConstraint('UNIQUE')();
-
-  TextColumn get companyItemUuid => text()(); // FK -> CompanyItems.uuid
-  TextColumn get rackUuid => text().nullable()();
-  TextColumn get brandUuid => text().nullable()(); // FK -> Brands.uuid
-
+  TextColumn get id => text()(); // UUID
+  TextColumn get companyItemId => text()(); // FK -> CompanyItems.id
+  TextColumn get rackId => text().nullable()();
+  TextColumn get brandId => text().nullable()(); // FK -> Brands.id
   TextColumn get name => text()(); // "Bearing 043 Timken"
   TextColumn get uom => text()();
   TextColumn get manufCode => text().nullable()();
@@ -165,16 +132,12 @@ class Variants extends Table {
   BoolColumn get needSync => boolean().withDefault(const Constant(false))();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 class VariantPhotos extends Table {
-  TextColumn get uuid => text()(); // uuid (string)
-
-  // 👉 TAMBAHAN: Simpan ID Incremental dari Server
-  IntColumn get remoteId => integer().nullable().customConstraint('UNIQUE')();
-
-  TextColumn get variantUuid => text()();
+  TextColumn get id => text()(); // uuid (string)
+  TextColumn get variantId => text()();
 
   // path lokal di device (misal path file di gallery / app dir)
   TextColumn get localPath => text().nullable()();
@@ -195,20 +158,15 @@ class VariantPhotos extends Table {
   BoolColumn get needSync => boolean().withDefault(const Constant(true))();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 class Components extends Table {
-  TextColumn get uuid => text()(); // UUID
-
-  // 👉 TAMBAHAN: Simpan ID Incremental dari Server
-  IntColumn get remoteId => integer().nullable().customConstraint('UNIQUE')();
-
-  TextColumn get productUuid => text()(); // FK -> Products.uuid
-  TextColumn get brandUuid => text().nullable()();
-
+  TextColumn get id => text()(); // UUID
+  TextColumn get productId => text()(); // FK -> Products.id
   TextColumn get name => text()(); // "Cone 14276"
   TextColumn get type => text()(); // "IN_BOX", "SEPARATE"
+  TextColumn get brandId => text().nullable()();
   TextColumn get manufCode => text().nullable()(); // "14276"
   TextColumn get specification => text().nullable()();
 
@@ -222,16 +180,12 @@ class Components extends Table {
   BoolColumn get needSync => boolean().withDefault(const Constant(false))();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 class ComponentPhotos extends Table {
-  TextColumn get uuid => text()(); // uuid (string)
-
-  // 👉 TAMBAHAN: Simpan ID Incremental dari Server
-  IntColumn get remoteId => integer().nullable().customConstraint('UNIQUE')();
-
-  TextColumn get componentUuid => text()();
+  TextColumn get id => text()(); // uuid (string)
+  TextColumn get componentId => text()();
 
   // path lokal di device (misal path file di gallery / app dir)
   TextColumn get localPath => text().nullable()();
@@ -252,17 +206,13 @@ class ComponentPhotos extends Table {
   BoolColumn get needSync => boolean().withDefault(const Constant(true))();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 class VariantComponents extends Table {
-  TextColumn get uuid => text()(); // UUID
-
-  // 👉 TAMBAHAN: Simpan ID Incremental dari Server
-  IntColumn get remoteId => integer().nullable().customConstraint('UNIQUE')();
-
-  TextColumn get variantUuid => text()(); // FK -> Variants.uuid
-  TextColumn get componentUuid => text()(); // FK -> Components.uuid
+  TextColumn get id => text()(); // UUID
+  TextColumn get variantId => text()(); // FK -> Variants.id
+  TextColumn get componentId => text()(); // FK -> Components.id
   IntColumn get quantityNeeded => integer().withDefault(const Constant(1))();
 
   DateTimeColumn get createdAt => dateTime()();
@@ -275,19 +225,15 @@ class VariantComponents extends Table {
   BoolColumn get needSync => boolean().withDefault(const Constant(false))();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 class Units extends Table {
-  TextColumn get uuid => text()(); // UUID lokal
-
-  // 👉 TAMBAHAN: Simpan ID Incremental dari Server
-  IntColumn get remoteId => integer().nullable().customConstraint('UNIQUE')();
-
-  TextColumn get variantUuid => text().nullable()();
-  TextColumn get componentUuid => text().nullable()();
-  TextColumn get parentUnitUuid => text().nullable()();
-  TextColumn get rackUuid => text().nullable()();
+  TextColumn get id => text()(); // UUID lokal
+  TextColumn get variantId => text().nullable()();
+  TextColumn get componentId => text().nullable()();
+  TextColumn get parentUnitId => text().nullable()();
+  TextColumn get rackId => text().nullable()();
 
   TextColumn get qrValue => text()(); // isi QR
   TextColumn get status => text().withDefault(const Constant('ACTIVE'))();
@@ -296,7 +242,7 @@ class Units extends Table {
   DateTimeColumn get lastPrintedAt => dateTime().nullable()();
   TextColumn get lastPrintedBy => text().nullable()();
 
-  TextColumn get createdBy => text().nullable()(); // user uuid (server)
+  TextColumn get createdBy => text().nullable()(); // user id (server)
   TextColumn get updatedBy => text().nullable()();
 
   DateTimeColumn get syncedAt => dateTime().nullable()();
@@ -311,7 +257,7 @@ class Units extends Table {
   BoolColumn get needSync => boolean().withDefault(const Constant(false))();
 
   @override
-  Set<Column> get primaryKey => {uuid};
+  Set<Column> get primaryKey => {id};
 }
 
 /// Untuk simpan meta sync (misal last pull/push timestamp)

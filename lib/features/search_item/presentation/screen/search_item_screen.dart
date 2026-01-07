@@ -101,6 +101,7 @@ class _SearchItemViewState extends State<_SearchItemView> {
                       // optionally keep focus after clear:
                       _focusNode.requestFocus();
                     },
+                    onSubmitted: _onSubmitted,
                   ),
                 ),
               ),

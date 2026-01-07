@@ -21,3 +21,14 @@ const String noConnectionMessage =
     "Tidak ada koneksi internet. Silakan periksa jaringan Anda dan coba lagi.";
 const String errorMessage =
     "Terjadi kesalahan pada sistem. Silakan coba lagi nanti.";
+
+// TABLE
+const racksPrefix = 'RC';
+const productsPrefix = 'PD';
+const companyItemsPrefix = 'CI';
+const variantsPrefix = 'VT';
+const variantPhotosPrefix = 'VP';
+const variantComponentPrefix = 'VC';
+const componentsPrefix = 'CO';
+const componentPhotosPrefix = 'CP';
+const unitsPrefix = 'UN';

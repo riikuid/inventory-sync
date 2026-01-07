@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as dev;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -63,6 +64,7 @@ class SyncCubit extends Cubit<SyncState> {
 
   /// SKENARIO PUSH (Manual / Auto)
   Future<void> pushData() async {
+    dev.log('${state.status}', name: 'MASUK');
     // Jangan sync jika sedang loading
     if (state.status == SyncStatus.syncing) return;
 
@@ -79,11 +81,13 @@ class SyncCubit extends Cubit<SyncState> {
     }
 
     emit(state.copyWith(status: SyncStatus.syncing));
+    dev.log('${state.status}', name: 'START');
 
     // Panggil Repository "Smart ACK" yang sudah kita buat
     final result = await _repo.pushPendingAll();
 
     if (result.isSuccess) {
+      dev.log('SUKSES');
       emit(state.copyWith(status: SyncStatus.success));
       // pendingCount akan otomatis jadi 0 karena kita listen ke DB Stream di _init
 
@@ -91,6 +95,7 @@ class SyncCubit extends Cubit<SyncState> {
       await Future.delayed(const Duration(seconds: 3));
       emit(state.copyWith(status: SyncStatus.initial));
     } else {
+      dev.log('GAGAL');
       emit(
         state.copyWith(
           status: SyncStatus.failure,

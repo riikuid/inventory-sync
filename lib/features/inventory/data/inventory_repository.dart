@@ -1,10 +1,12 @@
 import 'dart:developer' as dev;
 
 import 'package:drift/drift.dart' hide Component;
+import 'package:inventory_sync_apps/core/constant.dart';
 import 'package:inventory_sync_apps/core/db/app_database.dart';
 import 'package:inventory_sync_apps/core/db/daos/component_dao.dart';
 import 'package:inventory_sync_apps/core/db/daos/component_photo_dao.dart';
 import 'package:inventory_sync_apps/core/db/daos/variant_component_dao.dart';
+import 'package:inventory_sync_apps/core/generate_custom_id.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/db/daos/category_dao.dart';
@@ -16,7 +18,7 @@ import 'model/inventory_search_item.dart';
 
 class InventoryRepository {
   final AppDatabase db;
-  final _uuid = const Uuid();
+  // final _uuid = const Uuid();
 
   InventoryRepository(this.db);
 
@@ -408,7 +410,7 @@ class InventoryRepository {
 
     await db.transaction(() async {
       // 1. create component
-      final component = _uuid.v4();
+      final component = generateCustomId(componentsPrefix);
 
       final componentCompanion = ComponentsCompanion(
         id: Value(component),
@@ -429,7 +431,7 @@ class InventoryRepository {
       // 2. simpan photos
       final photoCompanions = <ComponentPhotosCompanion>[];
       for (var i = 0; i < photos.length; i++) {
-        final photoId = _uuid.v4();
+        final photoId = generateCustomId(componentPhotosPrefix);
         photoCompanions.add(
           ComponentPhotosCompanion(
             id: Value(photoId),

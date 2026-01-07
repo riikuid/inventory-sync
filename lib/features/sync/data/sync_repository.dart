@@ -67,9 +67,14 @@ class SyncRepository {
         .map((rows) => rows.length);
 
     // 5. Stream Units
-    final s5 = (db.select(db.units)..where((t) => t.needSync.equals(true)))
-        .watch()
-        .map((rows) => rows.length);
+    final s5 =
+        (db.select(db.units)
+              ..where((t) => t.needSync.equals(true))
+              ..where(
+                (u) => u.status.isNotIn(['PENDING', 'PRINTED', 'VALIDATED']),
+              ))
+            .watch()
+            .map((rows) => rows.length);
 
     // 6. Stream Photos (Variant + Component)
     final sPhoto1 =
@@ -153,6 +158,7 @@ class SyncRepository {
   }
 
   Future<Result<void>> pushPendingAll() async {
+    dev.log('MASUK REPO SYNC PUSH');
     // 2. CEK GEMBOK DI AWAL
     if (_isSyncing) {
       dev.log('Sync already in progress. Skipping duplicate trigger.');
@@ -162,6 +168,7 @@ class SyncRepository {
     // 3. KUNCI GEMBOK
     _isSyncing = true;
     try {
+      dev.log('MASUK TRY');
       // -----------------------------------------------------------
       // PART 1: AMBIL DATA PENDING DARI DATABASE LOKAL
       // -----------------------------------------------------------
@@ -188,6 +195,7 @@ class SyncRepository {
           pendingUnits.isEmpty &&
           pendingVariantPhotos.isEmpty &&
           pendingComponentPhotos.isEmpty) {
+        dev.log('TIDAK ADA DATA');
         return const Result.success(null);
       }
 

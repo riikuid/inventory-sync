@@ -471,7 +471,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                             ),
                           ),
                         ],
-                        if ((v.rackName != null) && (v.brandName != null)) ...[
+                        if ((v.manufCode != null) && (v.brandName != null)) ...[
                           const SizedBox(width: 6),
                           Text(
                             '•',

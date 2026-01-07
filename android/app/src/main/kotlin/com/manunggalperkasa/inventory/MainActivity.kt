@@ -1,4 +1,4 @@
-package com.hrispentamoo
+package com.manunggalperkasa.inventory
 
 import io.flutter.embedding.android.FlutterActivity
 

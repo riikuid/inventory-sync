@@ -1,4 +1,6 @@
 // lib/core/db/daos/unit_dao.dart
+import 'dart:developer' as dev;
+
 import 'package:drift/drift.dart' hide Component;
 import 'package:uuid/uuid.dart';
 
@@ -48,11 +50,22 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
   }
 
   /// Semua unit yang butuh sync (needSync == true)
-  Future<List<Unit>> getPendingUnits() {
-    return (select(units)
-          ..where((u) => u.status.isNotIn(['PENDING', 'PRINTED', 'VALIDATED']))
-          ..where((u) => u.needSync.equals(true)))
-        .get();
+  Future<List<Unit>> getPendingUnits() async {
+    List<Unit> pendings =
+        await (select(units)
+              ..where(
+                (u) => u.status.isNotIn(['PENDING', 'PRINTED', 'VALIDATED']),
+              )
+              ..where((u) => u.needSync.equals(true)))
+            .get();
+
+    dev.log('Total Pending Units: ${pendings.length}');
+
+    for (var unit in pendings) {
+      dev.log('Unit Data: ${unit.toString()}');
+    }
+
+    return pendings;
   }
 
   Future<void> markUnitsSynced(List<String> ids, DateTime syncedAt) async {

@@ -85,7 +85,7 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
               rackName: rackName,
               status: u.status,
               companyCode: companyCode,
-              printCount: u.printCount ?? 0,
+              printCount: u.printCount,
             ),
           )
           .toList();

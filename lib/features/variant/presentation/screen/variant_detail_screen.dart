@@ -438,11 +438,75 @@ class _VariantDetailView extends StatelessWidget {
                     ),
                   );
                   if (result != null) {
-                    await repo.attachComponentToVariant(
-                      componentId: result,
-                      variantId: d.variantId,
-                      // type: 'SEPARATE',
-                    );
+                    List<String> compIds = d.componentsInBox
+                        .map((e) => e.componentId)
+                        .toList();
+
+                    if (compIds.contains(result)) {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: Text(
+                            "Komponen Sama",
+                            style: AppTextStyles.mono.copyWith(
+                              color: AppColors.onSurface,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          content: Text(
+                            "Anda sudah menambahkan memiliki yg sama pada varian ini",
+                            style: TextStyle(
+                              color: AppColors.onBackground,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: Text(
+                                "Oke",
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            // TextButton(
+                            //   onPressed: () {
+                            //     Navigator.pop(ctx);
+                            //     LoadingOverlay.show(context);
+                            //     final repo = context
+                            //         .read<InventoryRepository>();
+
+                            //     repo
+                            //         .detachComponentFromVariant(
+                            //           variantId: variantId,
+                            //           componentId: componentId,
+                            //         )
+                            //         .then((value) => LoadingOverlay.hide());
+                            //   },
+                            //   child: const Text(
+                            //     "Ya, Lanjut",
+                            //     style: TextStyle(
+                            //       color: AppColors.primary,
+                            //       fontSize: 16,
+                            //       fontWeight: FontWeight.w600,
+                            //     ),
+                            //   ),
+                            // ),
+                          ],
+                        ),
+                      );
+                    } else {
+                      await repo.attachComponentToVariant(
+                        componentId: result,
+                        variantId: d.variantId,
+                        // type: 'SEPARATE',
+                      );
+                    }
                   }
                 },
 

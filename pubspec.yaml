@@ -76,6 +76,8 @@ dependencies:
   bloc: ^9.1.0
   connectivity_plus: ^7.0.0
   fluttertoast: ^9.0.0
+  flutter_launcher_icons: ^0.14.4
+  photo_view: ^0.15.0
 
 dev_dependencies:
   flutter_test:
@@ -90,6 +92,21 @@ dev_dependencies:
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  min_sdk_android: 21
+
+  # iOS – 1 file ikon full (1024x1024, bg warna #0C4160 + logo putih di tengah)
+  image_path_ios: assets/icon/icon_ios.jpg
+
+  # Android adaptive icon
+  image_path_android: assets/icon/icon_foreground.png
+  adaptive_icon_foreground: assets/icon/icon_foreground.png # logo putih transparan
+  adaptive_icon_background: "#1D39B0" # background solid
+  adaptive_icon_monochrome: assets/icon/icon_foreground.png # sama dengan foreground (karena logonya putih polos)
 
 # The following section is specific to Flutter packages.
 flutter:

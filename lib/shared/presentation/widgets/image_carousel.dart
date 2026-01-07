@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_sync_apps/core/utils/photo_gallery_viewer.dart';
 
 import '../../../core/db/model/photo_row.dart';
 import '../../../core/styles/color_scheme.dart';

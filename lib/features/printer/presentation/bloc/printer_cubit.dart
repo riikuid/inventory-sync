@@ -88,19 +88,19 @@ class PrinterCubit extends Cubit<PrinterState> {
 
     try {
       int leftMargin = 20;
-      int rightColMargin = 180 + leftMargin;
+      int rightColMargin = 190 + leftMargin;
 
       String commands = "";
 
       // --- LOGIC UKURAN QR DINAMIS ---
       // Semakin panjang karakter, semakin kecil cell width-nya agar muat
-      int qrCellSize = 8;
+      int qrCellSize = 6;
 
-      if (qrValue.length > 20) {
-        qrCellSize = 7;
-      }
-      if (qrValue.length > 30) {
-        qrCellSize = 6; // Parent Unit (UUID/Long String) biasanya kena di sini
+      // if (qrValue.length > 20) {
+      //   qrCellSize = 6;
+      // }
+      if (qrValue.length > 40) {
+        qrCellSize = 5;
       }
 
       // -- SETUP --

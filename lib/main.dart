@@ -26,7 +26,7 @@ void main() async {
   // App Configuration
   Config().init();
 
-  await AppFirebase.init();
+  // await AppFirebase.init();
 
   final db = AppDatabase();
 
@@ -56,11 +56,11 @@ void main() async {
     ),
   );
 
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    await localNotification.init();
+  // WidgetsBinding.instance.addPostFrameCallback((_) async {
+  //   await localNotification.init();
 
-    // Auto request (non-blocking terhadap splash):
-    await AppFirebase.requestAndEnablePush();
-    await localNotification.requestPermission();
-  });
+  //   // Auto request (non-blocking terhadap splash):
+  //   await AppFirebase.requestAndEnablePush();
+  //   await localNotification.requestPermission();
+  // });
 }

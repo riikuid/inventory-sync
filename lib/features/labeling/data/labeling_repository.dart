@@ -1,9 +1,9 @@
 import 'dart:developer' as dev;
 
 import 'package:drift/drift.dart';
-import 'package:intl/intl.dart';
+import 'package:inventory_sync_apps/core/constant.dart';
 import 'package:inventory_sync_apps/core/db/app_database.dart';
-import 'package:uuid/uuid.dart';
+import 'package:inventory_sync_apps/core/generate_custom_id.dart';
 
 import '../../../core/db/daos/company_item_dao.dart';
 import '../../../core/db/daos/unit_dao.dart';
@@ -15,7 +15,6 @@ import 'models/scan_unit_result.dart';
 
 class LabelingRepository {
   final AppDatabase db;
-  final _uuid = const Uuid();
 
   LabelingRepository(this.db);
 
@@ -40,32 +39,26 @@ class LabelingRepository {
       final List<Unit> generatedUnits = [];
       final now = DateTime.now();
 
-      // Timestamp pendek untuk serial unik (misal: sisa milidetik)
-      // Format: 8 digit terakhir dari epoch
-      final batchTimestamp = now.millisecondsSinceEpoch.toString().substring(5);
+      // final batchTimestamp = now.millisecondsSinceEpoch.toString().substring(5);
 
       for (int i = 0; i < qty; i++) {
-        final uid = _uuid.v4();
+        String unitId = generateCustomId(unitsPrefix);
 
         // Logic QR Generation
         String qrResult;
         // Serial unik per item dalam batch ini
-        final serial = '$batchTimestamp$i';
-        // String dataTimeNow = DateTime.now().toIso8601String();
-        String formattedDateTime = DateFormat('yyyyMMddHHmm').format(now);
 
         if (componentId != null) {
           // --- CASE 1B: LABEL COMPONENT SEPARATE ---
-
-          qrResult = '$userId-$companyCode-CMP-$formattedDateTime-$serial';
+          qrResult = 'U1|$companyCode|$componentId';
         } else {
           // --- CASE 1A: LABEL VARIANT (SET) ---
-          // Format: USER-COMPCODE-SERIAL
-          qrResult = '$userId-$companyCode-$formattedDateTime-$serial';
+          qrResult = 'U1|$companyCode|$variantId';
         }
 
+        dev.log(qrResult, name: 'QR RESULT');
         final companion = UnitsCompanion.insert(
-          id: uid,
+          id: unitId,
           variantId: Value(
             variantId,
           ), // Variant ID tetap diisi untuk tracking grouping
@@ -176,7 +169,7 @@ class LabelingRepository {
         );
       }
 
-      final variantId = _uuid.v4();
+      final variantId = generateCustomId(variantsPrefix);
       final variantCompanion = VariantsCompanion(
         id: Value(variantId),
         companyItemId: Value(companyItemId),
@@ -198,7 +191,7 @@ class LabelingRepository {
 
       final photoCompanions = <VariantPhotosCompanion>[];
       for (var i = 0; i < photoLocalPaths.length; i++) {
-        final photoId = _uuid.v4();
+        final photoId = generateCustomId(variantPhotosPrefix);
         photoCompanions.add(
           VariantPhotosCompanion(
             id: Value(photoId),
@@ -225,7 +218,7 @@ class LabelingRepository {
     required String userId,
   }) async {
     final now = DateTime.now();
-    final unitId = _uuid.v4();
+    final unitId = generateCustomId(unitsPrefix);
 
     final companion = UnitsCompanion(
       id: Value(unitId),
@@ -285,7 +278,7 @@ class LabelingRepository {
     }
     final now = DateTime.now();
     return _unitDao.transaction(() async {
-      final parentId = _uuid.v4();
+      final parentId = generateCustomId(unitsPrefix);
       final parentQr = 'SET-$parentId';
 
       final parentEntry = UnitsCompanion(

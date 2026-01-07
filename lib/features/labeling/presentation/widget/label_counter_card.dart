@@ -120,7 +120,7 @@ class _LabelCounterCardState extends State<LabelCounterCard> {
               _buildButton(
                 icon: Icons.add,
                 bgColor: AppColors.secondary,
-                iconColor: AppColors.primary,
+                iconColor: AppColors.onSurface,
                 onTap: _currentValue < widget.max ? _increment : null,
                 isActive: _currentValue < widget.max,
               ),

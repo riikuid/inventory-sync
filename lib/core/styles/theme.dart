@@ -12,6 +12,10 @@ final lightThemeData = ThemeData(
       color: Colors.black,
     ),
   ),
+  appBarTheme: const AppBarTheme(
+    surfaceTintColor: Colors.transparent, // Membuat AppBar juga transparan
+    // backgroundColor: Colors.white, // Atur background color AppBar
+  ),
   colorScheme: lightColorScheme,
   textTheme: customTextTheme,
   useMaterial3: true,

@@ -109,211 +109,242 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
   @override
   Widget build(BuildContext context) {
     // Kita akses PrinterCubit (Global) dan CreateLabelsCubit (Lokal)
-    return BlocBuilder<PrinterCubit, PrinterState>(
-      builder: (contextPrinter, printerState) {
-        return BlocConsumer<CreateLabelsCubit, CreateLabelsState>(
-          listener: (contextCreateLabel, state) {
-            if (state.error != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.error!),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-            if (state.status == CreateLabelsStatus.success) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Data Tersimpan!"),
-                  backgroundColor: Colors.green,
-                ),
-              );
-              Navigator.pop(context, true); // Kembali ke halaman sebelumnya
-            }
-          },
-          builder: (contextCreateLabel, labelsState) {
-            final total = labelsState.items.length;
-            final validatedCount = labelsState.items
-                .where((i) => i.status == 'VALIDATED')
-                .length;
-            final isAllValidated = total > 0 && validatedCount == total;
-            final isAllPending = labelsState.items.every(
-              (i) => i.status == 'PENDING',
-            );
-            // Cek apakah minimal ada 1 yg PRINTED atau VALIDATED untuk mengaktifkan tombol Validasi
-            final isAnyPrinted = labelsState.items.any(
-              (i) => i.status == 'PRINTED' || i.status == 'VALIDATED',
-            );
+    return BlocListener<PrinterCubit, PrinterState>(
+      listener: (context, printerState) {
+        if (printerState.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(printerState.error!),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        // Tampilkan status message jika penting (Connect/Disconnect/Gagal)
+        if (printerState.statusMessage.isNotEmpty &&
+            printerState.statusMessage != "Siap Connect" &&
+            printerState.statusMessage != "Disconnected") {
+          // Filter pesan default
 
-            return WillPopScope(
-              onWillPop: () async {
-                final leave = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Text(
-                      'Tinggalkan proses pelabelan?',
-                      style: AppTextStyles.mono.copyWith(
-                        color: AppColors.onSurface,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    content: const Text(
-                      'Label yang belum disimpan akan dihapus. Tetap tinggalkan?',
-                      style: TextStyle(
-                        color: AppColors.onBackground,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () =>
-                            Navigator.of(ctx).pop(false), // Tetap di halaman
-                        child: const Text(
-                          'Batal',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(true), // Keluar
-                        child: const Text(
-                          'Tinggalkan',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
+          Color color = Colors.blue;
+          if (printerState.isConnected) color = Colors.green;
+          if (printerState.statusMessage.contains("Gagal")) color = Colors.red;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(printerState.statusMessage),
+              backgroundColor: color,
+            ),
+          );
+        }
+      },
+      child: BlocBuilder<PrinterCubit, PrinterState>(
+        builder: (contextPrinter, printerState) {
+          return BlocConsumer<CreateLabelsCubit, CreateLabelsState>(
+            listener: (contextCreateLabel, state) {
+              if (state.error != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.error!),
+                    backgroundColor: Colors.red,
                   ),
                 );
-
-                if (leave == true) {
-                  // 1. Jalankan fungsi cleanup cubit
-                  await context.read<CreateLabelsCubit>().cancelAll();
-
-                  // 2. Lakukan POP MANUAL dengan membawa nilai 'false'
-                  if (context.mounted) {
-                    Navigator.of(context).pop(false);
-                  }
-
-                  // 3. Return 'false' agar sistem tidak melakukan pop ganda
-                  return false;
-                }
-
-                // Jika user batal (pilih No), return false agar tetap di halaman
-                return false;
-              },
-              child: Scaffold(
-                backgroundColor: AppColors.background,
-                appBar: AppBar(
-                  iconTheme: IconThemeData(color: AppColors.onSurface),
-                  leading: IconButton(
-                    onPressed: () async {
-                      await Navigator.of(context).maybePop();
-                    },
-                    icon: Icon(
-                      Icons.arrow_back_ios_rounded,
-                      color: AppColors.onSurface,
-                    ),
+              }
+              if (state.status == CreateLabelsStatus.success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Data Tersimpan!"),
+                    backgroundColor: Colors.green,
                   ),
-                  backgroundColor: AppColors.background,
-                  elevation: 0.5,
-                  toolbarHeight: 60,
-                  title: Column(
-                    spacing: 3,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Cetak Label',
-                        style: TextStyle(
+                );
+                Navigator.pop(context, true); // Kembali ke halaman sebelumnya
+              }
+            },
+            builder: (contextCreateLabel, labelsState) {
+              final total = labelsState.items.length;
+              final validatedCount = labelsState.items
+                  .where((i) => i.status == 'VALIDATED')
+                  .length;
+              final isAllValidated = total > 0 && validatedCount == total;
+              final isAllPending = labelsState.items.every(
+                (i) => i.status == 'PENDING',
+              );
+              // Cek apakah minimal ada 1 yg PRINTED atau VALIDATED untuk mengaktifkan tombol Validasi
+              final isAnyPrinted = labelsState.items.any(
+                (i) => i.status == 'PRINTED' || i.status == 'VALIDATED',
+              );
+
+              return WillPopScope(
+                onWillPop: () async {
+                  final leave = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text(
+                        'Tinggalkan proses pelabelan?',
+                        style: AppTextStyles.mono.copyWith(
                           color: AppColors.onSurface,
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      content: const Text(
+                        'Label yang belum disimpan akan dihapus. Tetap tinggalkan?',
+                        style: TextStyle(
+                          color: AppColors.onBackground,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.of(ctx).pop(false), // Tetap di halaman
+                          child: const Text(
+                            'Batal',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.of(ctx).pop(true), // Keluar
+                          child: const Text(
+                            'Tinggalkan',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
 
-                      Text(
-                        widget.companyCode,
-                        style: AppTextStyles.mono.copyWith(
-                          color: AppColors.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                  if (leave == true) {
+                    // 1. Jalankan fungsi cleanup cubit
+                    await context.read<CreateLabelsCubit>().cancelAll();
+
+                    // 2. Lakukan POP MANUAL dengan membawa nilai 'false'
+                    if (context.mounted) {
+                      Navigator.of(context).pop(false);
+                    }
+
+                    // 3. Return 'false' agar sistem tidak melakukan pop ganda
+                    return false;
+                  }
+
+                  // Jika user batal (pilih No), return false agar tetap di halaman
+                  return false;
+                },
+                child: Scaffold(
+                  backgroundColor: AppColors.background,
+                  appBar: AppBar(
+                    iconTheme: IconThemeData(color: AppColors.onSurface),
+                    leading: IconButton(
+                      onPressed: () async {
+                        await Navigator.of(context).maybePop();
+                      },
+                      icon: Icon(
+                        Icons.arrow_back_ios_rounded,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    backgroundColor: AppColors.background,
+                    elevation: 0.5,
+                    toolbarHeight: 60,
+                    title: Column(
+                      spacing: 3,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Cetak Label',
+                          style: TextStyle(
+                            color: AppColors.onSurface,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+
+                        Text(
+                          widget.companyCode,
+                          style: AppTextStyles.mono.copyWith(
+                            color: AppColors.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  body: Column(
+                    children: [
+                      // 1. CONNECTION STATUS BAR (Global State)
+                      _buildConnectionBar(context, printerState),
+
+                      // 2. PROGRESS INFO
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Total: $total Unit",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.onBackground,
+                              ),
+                            ),
+                            Text(
+                              "$validatedCount / $total Tervalidasi",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: isAllValidated
+                                    ? Colors.green
+                                    : Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+
+                      // 3. LIST DATA LABEL
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: labelsState.items.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final item = labelsState.items[index];
+                            return _buildLabelCard(item);
+                          },
                         ),
                       ),
                     ],
                   ),
-                ),
-                body: Column(
-                  children: [
-                    // 1. CONNECTION STATUS BAR (Global State)
-                    _buildConnectionBar(context, printerState),
 
-                    // 2. PROGRESS INFO
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Total: $total Unit",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.onBackground,
-                            ),
-                          ),
-                          Text(
-                            "$validatedCount / $total Tervalidasi",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: isAllValidated
-                                  ? Colors.green
-                                  : Colors.orange,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1),
-
-                    // 3. LIST DATA LABEL
-                    Expanded(
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: labelsState.items.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final item = labelsState.items[index];
-                          return _buildLabelCard(item);
-                        },
-                      ),
-                    ),
-                  ],
+                  // 4. BOTTOM ACTION BAR (Smart Logic)
+                  bottomNavigationBar: _buildBottomBar(
+                    context,
+                    printerState,
+                    labelsState,
+                    isAllPending,
+                    isAnyPrinted,
+                    isAllValidated,
+                  ),
                 ),
-
-                // 4. BOTTOM ACTION BAR (Smart Logic)
-                bottomNavigationBar: _buildBottomBar(
-                  context,
-                  printerState,
-                  labelsState,
-                  isAllPending,
-                  isAnyPrinted,
-                  isAllValidated,
-                ),
-              ),
-            );
-          },
-        );
-      },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 

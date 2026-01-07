@@ -15,6 +15,7 @@ class App extends StatelessWidget {
 
       theme: lightThemeData,
       themeMode: ThemeMode.light,
+
       home: AppRoot(),
       builder: (context, child) {
         if (child == null) return const SizedBox.shrink();
