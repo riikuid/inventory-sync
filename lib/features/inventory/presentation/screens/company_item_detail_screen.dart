@@ -106,7 +106,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                     MaterialPageRoute(
                       builder: (context) => CreateVariantScreen(
                         companyItemId: widget.companyItemId,
-                        userId: _user.id!,
+                        userId: _user.uuid!,
                         companyCode: state.detail.companyCode,
                         productName: state.detail.productName,
                         defaultRackId: state.detail.defaultRackId,
@@ -367,7 +367,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                   MaterialPageRoute(
                     builder: (context) => CreateVariantScreen(
                       companyItemId: detail.companyItemId,
-                      userId: _user.id!,
+                      userId: _user.uuid!,
                     ),
                   ),
                 );
@@ -436,7 +436,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
             MaterialPageRoute(
               builder: (_) => VariantDetailScreen(
                 variantId: v.variantId,
-                userId: _user.id!,
+                userId: _user.uuid!,
               ),
             ),
           );

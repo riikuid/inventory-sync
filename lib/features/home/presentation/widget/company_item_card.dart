@@ -35,7 +35,7 @@ class CompanyItemCard extends StatelessWidget {
             MaterialPageRoute(
               builder: (context) => CreateVariantScreen(
                 companyItemId: row.companyItemId,
-                userId: _user.id!,
+                userId: _user.uuid!,
                 productName: row.productName,
                 companyCode: row.companyCode,
                 isSetUp: true,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as dev;
 
 import 'package:inventory_sync_apps/core/dio_call.dart';
 
@@ -16,11 +17,16 @@ class AuthService {
     required String password,
   }) {
     return dioCall<AuthResponse>(
-      (dio) =>
-          dio.post('/auth/login', data: {'email': email, 'password': password}),
+      (dio) => dio.post(
+        '/v1.0/login',
+        data: {'username': email, 'password': password},
+      ),
       parse: (data) {
+        dev.log('data: $data');
         final auth = AuthResponse.fromJson(data);
+
         if (auth.token != null) {
+          dev.log('token: ${auth.token}');
           Token.setSanctumToken(auth.token!);
         }
         return auth;
@@ -53,6 +59,7 @@ class AuthService {
       (dio) => dio.post('/auth/login-google', data: {'token': token}),
       parse: (data) {
         final auth = AuthResponse.fromJson(data);
+
         if (auth.token != null) {
           Token.setSanctumToken(auth.token!);
         }
@@ -71,7 +78,7 @@ class AuthService {
 
   Future<Result<User>> user() {
     return dioCall<User>(
-      (dio) => dio.get('/auth/me'),
+      (dio) => dio.get('/v1.0/profile'),
       parse: (data) => User.fromJson(data['data']['user']),
     );
   }

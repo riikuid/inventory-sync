@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../../../../core/config.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../core/styles/color_scheme.dart';
 import '../../../../core/styles/sizes.dart';
@@ -149,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     margin: const EdgeInsets.all(15),
                     child: Text(
-                      'Versi $_version',
+                      'Versi $_version ${Config.isProduction() ? '' : '(Dev)'}',
                       style: TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ),
@@ -185,6 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // CustomToast.success(context, description: result.resultValue?.message);
         // context.pushReplacement(RouteName.layoutScreen);
       } else {
+        dev.log('GAGAL: ${result.errorMessage}');
         LoadingOverlay.hide();
 
         CustomToast.warning(context, description: result.errorMessage);
