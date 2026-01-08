@@ -290,7 +290,7 @@ class AssemblyCubit extends Cubit<AssemblyState> {
       // emit(state.copyWith(status: AssemblyStatus.));
     } catch (e) {
       // Log error jika gagal hapus (silent fail is okay here, or log to crashlytics)
-      print("Gagal membersihkan sampah assembly: $e");
+      // print("Gagal membersihkan sampah assembly: $e");
     }
   }
 

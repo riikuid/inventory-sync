@@ -1,5 +1,6 @@
 // lib/core/db/daos/company_item_dao.dart
 import 'package:drift/drift.dart';
+import 'package:inventory_sync_apps/core/constant.dart';
 import 'package:rxdart/rxdart.dart';
 
 import '../app_database.dart';
@@ -77,7 +78,7 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
     // Ambil Active Units
     final unitsStream = (select(
       units,
-    )..where((u) => u.status.equals('ACTIVE'))).watch();
+    )..where((u) => u.status.equals(activeStatus))).watch();
 
     return Rx.combineLatest4(
       ciStream,
@@ -212,7 +213,7 @@ class CompanyItemDao extends DatabaseAccessor<AppDatabase>
     final unitsStream =
         (select(units)..where(
               (u) =>
-                  u.status.equals('ACTIVE') &
+                  u.status.equals(activeStatus) &
                   // Ambil semua unit yang variantId-nya ada di dalam Variant milik CompanyItem ini
                   u.variantId.isInQuery(
                     selectOnly(variants)
@@ -378,9 +379,9 @@ int calculateVariantStock({
   required List<Unit> activeUnits,
 }) {
   // --- STEP 0: DEBUG HEADER ---
-  print("\n=== DEBUG STOCK CALCULATION: $variantId ===");
-  print("Total Active Units: ${activeUnits.length}");
-  print("Total Defined Components: ${components.length}");
+  // // print("\n=== DEBUG STOCK CALCULATION: $variantId ===");
+  // // print("Total Active Units: ${activeUnits.length}");
+  // // print("Total Defined Components: ${components.length}");
 
   // --- STEP 1: HITUNG PARENT ---
   int parentUnitsCount = 0;
@@ -398,14 +399,14 @@ int calculateVariantStock({
       parentUnitsCount++;
     } else {
       // Ini unit komponen
-      // print(">> Unit ${u.id.substring(0,4)}... adalah KOMPONEN (ID: $cId)");
+      // // print(">> Unit ${u.id.substring(0,4)}... adalah KOMPONEN (ID: $cId)");
     }
   }
-  print("STEP 1 Result (Parent Count): $parentUnitsCount");
+  // print("STEP 1 Result (Parent Count): $parentUnitsCount");
 
   // Jika tidak punya komponen, langsung return
   if (components.isEmpty) {
-    print("-> No components defined. Return: $parentUnitsCount");
+    // print("-> No components defined. Return: $parentUnitsCount");
     return parentUnitsCount;
   }
 
@@ -414,10 +415,10 @@ int calculateVariantStock({
     final type = c.type.trim().toUpperCase();
     return type == 'IN_BOX';
   });
-  print("STEP 2 Type Check (hasInBox): $hasInBox");
+  // print("STEP 2 Type Check (hasInBox): $hasInBox");
 
   if (hasInBox) {
-    print("-> IN_BOX detected. Return: $parentUnitsCount");
+    // print("-> IN_BOX detected. Return: $parentUnitsCount");
     return parentUnitsCount;
   }
 
@@ -428,7 +429,7 @@ int calculateVariantStock({
   for (final c in components) {
     definitionMap[c.componentId] = (definitionMap[c.componentId] ?? 0) + 1;
   }
-  print("STEP 3A Definition: $definitionMap");
+  // print("STEP 3A Definition: $definitionMap");
 
   // B. Stok Real
   final stockMap = <String, int>{};
@@ -438,7 +439,7 @@ int calculateVariantStock({
       stockMap[cId] = (stockMap[cId] ?? 0) + 1;
     }
   }
-  print("STEP 3B Stock Map: $stockMap");
+  // print("STEP 3B Stock Map: $stockMap");
 
   // C. Min Sets
   int minComponentSets = 999999;
@@ -452,9 +453,9 @@ int calculateVariantStock({
       final qtyAvailable = stockMap[compId] ?? 0;
 
       final possibleSets = qtyAvailable ~/ qtyNeeded;
-      print(
-        "   -> Comp $compId: Available $qtyAvailable / Need $qtyNeeded = $possibleSets sets",
-      );
+      // print(
+      //   "   -> Comp $compId: Available $qtyAvailable / Need $qtyNeeded = $possibleSets sets",
+      // );
 
       if (possibleSets < minComponentSets) {
         minComponentSets = possibleSets;
@@ -463,10 +464,10 @@ int calculateVariantStock({
   }
 
   if (minComponentSets == 999999) minComponentSets = 0;
-  print("STEP 3C Min Sets: $minComponentSets");
+  // print("STEP 3C Min Sets: $minComponentSets");
 
   final finalTotal = parentUnitsCount + minComponentSets;
-  print("=== FINAL RESULT: $finalTotal ===\n");
+  // print("=== FINAL RESULT: $finalTotal ===\n");
 
   return finalTotal;
 }

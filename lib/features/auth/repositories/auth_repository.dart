@@ -17,10 +17,8 @@ class AuthService {
     required String password,
   }) {
     return dioCall<AuthResponse>(
-      (dio) => dio.post(
-        '/v1.0/login',
-        data: {'username': email, 'password': password},
-      ),
+      (dio) =>
+          dio.post('/login', data: {'username': email, 'password': password}),
       parse: (data) {
         dev.log('data: $data');
         final auth = AuthResponse.fromJson(data);
@@ -78,8 +76,8 @@ class AuthService {
 
   Future<Result<User>> user() {
     return dioCall<User>(
-      (dio) => dio.get('/v1.0/profile'),
-      parse: (data) => User.fromJson(data['data']['user']),
+      (dio) => dio.get('/profile'),
+      parse: (data) => User.fromJson(data['data']),
     );
   }
 
@@ -97,6 +95,15 @@ class AuthService {
     );
   }
 
+  /*************  ✨ Windsurf Command ⭐  *************/
+  /// Menghapus akun yang sedang login. Harus mengembalikan token sebelumnya.
+  ///
+  /// Returns a [Result] containing a [Response]. If the response is 204, it means
+  /// the request is successful and the data is null. Otherwise, it contains the
+  /// response data.
+  ///
+  /// Throws a [DioException] if the request fails.
+  /*******  4ce67d61-21f6-4923-98eb-db420f6565e2  *******/
   Future<Result<Response>> removeAccount() {
     return dioCall<Response>(
       (dio) => dio.delete('/auth/remove-account'),

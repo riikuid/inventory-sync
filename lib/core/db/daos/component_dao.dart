@@ -1,5 +1,6 @@
 // lib/core/db/daos/component_dao.dart
 import 'package:drift/drift.dart' hide Component;
+import 'package:inventory_sync_apps/core/constant.dart';
 import '../app_database.dart';
 import '../tables.dart';
 
@@ -23,7 +24,7 @@ class ComponentDao extends DatabaseAccessor<AppDatabase>
     required String? search,
   }) {
     final hasSearch = search != null && search.trim().isNotEmpty;
-    final pattern = hasSearch ? '%${search!.trim()}%' : null;
+    final pattern = hasSearch ? '%${search.trim()}%' : null;
 
     // Select components (so we can filter by productId & type in SQL)
     final q =
@@ -67,7 +68,8 @@ class ComponentDao extends DatabaseAccessor<AppDatabase>
       // Batch-fetch active units for all componentIds
       final unitRows =
           await (select(units)..where(
-                (u) => u.status.equals('ACTIVE') & u.componentId.isIn(compIds),
+                (u) =>
+                    u.status.equals(activeStatus) & u.componentId.isIn(compIds),
               ))
               .get();
 

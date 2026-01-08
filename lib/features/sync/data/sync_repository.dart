@@ -70,9 +70,7 @@ class SyncRepository {
     final s5 =
         (db.select(db.units)
               ..where((t) => t.needSync.equals(true))
-              ..where(
-                (u) => u.status.isNotIn(['PENDING', 'PRINTED', 'VALIDATED']),
-              ))
+              ..where((u) => u.status.isNotIn([-2, -1, 0])))
             .watch()
             .map((rows) => rows.length);
 

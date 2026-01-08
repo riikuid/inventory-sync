@@ -273,7 +273,7 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
               max: 10,
               initialValue: _qty,
               onChanged: (val) {
-                print("Jumlah label sekarang: $val");
+                // print("Jumlah label sekarang: $val");
                 setState(() {
                   _qty = val;
                 });

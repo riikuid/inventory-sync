@@ -79,7 +79,8 @@ class InventoryRepository {
         final units =
             await (db.select(db.units)..where(
                   (u) =>
-                      u.status.equals('ACTIVE') & u.variantId.isIn(variantIds),
+                      u.status.equals(activeStatus) &
+                      u.variantId.isIn(variantIds),
                 ))
                 .get();
         totalStock = units.length;
@@ -99,58 +100,58 @@ class InventoryRepository {
   }
 
   // --- NEW: list company item per product ---
-  Future<List<CompanyItemSummary>> getCompanyItemsByProduct(
-    String productId,
-  ) async {
-    final items = await (db.select(
-      db.companyItems,
-    )..where((ci) => ci.productId.equals(productId))).get();
+  // Future<List<CompanyItemSummary>> getCompanyItemsByProduct(
+  //   String productId,
+  // ) async {
+  //   final items = await (db.select(
+  //     db.companyItems,
+  //   )..where((ci) => ci.productId.equals(productId))).get();
 
-    final result = <CompanyItemSummary>[];
+  //   final result = <CompanyItemSummary>[];
 
-    for (final ci in items) {
-      // hitung stok aktif untuk company_item ini
-      final variants = await (db.select(
-        db.variants,
-      )..where((v) => v.companyItemId.equals(ci.id))).get();
-      final product = await (db.select(
-        db.products,
-      )..where((p) => p.id.equals(ci.productId))).getSingleOrNull();
-      final category =
-          await (db.select(db.categories)
-                ..where((c) => c.id.equals(product?.categoryId ?? '')))
-              .getSingleOrNull();
-      final variantIds = variants.map((v) => v.id).toList();
+  //   for (final ci in items) {
+  //     // hitung stok aktif untuk company_item ini
+  //     final variants = await (db.select(
+  //       db.variants,
+  //     )..where((v) => v.companyItemId.equals(ci.id))).get();
+  //     final product = await (db.select(
+  //       db.products,
+  //     )..where((p) => p.id.equals(ci.productId))).getSingleOrNull();
+  //     final category =
+  //         await (db.select(db.categories)
+  //               ..where((c) => c.id.equals(product?.categoryId ?? '')))
+  //             .getSingleOrNull();
+  //     final variantIds = variants.map((v) => v.id).toList();
 
-      int stock = 0;
-      if (variantIds.isNotEmpty) {
-        final units =
-            await (db.select(db.units)..where(
-                  (u) =>
-                      u.status.equals('ACTIVE') & u.variantId.isIn(variantIds),
-                ))
-                .get();
-        stock = units.length;
-      }
+  //     int stock = 0;
+  //     if (variantIds.isNotEmpty) {
+  //       final units =
+  //           await (db.select(db.units)..where(
+  //                 (u) =>
+  //                     u.status.equals(activeStatus) & u.variantId.isIn(variantIds),
+  //               ))
+  //               .get();
+  //       stock = units.length;
+  //     }
 
-      result.add(
-        CompanyItemSummary(
-          productId: ci.productId,
-          productName: product?.name ?? '',
-          categoryId: product?.categoryId ?? '',
-          categoryName: category?.name ?? '',
-          companyItemId: ci.id,
-          companyCode: ci.companyCode,
-          stock: stock,
-        ),
-      );
-    }
+  //     result.add(
+  //       CompanyItemSummary(
+  //         productId: ci.productId,
+  //         productName: product?.name ?? '',
+  //         categoryId: product?.categoryId ?? '',
+  //         categoryName: category?.name ?? '',
+  //         companyItemId: ci.id,
+  //         companyCode: ci.companyCode,
+  //         stock: stock,
+  //       ),
+  //     );
+  //   }
 
-    // bisa di-sort kalau mau
-    result.sort((a, b) => a.companyCode.compareTo(b.companyCode));
+  //   // bisa di-sort kalau mau
+  //   result.sort((a, b) => a.companyCode.compareTo(b.companyCode));
 
-    return result;
-  }
+  //   return result;
+  // }
 
   /// Model hasil search sederhana
   /// Model hasil search sederhana (group by company_item, plus info kategori)
@@ -167,13 +168,13 @@ class InventoryRepository {
     final results = <InventorySearchItem>[];
 
     for (final row in rows) {
-      final companyItemId = row.item.id;
+      final companyItem = row.item;
       final product = row.product;
 
       // --- 1. Hitung stok aktif untuk company_item ini (semua variant) ---
       final variants = await (db.select(
         db.variants,
-      )..where((v) => v.companyItemId.equals(companyItemId))).get();
+      )..where((v) => v.companyItemId.equals(companyItem.id))).get();
 
       final variantIds = variants.map((v) => v.id).toList();
 
@@ -182,14 +183,15 @@ class InventoryRepository {
         final unitsList =
             await (db.select(db.units)..where(
                   (u) =>
-                      u.status.equals('ACTIVE') & u.variantId.isIn(variantIds),
+                      u.status.equals(activeStatus) &
+                      u.variantId.isIn(variantIds),
                 ))
                 .get();
         activeStock = unitsList.length;
       }
 
       // --- 2. Ambil kategori utama dari product.categoryId ---
-      String? categoryId = product.categoryId;
+      String? categoryId = companyItem.categoryId;
       String? categoryName;
 
       if (categoryId != null) {
@@ -208,7 +210,7 @@ class InventoryRepository {
 
       results.add(
         InventorySearchItem(
-          companyItemId: companyItemId,
+          companyItemId: companyItem.id,
           companyCode: row.item.companyCode,
           productName: product.name,
           categoryId: categoryId,
@@ -237,10 +239,10 @@ class InventoryRepository {
 
     // 3. Ambil Category Name
     String? categoryName;
-    if (product != null && product.categoryId != null) {
+    if (item.categoryId != null) {
       final category = await (db.select(
         db.categories,
-      )..where((c) => c.id.equals(product.categoryId!))).getSingleOrNull();
+      )..where((c) => c.id.equals(item.categoryId!))).getSingleOrNull();
 
       categoryName = category?.name;
     }
@@ -286,7 +288,7 @@ class InventoryRepository {
       // B. Ambil Raw Active Units (Tanpa Join, agar data akurat)
       final activeUnits =
           await (db.select(db.units)..where(
-                (u) => u.status.equals('ACTIVE') & u.variantId.equals(v.id),
+                (u) => u.status.equals(activeStatus) & u.variantId.equals(v.id),
               ))
               .get();
 

@@ -16,31 +16,32 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// - hitung banyaknya `company_items` yang product-nya punya `category_id = categories.id`
   /// - belum include sub-category; nanti bisa kita extend kalau perlu.
   Stream<List<CategorySummary>> watchRootCategoriesWithItemCount() {
-    // join categories -> products -> company_items
+    // 1. Join langsung: categories -> company_items
+    // Kita membuang tabel 'products' dari persamaan ini.
     final joinQuery =
         select(categories).join([
             leftOuterJoin(
-              products,
-              products.categoryId.equalsExp(categories.id),
-            ),
-            leftOuterJoin(
               companyItems,
-              companyItems.productId.equalsExp(products.id) &
+              // Hubungkan langsung categoryId di companyItems ke categories.id
+              companyItems.categoryId.equalsExp(categories.id) &
                   companyItems.deletedAt.isNull(),
             ),
           ])
-          // hanya kategori utama (tidak punya parent)
+          // Tetap hanya ambil kategori utama
           ..where(categories.categoryParentId.isNull());
 
     return joinQuery.watch().map((rows) {
       final Map<String, CategorySummary> summaries = {};
+
+      // Set ini menjaga agar jika ada duplikasi row dari SQL (jarang di left join simpel,
+      // tapi tetap good practice), hitungan tetap akurat.
       final Map<String, Set<String>> companyItemIdsPerCategory = {};
 
       for (final row in rows) {
         final c = row.readTable(categories);
         final ci = row.readTableOrNull(companyItems);
 
-        // init summary kalau belum ada
+        // Init summary
         summaries.putIfAbsent(
           c.id,
           () => CategorySummary(
@@ -56,7 +57,8 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
             c.id,
             () => <String>{},
           );
-          // pastikan 1 company_item tidak dihitung 2x
+
+          // Logika counting tetap sama
           if (set.add(ci.id)) {
             final current = summaries[c.id]!;
             summaries[c.id] = current.copyWith(
@@ -76,10 +78,10 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// Kalau mau fetch sekali tanpa stream (jarang dipakai di home, tapi siapa tahu perlu).
   Future<List<CategorySummary>> getRootCategoriesWithItemCount() async {
     final joinQuery = select(categories).join([
-      leftOuterJoin(products, products.categoryId.equalsExp(categories.id)),
       leftOuterJoin(
         companyItems,
-        companyItems.productId.equalsExp(products.id) &
+        // Hubungkan langsung categoryId di companyItems ke categories.id
+        companyItems.categoryId.equalsExp(categories.id) &
             companyItems.deletedAt.isNull(),
       ),
     ])..where(categories.categoryParentId.isNull());

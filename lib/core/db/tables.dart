@@ -75,7 +75,7 @@ class Racks extends Table {
 class Products extends Table {
   TextColumn get id => text()(); // UUID
   TextColumn get name => text()();
-  TextColumn get categoryId => text().nullable()();
+
   TextColumn get description => text().nullable()();
 
   DateTimeColumn get createdAt => dateTime()();
@@ -94,6 +94,7 @@ class CompanyItems extends Table {
   TextColumn get id => text()(); // UUID
   TextColumn get defaultRackId => text().nullable()();
   TextColumn get productId => text()(); // FK -> Products.id
+  TextColumn get categoryId => text().nullable()();
   TextColumn get companyCode => text()();
   TextColumn get machinePurchase => text().nullable()();
   TextColumn get specification => text().nullable()();
@@ -236,7 +237,7 @@ class Units extends Table {
   TextColumn get rackId => text().nullable()();
 
   TextColumn get qrValue => text()(); // isi QR
-  TextColumn get status => text().withDefault(const Constant('ACTIVE'))();
+  IntColumn get status => integer().withDefault(const Constant(0))();
 
   IntColumn get printCount => integer().withDefault(const Constant(0))();
   DateTimeColumn get lastPrintedAt => dateTime().nullable()();

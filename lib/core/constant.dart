@@ -32,3 +32,9 @@ const variantComponentPrefix = 'VC';
 const componentsPrefix = 'CO';
 const componentPhotosPrefix = 'CP';
 const unitsPrefix = 'UN';
+
+// UNIT STATUS
+const activeStatus = 1;
+const pendingStatus = 0;
+const printedStatus = 11;
+const validatedStatus = 12;

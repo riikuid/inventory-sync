@@ -91,7 +91,6 @@ ProductsCompanion productFromJson(Map<String, dynamic> json) {
   return ProductsCompanion(
     id: Value(json['id'] as String),
     name: Value(json['name'] as String),
-    categoryId: Value(toStr(json['category_id'])),
 
     description: Value(toStr(json['description'])),
     createdAt: Value(_parseDate(json['created_at']) ?? DateTime.now()),
@@ -109,6 +108,7 @@ CompanyItemsCompanion companyItemFromJson(Map<String, dynamic> json) {
     id: Value(json['id'] as String),
     defaultRackId: Value(toStr(json['default_rack_id'])),
     productId: Value(json['product_id'] as String),
+    categoryId: Value(toStr(json['category_id'])),
     companyCode: Value(json['company_code'] as String),
     machinePurchase: Value(toStr(json['machine_purchase'])),
     specification: Value(toStr(json['specification'])),
@@ -223,7 +223,7 @@ UnitsCompanion unitFromJson(Map<String, dynamic> json) {
     componentId: Value(toStr(json['component_id'])),
     parentUnitId: Value(toStr(json['parent_unit_id'])),
     qrValue: Value(json['qr_value'] as String),
-    status: Value(json['status'] as String? ?? 'ACTIVE'),
+    status: Value(json['status'] as int? ?? 0),
     rackId: Value(toStr(json['rack_id'])),
     printCount: Value(json['print_count'] as int? ?? 0),
     lastPrintedAt: Value(_parseDate(json['last_printed_at'])),
@@ -247,7 +247,6 @@ extension ProductSyncX on Product {
   Map<String, dynamic> toSyncJson() => {
     'id': id,
     'name': name,
-    'category_id': categoryId,
 
     'description': description,
     'created_at': createdAt.toIso8601String(),
@@ -261,6 +260,7 @@ extension CompanyItemSyncX on CompanyItem {
     'id': id,
     'default_rack_id': defaultRackId,
     'product_id': productId,
+    'category_id': categoryId,
     'company_code': companyCode,
     'machine_purchase': machinePurchase,
     'specification': specification,

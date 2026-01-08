@@ -2,6 +2,7 @@
 import 'dart:developer' as dev;
 
 import 'package:drift/drift.dart' hide Component;
+import 'package:inventory_sync_apps/core/constant.dart';
 import 'package:inventory_sync_apps/core/db/model/photo_row.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
@@ -54,7 +55,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       ..where(
         units.variantId.equals(variantId) &
             units.componentId.isNull() &
-            units.status.equals('ACTIVE'),
+            units.status.equals(activeStatus),
       );
 
     return q.watchSingle().map((row) => row.read(units.id.count()) ?? 0);
@@ -143,7 +144,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       final countsQuery = selectOnly(units)
         ..addColumns([units.componentId, units.id.count()])
         ..where(
-          units.status.equals('ACTIVE') &
+          units.status.equals(activeStatus) &
               units.componentId.isIn(componentIds) &
               units.variantId.equals(variantId), // <--- TAMBAHAN DI SINI
         )
@@ -193,13 +194,13 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
               ])) // Urutkan 0,1,2..
             .watch()
             .map((rows) {
-              print(
-                'DEBUG DAO: Found ${rows.length} photos for variant $variantId',
-              );
+              // print(
+              //   'DEBUG DAO: Found ${rows.length} photos for variant $variantId',
+              // );
               return rows.map((row) {
-                print(
-                  'DEBUG DAO: Photo ID: ${row.id}, Local: ${row.localPath}, Remote: ${row.remoteUrl}',
-                );
+                // print(
+                //   'DEBUG DAO: Photo ID: ${row.id}, Local: ${row.localPath}, Remote: ${row.remoteUrl}',
+                // );
                 return PhotoRow(
                   id: row.id,
                   localPath: row.localPath,
@@ -319,7 +320,9 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
 
         final count =
             await (select(units)..where(
-                  (u) => u.componentId.equals(c.id) & u.status.equals('ACTIVE'),
+                  (u) =>
+                      u.componentId.equals(c.id) &
+                      u.status.equals(activeStatus),
                 ))
                 .get()
                 .then((l) => l.length);
@@ -366,7 +369,8 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       // original: hit DB tiap iterasi -> bisa lambat
       final count =
           await (select(units)..where(
-                (u) => u.componentId.equals(c.id) & u.status.equals('ACTIVE'),
+                (u) =>
+                    u.componentId.equals(c.id) & u.status.equals(activeStatus),
               ))
               .get()
               .then((l) => l.length);

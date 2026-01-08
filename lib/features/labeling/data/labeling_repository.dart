@@ -67,7 +67,7 @@ class LabelingRepository {
           ), // Null jika Variant, Terisi jika Component
           rackId: Value(rackId),
           qrValue: qrResult,
-          status: const Value('PENDING'),
+          status: const Value(pendingStatus),
 
           // Audit Trails
           createdBy: Value(userId),
@@ -107,13 +107,13 @@ class LabelingRepository {
 
       // 2. CASCADING UPDATE (THE FIX)
       // Cari semua unit 'anak' yang parent_unit_id-nya adalah salah satu dari unitIds yang sedang divalidasi.
-      // Update status mereka menjadi 'ACTIVE' juga.
+      // Update status mereka menjadi activeStatus juga.
 
       await (db.update(
         db.units,
       )..where((tbl) => tbl.parentUnitId.isIn(unitIds))).write(
         const UnitsCompanion(
-          status: Value('ACTIVE'),
+          status: Value(activeStatus),
           // Opsional: update lastModifiedAt agar ter-sync ke server
           // lastModifiedAt: Value(DateTime.now()),
         ),
@@ -225,7 +225,7 @@ class LabelingRepository {
       variantId: Value(variantId),
       componentId: const Value(null),
       qrValue: Value(qrValue),
-      status: const Value('ACTIVE'),
+      status: const Value(activeStatus),
       rackId: Value(rackId),
       printCount: const Value(1),
       lastPrintedAt: Value(now),
@@ -286,7 +286,7 @@ class LabelingRepository {
         variantId: Value(variantId),
         componentId: const Value(null),
         qrValue: Value(parentQr),
-        status: const Value('PENDING'),
+        status: const Value(pendingStatus),
         rackId: Value(rackId),
         createdBy: Value(userId),
         updatedBy: Value(userId),

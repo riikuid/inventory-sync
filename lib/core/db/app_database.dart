@@ -64,7 +64,7 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dir = await getApplicationDocumentsDirectory();
     final file = File(p.join(dir.path, 'inventory.db'));
-    print('DEBUG: inventory DB path -> ${file.path}');
+    // print('DEBUG: inventory DB path -> ${file.path}');
     dev.log('DEBUG: inventory DB path -> ${file.path}');
     return NativeDatabase.createInBackground(file);
   });

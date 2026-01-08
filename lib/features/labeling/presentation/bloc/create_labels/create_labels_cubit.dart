@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:inventory_sync_apps/core/constant.dart';
 import 'package:inventory_sync_apps/features/labeling/data/labeling_repository.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -18,7 +19,7 @@ class LabelItem {
   final String itemName;
   final String rackName;
   final String companyCode;
-  String status; // 'PENDING' | 'PRINTED' | 'VALIDATED'
+  int status; // 'PENDING' | 'PRINTED' | 'VALIDATED'
   int printCount;
 
   LabelItem({
@@ -27,11 +28,11 @@ class LabelItem {
     required this.itemName,
     required this.rackName,
     required this.companyCode,
-    this.status = 'PENDING',
+    this.status = pendingStatus,
     this.printCount = 0,
   });
 
-  LabelItem copyWith({String? status, int? printCount}) {
+  LabelItem copyWith({int? status, int? printCount}) {
     return LabelItem(
       id: id,
       qrValue: qrValue,
@@ -338,7 +339,10 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
 
       final updated = state.items.map((it) {
         if (unitIds.contains(it.id)) {
-          return it.copyWith(status: 'PRINTED', printCount: it.printCount + 1);
+          return it.copyWith(
+            status: printedStatus,
+            printCount: it.printCount + 1,
+          );
         }
         return it;
       }).toList();
@@ -427,7 +431,7 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
 
     // 4. Update Status Succcess
     final updated = state.items.map((it) {
-      if (it.id == match.id) return it.copyWith(status: 'VALIDATED');
+      if (it.id == match.id) return it.copyWith(status: validatedStatus);
       return it;
     }).toList();
 

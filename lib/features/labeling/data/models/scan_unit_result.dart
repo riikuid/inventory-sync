@@ -5,7 +5,7 @@ class ScanUnitResult {
   final String? componentName;
   final String? variantId;
   final String? variantName;
-  final String status; // ACTIVE / BOUND / CONSUMED / DELETED
+  final int status; // ACTIVE / BOUND / CONSUMED / DELETED
 
   ScanUnitResult({
     required this.unitId,

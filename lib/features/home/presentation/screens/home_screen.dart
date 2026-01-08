@@ -8,11 +8,8 @@ import 'package:inventory_sync_apps/core/db/daos/category_dao.dart';
 import 'package:inventory_sync_apps/core/db/daos/company_item_dao.dart';
 import 'package:inventory_sync_apps/shared/presentation/widgets/search_field_widget.dart';
 
-import '../../../../core/styles/color_scheme.dart';
-import '../../../inventory/presentation/screens/company_item_detail_screen.dart';
 import '../../../search_item/presentation/screen/search_item_screen.dart';
 import '../../../sync/bloc/sync_cubit.dart';
-import '../../../variant/presentation/screen/create_variant_screen.dart';
 import '../bloc/home_cubit.dart';
 import '../widget/category_card.dart';
 import '../widget/company_item_card.dart';
@@ -38,6 +35,80 @@ class _HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<_HomeView> {
+  // @override
+  // Widget build(BuildContext context) {
+  //   final cs = Theme.of(context).colorScheme;
+
+  //   return Scaffold(
+  //     backgroundColor: cs.background,
+  //     appBar: AppBar(
+  //       elevation: 0,
+  //       backgroundColor: cs.background,
+  //       foregroundColor: cs.onBackground,
+  //       centerTitle: false,
+  //       title: Hero(
+  //         tag: 'mp-title',
+  //         child: Material(
+  //           child: const Text(
+  //             'MP Inventory',
+  //             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+  //           ),
+  //         ),
+  //       ),
+  //       actions: [
+  //         BlocBuilder<SyncCubit, SyncState>(
+  //           builder: (context, state) {
+  //             return IconButton(
+  //               icon: const Icon(Icons.refresh_rounded),
+  //               onPressed: () => _showSyncDetails(context, state.details),
+  //             );
+  //           },
+  //         ),
+  //       ],
+  //     ),
+  //     body: SafeArea(
+  //       child: BlocBuilder<HomeCubit, HomeState>(
+  //         builder: (context, state) {
+  //           if (state is HomeLoading) {
+  //             return const Center(child: CircularProgressIndicator());
+  //           }
+
+  //           if (state is HomeError) {
+  //             dev.log('HOME ERROR: ${state.message}');
+  //             return Center(
+  //               child: Text(
+  //                 'Terjadi kesalahan saat memuat data.\n${state.message}',
+  //                 textAlign: TextAlign.center,
+  //                 style: const TextStyle(fontSize: 14),
+  //               ),
+  //             );
+  //           }
+
+  //           final loaded = state as HomeLoaded;
+
+  //           return RefreshIndicator(
+  //             onRefresh: () => context.read<HomeCubit>().refreshFromLocal(),
+  //             child: ListView(
+  //               padding: const EdgeInsets.symmetric(
+  //                 horizontal: 16,
+  //                 vertical: 8,
+  //               ),
+  //               children: [
+  //                 _SearchBar(),
+  //                 // const SizedBox(height: 20),
+  //                 // _CategorySection(categories: loaded.categories),
+  //                 const SizedBox(height: 20),
+  //                 _CompanyItemSection(items: loaded.companyItems),
+  //               ],
+  //             ),
+  //           );
+  //         },
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  // Di dalam _HomeViewState
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -91,23 +162,110 @@ class _HomeViewState extends State<_HomeView> {
 
             return RefreshIndicator(
               onRefresh: () => context.read<HomeCubit>().refreshFromLocal(),
-              child: ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                children: [
-                  _SearchBar(),
-                  // const SizedBox(height: 20),
-                  // _CategorySection(categories: loaded.categories),
-                  const SizedBox(height: 20),
-                  _CompanyItemSection(items: loaded.companyItems),
+              // PERUBAHAN UTAMA DI SINI
+              child: CustomScrollView(
+                slivers: [
+                  // 1. Search Bar (Bukan List, jadi pakai Adapter)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: _SearchBar(),
+                    ),
+                  ),
+
+                  // 2. Category Section (List Horizontal, tetap dibungkus Adapter karena tingginya fix)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      // Pastikan _CategorySection tidak punya padding internal yang dobel
+                      child: _CategorySection(categories: loaded.categories),
+                    ),
+                  ),
+
+                  const SliverToBoxAdapter(child: SizedBox(height: 10)),
+
+                  // 3. Company Item Header
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _buildSectionHeader(
+                        context,
+                        loaded.companyItems.length,
+                      ),
+                    ),
+                  ),
+
+                  const SliverToBoxAdapter(child: SizedBox(height: 10)),
+
+                  // 4. Company Item List (Ini intinya: Gunakan SliverList)
+                  if (loaded.companyItems.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Belum ada barang terdaftar.',
+                          style: TextStyle(
+                            color: cs.onBackground.withOpacity(0.6),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final item = loaded.companyItems[index];
+                          // Return widget card anda
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: CompanyItemCard(row: item),
+                          );
+                        }, childCount: loaded.companyItems.length),
+                      ),
+                    ),
+
+                  // Tambahan padding bawah agar list tidak tertutup gesture nav
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
                 ],
               ),
             );
           },
         ),
       ),
+    );
+  }
+
+  // Helper kecil untuk Header Section (dipisah agar rapi)
+  Widget _buildSectionHeader(BuildContext context, int count) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'LIST BARANG',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.2,
+            color: cs.onBackground.withOpacity(0.7),
+          ),
+        ),
+        if (count > 0)
+          Text(
+            '$count item',
+            style: TextStyle(
+              fontSize: 11,
+              color: cs.onBackground.withOpacity(0.55),
+            ),
+          ),
+      ],
     );
   }
 

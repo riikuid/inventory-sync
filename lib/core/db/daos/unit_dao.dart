@@ -2,6 +2,7 @@
 import 'dart:developer' as dev;
 
 import 'package:drift/drift.dart' hide Component;
+import 'package:inventory_sync_apps/core/constant.dart';
 import 'package:uuid/uuid.dart';
 
 import '../app_database.dart';
@@ -54,7 +55,11 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
     List<Unit> pendings =
         await (select(units)
               ..where(
-                (u) => u.status.isNotIn(['PENDING', 'PRINTED', 'VALIDATED']),
+                (u) => u.status.isNotIn([
+                  pendingStatus,
+                  printedStatus,
+                  validatedStatus,
+                ]),
               )
               ..where((u) => u.needSync.equals(true)))
             .get();
@@ -104,7 +109,7 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
           parentUnitId: const Value(null),
           rackId: Value(rackId),
           qrValue: qrValue,
-          status: const Value('PENDING'),
+          status: const Value(pendingStatus),
           printCount: Value(0),
           lastPrintedAt: const Value(null),
           lastPrintedBy: const Value(null),
@@ -149,7 +154,7 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
           printCount: Value(newCount),
           lastPrintedAt: Value(now),
           lastPrintedBy: Value(userId),
-          status: Value('PRINTED'),
+          status: Value(printedStatus),
           updatedAt: Value(now),
           lastModifiedAt: Value(now),
           needSync: const Value(true),
@@ -164,7 +169,7 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
     final now = DateTime.now();
     await (update(units)..where((u) => u.id.isIn(unitIds))).write(
       UnitsCompanion(
-        status: Value('ACTIVE'),
+        status: Value(activeStatus),
         updatedBy: Value(userId),
         updatedAt: Value(now),
         lastModifiedAt: Value(now),
@@ -176,9 +181,12 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
   /// Hapus pending units (dipakai saat user batal sebelum final)
   Future<void> deletePendingUnits(List<String> unitIds) async {
     if (unitIds.isEmpty) return;
-    await (delete(
-      units,
-    )..where((u) => u.id.isIn(unitIds) & u.status.equals('PENDING'))).go();
+    await (delete(units)..where(
+          (u) =>
+              u.id.isIn(unitIds) &
+              u.status.isIn([pendingStatus, printedStatus, validatedStatus]),
+        ))
+        .go();
   }
 
   /// Ambil unit rows by ids
@@ -224,6 +232,17 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
 
   // =================== BIND UNIT KOMPONEN KE PARENT SET ===================
 
+  /// Bind multiple component units to a parent unit set.
+  ///
+  /// This will update the component units with the given parent unit ID,
+  /// set their status to active, and update the last modified timestamp.
+  ///
+  /// All units will be marked as needing sync.
+  ///
+  /// [parentUnitId] ID of the parent unit set
+  /// [componentUnitIds] List of IDs of the component units to bind
+  /// [userId] ID of the user performing the action
+  /// [now] Current DateTime object, used to set last modified timestamp
   Future<void> bindUnitsToParent({
     required String parentUnitId,
     required List<String> componentUnitIds,
@@ -235,7 +254,7 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
     await (update(units)..where((u) => u.id.isIn(componentUnitIds))).write(
       UnitsCompanion(
         parentUnitId: Value(parentUnitId),
-        status: const Value('BOUND'),
+        status: const Value(activeStatus),
         updatedBy: Value(userId),
         updatedAt: Value(now),
         lastModifiedAt: Value(now),
