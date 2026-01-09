@@ -9,7 +9,8 @@ final class AuthInitial extends AuthState {}
 /// Loading + status message di startup (auth + sync)
 final class AuthLoading extends AuthState {
   final String message;
-  AuthLoading(this.message);
+  final double progress;
+  AuthLoading(this.message, {this.progress = 0.0});
 }
 
 final class Authorized extends AuthState {

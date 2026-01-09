@@ -21,7 +21,7 @@ class AssemblyScreen extends StatefulWidget {
   final String variantId;
   final String variantName;
   final String companyCode;
-  final String userId;
+  final int userId;
   final String variantManufCode;
   final String rackId;
   final String rackName;

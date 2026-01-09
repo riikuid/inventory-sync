@@ -4658,12 +4658,13 @@ class $ComponentsTable extends Components
   );
   static const VerificationMeta _typeMeta = const VerificationMeta('type');
   @override
-  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+  late final GeneratedColumn<int> type = GeneratedColumn<int>(
     'type',
     aliasedName,
     false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
   );
   static const VerificationMeta _brandIdMeta = const VerificationMeta(
     'brandId',
@@ -4812,8 +4813,6 @@ class $ComponentsTable extends Components
         _typeMeta,
         type.isAcceptableOrUnknown(data['type']!, _typeMeta),
       );
-    } else if (isInserting) {
-      context.missing(_typeMeta);
     }
     if (data.containsKey('brand_id')) {
       context.handle(
@@ -4895,7 +4894,7 @@ class $ComponentsTable extends Components
         data['${effectivePrefix}name'],
       )!,
       type: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.int,
         data['${effectivePrefix}type'],
       )!,
       brandId: attachedDatabase.typeMapping.read(
@@ -4943,7 +4942,7 @@ class Component extends DataClass implements Insertable<Component> {
   final String id;
   final String productId;
   final String name;
-  final String type;
+  final int type;
   final String? brandId;
   final String? manufCode;
   final String? specification;
@@ -4972,7 +4971,7 @@ class Component extends DataClass implements Insertable<Component> {
     map['id'] = Variable<String>(id);
     map['product_id'] = Variable<String>(productId);
     map['name'] = Variable<String>(name);
-    map['type'] = Variable<String>(type);
+    map['type'] = Variable<int>(type);
     if (!nullToAbsent || brandId != null) {
       map['brand_id'] = Variable<String>(brandId);
     }
@@ -5026,7 +5025,7 @@ class Component extends DataClass implements Insertable<Component> {
       id: serializer.fromJson<String>(json['id']),
       productId: serializer.fromJson<String>(json['productId']),
       name: serializer.fromJson<String>(json['name']),
-      type: serializer.fromJson<String>(json['type']),
+      type: serializer.fromJson<int>(json['type']),
       brandId: serializer.fromJson<String?>(json['brandId']),
       manufCode: serializer.fromJson<String?>(json['manufCode']),
       specification: serializer.fromJson<String?>(json['specification']),
@@ -5044,7 +5043,7 @@ class Component extends DataClass implements Insertable<Component> {
       'id': serializer.toJson<String>(id),
       'productId': serializer.toJson<String>(productId),
       'name': serializer.toJson<String>(name),
-      'type': serializer.toJson<String>(type),
+      'type': serializer.toJson<int>(type),
       'brandId': serializer.toJson<String?>(brandId),
       'manufCode': serializer.toJson<String?>(manufCode),
       'specification': serializer.toJson<String?>(specification),
@@ -5060,7 +5059,7 @@ class Component extends DataClass implements Insertable<Component> {
     String? id,
     String? productId,
     String? name,
-    String? type,
+    int? type,
     Value<String?> brandId = const Value.absent(),
     Value<String?> manufCode = const Value.absent(),
     Value<String?> specification = const Value.absent(),
@@ -5162,7 +5161,7 @@ class ComponentsCompanion extends UpdateCompanion<Component> {
   final Value<String> id;
   final Value<String> productId;
   final Value<String> name;
-  final Value<String> type;
+  final Value<int> type;
   final Value<String?> brandId;
   final Value<String?> manufCode;
   final Value<String?> specification;
@@ -5191,7 +5190,7 @@ class ComponentsCompanion extends UpdateCompanion<Component> {
     required String id,
     required String productId,
     required String name,
-    required String type,
+    this.type = const Value.absent(),
     this.brandId = const Value.absent(),
     this.manufCode = const Value.absent(),
     this.specification = const Value.absent(),
@@ -5204,14 +5203,13 @@ class ComponentsCompanion extends UpdateCompanion<Component> {
   }) : id = Value(id),
        productId = Value(productId),
        name = Value(name),
-       type = Value(type),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<Component> custom({
     Expression<String>? id,
     Expression<String>? productId,
     Expression<String>? name,
-    Expression<String>? type,
+    Expression<int>? type,
     Expression<String>? brandId,
     Expression<String>? manufCode,
     Expression<String>? specification,
@@ -5243,7 +5241,7 @@ class ComponentsCompanion extends UpdateCompanion<Component> {
     Value<String>? id,
     Value<String>? productId,
     Value<String>? name,
-    Value<String>? type,
+    Value<int>? type,
     Value<String?>? brandId,
     Value<String?>? manufCode,
     Value<String?>? specification,
@@ -5284,7 +5282,7 @@ class ComponentsCompanion extends UpdateCompanion<Component> {
       map['name'] = Variable<String>(name.value);
     }
     if (type.present) {
-      map['type'] = Variable<String>(type.value);
+      map['type'] = Variable<int>(type.value);
     }
     if (brandId.present) {
       map['brand_id'] = Variable<String>(brandId.value);
@@ -7556,6 +7554,617 @@ class UnitsCompanion extends UpdateCompanion<Unit> {
   }
 }
 
+class $DashboardItemsCacheTable extends DashboardItemsCache
+    with TableInfo<$DashboardItemsCacheTable, DashboardItemsCacheData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DashboardItemsCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _companyItemIdMeta = const VerificationMeta(
+    'companyItemId',
+  );
+  @override
+  late final GeneratedColumn<String> companyItemId = GeneratedColumn<String>(
+    'company_item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _companyCodeMeta = const VerificationMeta(
+    'companyCode',
+  );
+  @override
+  late final GeneratedColumn<String> companyCode = GeneratedColumn<String>(
+    'company_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productNameMeta = const VerificationMeta(
+    'productName',
+  );
+  @override
+  late final GeneratedColumn<String> productName = GeneratedColumn<String>(
+    'product_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryNameMeta = const VerificationMeta(
+    'categoryName',
+  );
+  @override
+  late final GeneratedColumn<String> categoryName = GeneratedColumn<String>(
+    'category_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _defaultRackNameMeta = const VerificationMeta(
+    'defaultRackName',
+  );
+  @override
+  late final GeneratedColumn<String> defaultRackName = GeneratedColumn<String>(
+    'default_rack_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _totalUnitsMeta = const VerificationMeta(
+    'totalUnits',
+  );
+  @override
+  late final GeneratedColumn<int> totalUnits = GeneratedColumn<int>(
+    'total_units',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _totalVariantsMeta = const VerificationMeta(
+    'totalVariants',
+  );
+  @override
+  late final GeneratedColumn<int> totalVariants = GeneratedColumn<int>(
+    'total_variants',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastUpdatedAtMeta = const VerificationMeta(
+    'lastUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'last_updated_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _displayPriorityMeta = const VerificationMeta(
+    'displayPriority',
+  );
+  @override
+  late final GeneratedColumn<int> displayPriority = GeneratedColumn<int>(
+    'display_priority',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    companyItemId,
+    companyCode,
+    productName,
+    categoryName,
+    defaultRackName,
+    totalUnits,
+    totalVariants,
+    lastUpdatedAt,
+    displayPriority,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'dashboard_items_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DashboardItemsCacheData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('company_item_id')) {
+      context.handle(
+        _companyItemIdMeta,
+        companyItemId.isAcceptableOrUnknown(
+          data['company_item_id']!,
+          _companyItemIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_companyItemIdMeta);
+    }
+    if (data.containsKey('company_code')) {
+      context.handle(
+        _companyCodeMeta,
+        companyCode.isAcceptableOrUnknown(
+          data['company_code']!,
+          _companyCodeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_companyCodeMeta);
+    }
+    if (data.containsKey('product_name')) {
+      context.handle(
+        _productNameMeta,
+        productName.isAcceptableOrUnknown(
+          data['product_name']!,
+          _productNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_productNameMeta);
+    }
+    if (data.containsKey('category_name')) {
+      context.handle(
+        _categoryNameMeta,
+        categoryName.isAcceptableOrUnknown(
+          data['category_name']!,
+          _categoryNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('default_rack_name')) {
+      context.handle(
+        _defaultRackNameMeta,
+        defaultRackName.isAcceptableOrUnknown(
+          data['default_rack_name']!,
+          _defaultRackNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_units')) {
+      context.handle(
+        _totalUnitsMeta,
+        totalUnits.isAcceptableOrUnknown(data['total_units']!, _totalUnitsMeta),
+      );
+    }
+    if (data.containsKey('total_variants')) {
+      context.handle(
+        _totalVariantsMeta,
+        totalVariants.isAcceptableOrUnknown(
+          data['total_variants']!,
+          _totalVariantsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_updated_at')) {
+      context.handle(
+        _lastUpdatedAtMeta,
+        lastUpdatedAt.isAcceptableOrUnknown(
+          data['last_updated_at']!,
+          _lastUpdatedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastUpdatedAtMeta);
+    }
+    if (data.containsKey('display_priority')) {
+      context.handle(
+        _displayPriorityMeta,
+        displayPriority.isAcceptableOrUnknown(
+          data['display_priority']!,
+          _displayPriorityMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {companyItemId};
+  @override
+  DashboardItemsCacheData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DashboardItemsCacheData(
+      companyItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}company_item_id'],
+      )!,
+      companyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}company_code'],
+      )!,
+      productName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_name'],
+      )!,
+      categoryName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_name'],
+      ),
+      defaultRackName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}default_rack_name'],
+      ),
+      totalUnits: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_units'],
+      )!,
+      totalVariants: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_variants'],
+      )!,
+      lastUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_updated_at'],
+      )!,
+      displayPriority: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}display_priority'],
+      )!,
+    );
+  }
+
+  @override
+  $DashboardItemsCacheTable createAlias(String alias) {
+    return $DashboardItemsCacheTable(attachedDatabase, alias);
+  }
+}
+
+class DashboardItemsCacheData extends DataClass
+    implements Insertable<DashboardItemsCacheData> {
+  final String companyItemId;
+  final String companyCode;
+  final String productName;
+  final String? categoryName;
+  final String? defaultRackName;
+  final int totalUnits;
+  final int totalVariants;
+  final DateTime lastUpdatedAt;
+  final int displayPriority;
+  const DashboardItemsCacheData({
+    required this.companyItemId,
+    required this.companyCode,
+    required this.productName,
+    this.categoryName,
+    this.defaultRackName,
+    required this.totalUnits,
+    required this.totalVariants,
+    required this.lastUpdatedAt,
+    required this.displayPriority,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['company_item_id'] = Variable<String>(companyItemId);
+    map['company_code'] = Variable<String>(companyCode);
+    map['product_name'] = Variable<String>(productName);
+    if (!nullToAbsent || categoryName != null) {
+      map['category_name'] = Variable<String>(categoryName);
+    }
+    if (!nullToAbsent || defaultRackName != null) {
+      map['default_rack_name'] = Variable<String>(defaultRackName);
+    }
+    map['total_units'] = Variable<int>(totalUnits);
+    map['total_variants'] = Variable<int>(totalVariants);
+    map['last_updated_at'] = Variable<DateTime>(lastUpdatedAt);
+    map['display_priority'] = Variable<int>(displayPriority);
+    return map;
+  }
+
+  DashboardItemsCacheCompanion toCompanion(bool nullToAbsent) {
+    return DashboardItemsCacheCompanion(
+      companyItemId: Value(companyItemId),
+      companyCode: Value(companyCode),
+      productName: Value(productName),
+      categoryName: categoryName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryName),
+      defaultRackName: defaultRackName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultRackName),
+      totalUnits: Value(totalUnits),
+      totalVariants: Value(totalVariants),
+      lastUpdatedAt: Value(lastUpdatedAt),
+      displayPriority: Value(displayPriority),
+    );
+  }
+
+  factory DashboardItemsCacheData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DashboardItemsCacheData(
+      companyItemId: serializer.fromJson<String>(json['companyItemId']),
+      companyCode: serializer.fromJson<String>(json['companyCode']),
+      productName: serializer.fromJson<String>(json['productName']),
+      categoryName: serializer.fromJson<String?>(json['categoryName']),
+      defaultRackName: serializer.fromJson<String?>(json['defaultRackName']),
+      totalUnits: serializer.fromJson<int>(json['totalUnits']),
+      totalVariants: serializer.fromJson<int>(json['totalVariants']),
+      lastUpdatedAt: serializer.fromJson<DateTime>(json['lastUpdatedAt']),
+      displayPriority: serializer.fromJson<int>(json['displayPriority']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'companyItemId': serializer.toJson<String>(companyItemId),
+      'companyCode': serializer.toJson<String>(companyCode),
+      'productName': serializer.toJson<String>(productName),
+      'categoryName': serializer.toJson<String?>(categoryName),
+      'defaultRackName': serializer.toJson<String?>(defaultRackName),
+      'totalUnits': serializer.toJson<int>(totalUnits),
+      'totalVariants': serializer.toJson<int>(totalVariants),
+      'lastUpdatedAt': serializer.toJson<DateTime>(lastUpdatedAt),
+      'displayPriority': serializer.toJson<int>(displayPriority),
+    };
+  }
+
+  DashboardItemsCacheData copyWith({
+    String? companyItemId,
+    String? companyCode,
+    String? productName,
+    Value<String?> categoryName = const Value.absent(),
+    Value<String?> defaultRackName = const Value.absent(),
+    int? totalUnits,
+    int? totalVariants,
+    DateTime? lastUpdatedAt,
+    int? displayPriority,
+  }) => DashboardItemsCacheData(
+    companyItemId: companyItemId ?? this.companyItemId,
+    companyCode: companyCode ?? this.companyCode,
+    productName: productName ?? this.productName,
+    categoryName: categoryName.present ? categoryName.value : this.categoryName,
+    defaultRackName: defaultRackName.present
+        ? defaultRackName.value
+        : this.defaultRackName,
+    totalUnits: totalUnits ?? this.totalUnits,
+    totalVariants: totalVariants ?? this.totalVariants,
+    lastUpdatedAt: lastUpdatedAt ?? this.lastUpdatedAt,
+    displayPriority: displayPriority ?? this.displayPriority,
+  );
+  DashboardItemsCacheData copyWithCompanion(DashboardItemsCacheCompanion data) {
+    return DashboardItemsCacheData(
+      companyItemId: data.companyItemId.present
+          ? data.companyItemId.value
+          : this.companyItemId,
+      companyCode: data.companyCode.present
+          ? data.companyCode.value
+          : this.companyCode,
+      productName: data.productName.present
+          ? data.productName.value
+          : this.productName,
+      categoryName: data.categoryName.present
+          ? data.categoryName.value
+          : this.categoryName,
+      defaultRackName: data.defaultRackName.present
+          ? data.defaultRackName.value
+          : this.defaultRackName,
+      totalUnits: data.totalUnits.present
+          ? data.totalUnits.value
+          : this.totalUnits,
+      totalVariants: data.totalVariants.present
+          ? data.totalVariants.value
+          : this.totalVariants,
+      lastUpdatedAt: data.lastUpdatedAt.present
+          ? data.lastUpdatedAt.value
+          : this.lastUpdatedAt,
+      displayPriority: data.displayPriority.present
+          ? data.displayPriority.value
+          : this.displayPriority,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DashboardItemsCacheData(')
+          ..write('companyItemId: $companyItemId, ')
+          ..write('companyCode: $companyCode, ')
+          ..write('productName: $productName, ')
+          ..write('categoryName: $categoryName, ')
+          ..write('defaultRackName: $defaultRackName, ')
+          ..write('totalUnits: $totalUnits, ')
+          ..write('totalVariants: $totalVariants, ')
+          ..write('lastUpdatedAt: $lastUpdatedAt, ')
+          ..write('displayPriority: $displayPriority')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    companyItemId,
+    companyCode,
+    productName,
+    categoryName,
+    defaultRackName,
+    totalUnits,
+    totalVariants,
+    lastUpdatedAt,
+    displayPriority,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DashboardItemsCacheData &&
+          other.companyItemId == this.companyItemId &&
+          other.companyCode == this.companyCode &&
+          other.productName == this.productName &&
+          other.categoryName == this.categoryName &&
+          other.defaultRackName == this.defaultRackName &&
+          other.totalUnits == this.totalUnits &&
+          other.totalVariants == this.totalVariants &&
+          other.lastUpdatedAt == this.lastUpdatedAt &&
+          other.displayPriority == this.displayPriority);
+}
+
+class DashboardItemsCacheCompanion
+    extends UpdateCompanion<DashboardItemsCacheData> {
+  final Value<String> companyItemId;
+  final Value<String> companyCode;
+  final Value<String> productName;
+  final Value<String?> categoryName;
+  final Value<String?> defaultRackName;
+  final Value<int> totalUnits;
+  final Value<int> totalVariants;
+  final Value<DateTime> lastUpdatedAt;
+  final Value<int> displayPriority;
+  final Value<int> rowid;
+  const DashboardItemsCacheCompanion({
+    this.companyItemId = const Value.absent(),
+    this.companyCode = const Value.absent(),
+    this.productName = const Value.absent(),
+    this.categoryName = const Value.absent(),
+    this.defaultRackName = const Value.absent(),
+    this.totalUnits = const Value.absent(),
+    this.totalVariants = const Value.absent(),
+    this.lastUpdatedAt = const Value.absent(),
+    this.displayPriority = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DashboardItemsCacheCompanion.insert({
+    required String companyItemId,
+    required String companyCode,
+    required String productName,
+    this.categoryName = const Value.absent(),
+    this.defaultRackName = const Value.absent(),
+    this.totalUnits = const Value.absent(),
+    this.totalVariants = const Value.absent(),
+    required DateTime lastUpdatedAt,
+    this.displayPriority = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : companyItemId = Value(companyItemId),
+       companyCode = Value(companyCode),
+       productName = Value(productName),
+       lastUpdatedAt = Value(lastUpdatedAt);
+  static Insertable<DashboardItemsCacheData> custom({
+    Expression<String>? companyItemId,
+    Expression<String>? companyCode,
+    Expression<String>? productName,
+    Expression<String>? categoryName,
+    Expression<String>? defaultRackName,
+    Expression<int>? totalUnits,
+    Expression<int>? totalVariants,
+    Expression<DateTime>? lastUpdatedAt,
+    Expression<int>? displayPriority,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (companyItemId != null) 'company_item_id': companyItemId,
+      if (companyCode != null) 'company_code': companyCode,
+      if (productName != null) 'product_name': productName,
+      if (categoryName != null) 'category_name': categoryName,
+      if (defaultRackName != null) 'default_rack_name': defaultRackName,
+      if (totalUnits != null) 'total_units': totalUnits,
+      if (totalVariants != null) 'total_variants': totalVariants,
+      if (lastUpdatedAt != null) 'last_updated_at': lastUpdatedAt,
+      if (displayPriority != null) 'display_priority': displayPriority,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DashboardItemsCacheCompanion copyWith({
+    Value<String>? companyItemId,
+    Value<String>? companyCode,
+    Value<String>? productName,
+    Value<String?>? categoryName,
+    Value<String?>? defaultRackName,
+    Value<int>? totalUnits,
+    Value<int>? totalVariants,
+    Value<DateTime>? lastUpdatedAt,
+    Value<int>? displayPriority,
+    Value<int>? rowid,
+  }) {
+    return DashboardItemsCacheCompanion(
+      companyItemId: companyItemId ?? this.companyItemId,
+      companyCode: companyCode ?? this.companyCode,
+      productName: productName ?? this.productName,
+      categoryName: categoryName ?? this.categoryName,
+      defaultRackName: defaultRackName ?? this.defaultRackName,
+      totalUnits: totalUnits ?? this.totalUnits,
+      totalVariants: totalVariants ?? this.totalVariants,
+      lastUpdatedAt: lastUpdatedAt ?? this.lastUpdatedAt,
+      displayPriority: displayPriority ?? this.displayPriority,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (companyItemId.present) {
+      map['company_item_id'] = Variable<String>(companyItemId.value);
+    }
+    if (companyCode.present) {
+      map['company_code'] = Variable<String>(companyCode.value);
+    }
+    if (productName.present) {
+      map['product_name'] = Variable<String>(productName.value);
+    }
+    if (categoryName.present) {
+      map['category_name'] = Variable<String>(categoryName.value);
+    }
+    if (defaultRackName.present) {
+      map['default_rack_name'] = Variable<String>(defaultRackName.value);
+    }
+    if (totalUnits.present) {
+      map['total_units'] = Variable<int>(totalUnits.value);
+    }
+    if (totalVariants.present) {
+      map['total_variants'] = Variable<int>(totalVariants.value);
+    }
+    if (lastUpdatedAt.present) {
+      map['last_updated_at'] = Variable<DateTime>(lastUpdatedAt.value);
+    }
+    if (displayPriority.present) {
+      map['display_priority'] = Variable<int>(displayPriority.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DashboardItemsCacheCompanion(')
+          ..write('companyItemId: $companyItemId, ')
+          ..write('companyCode: $companyCode, ')
+          ..write('productName: $productName, ')
+          ..write('categoryName: $categoryName, ')
+          ..write('defaultRackName: $defaultRackName, ')
+          ..write('totalUnits: $totalUnits, ')
+          ..write('totalVariants: $totalVariants, ')
+          ..write('lastUpdatedAt: $lastUpdatedAt, ')
+          ..write('displayPriority: $displayPriority, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncMetadataTable extends SyncMetadata
     with TableInfo<$SyncMetadataTable, SyncMetadataData> {
   @override
@@ -7787,6 +8396,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $VariantComponentsTable variantComponents =
       $VariantComponentsTable(this);
   late final $UnitsTable units = $UnitsTable(this);
+  late final $DashboardItemsCacheTable dashboardItemsCache =
+      $DashboardItemsCacheTable(this);
   late final $SyncMetadataTable syncMetadata = $SyncMetadataTable(this);
   late final BrandDao brandDao = BrandDao(this as AppDatabase);
   late final RackDao rackDao = RackDao(this as AppDatabase);
@@ -7827,6 +8438,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     componentPhotos,
     variantComponents,
     units,
+    dashboardItemsCache,
     syncMetadata,
   ];
 }
@@ -10266,7 +10878,7 @@ typedef $$ComponentsTableCreateCompanionBuilder =
       required String id,
       required String productId,
       required String name,
-      required String type,
+      Value<int> type,
       Value<String?> brandId,
       Value<String?> manufCode,
       Value<String?> specification,
@@ -10282,7 +10894,7 @@ typedef $$ComponentsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> productId,
       Value<String> name,
-      Value<String> type,
+      Value<int> type,
       Value<String?> brandId,
       Value<String?> manufCode,
       Value<String?> specification,
@@ -10318,7 +10930,7 @@ class $$ComponentsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get type => $composableBuilder(
+  ColumnFilters<int> get type => $composableBuilder(
     column: $table.type,
     builder: (column) => ColumnFilters(column),
   );
@@ -10388,7 +11000,7 @@ class $$ComponentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get type => $composableBuilder(
+  ColumnOrderings<int> get type => $composableBuilder(
     column: $table.type,
     builder: (column) => ColumnOrderings(column),
   );
@@ -10452,7 +11064,7 @@ class $$ComponentsTableAnnotationComposer
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<String> get type =>
+  GeneratedColumn<int> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
 
   GeneratedColumn<String> get brandId =>
@@ -10518,7 +11130,7 @@ class $$ComponentsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> productId = const Value.absent(),
                 Value<String> name = const Value.absent(),
-                Value<String> type = const Value.absent(),
+                Value<int> type = const Value.absent(),
                 Value<String?> brandId = const Value.absent(),
                 Value<String?> manufCode = const Value.absent(),
                 Value<String?> specification = const Value.absent(),
@@ -10548,7 +11160,7 @@ class $$ComponentsTableTableManager
                 required String id,
                 required String productId,
                 required String name,
-                required String type,
+                Value<int> type = const Value.absent(),
                 Value<String?> brandId = const Value.absent(),
                 Value<String?> manufCode = const Value.absent(),
                 Value<String?> specification = const Value.absent(),
@@ -11647,6 +12259,316 @@ typedef $$UnitsTableProcessedTableManager =
       Unit,
       PrefetchHooks Function()
     >;
+typedef $$DashboardItemsCacheTableCreateCompanionBuilder =
+    DashboardItemsCacheCompanion Function({
+      required String companyItemId,
+      required String companyCode,
+      required String productName,
+      Value<String?> categoryName,
+      Value<String?> defaultRackName,
+      Value<int> totalUnits,
+      Value<int> totalVariants,
+      required DateTime lastUpdatedAt,
+      Value<int> displayPriority,
+      Value<int> rowid,
+    });
+typedef $$DashboardItemsCacheTableUpdateCompanionBuilder =
+    DashboardItemsCacheCompanion Function({
+      Value<String> companyItemId,
+      Value<String> companyCode,
+      Value<String> productName,
+      Value<String?> categoryName,
+      Value<String?> defaultRackName,
+      Value<int> totalUnits,
+      Value<int> totalVariants,
+      Value<DateTime> lastUpdatedAt,
+      Value<int> displayPriority,
+      Value<int> rowid,
+    });
+
+class $$DashboardItemsCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $DashboardItemsCacheTable> {
+  $$DashboardItemsCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get companyItemId => $composableBuilder(
+    column: $table.companyItemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get companyCode => $composableBuilder(
+    column: $table.companyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryName => $composableBuilder(
+    column: $table.categoryName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get defaultRackName => $composableBuilder(
+    column: $table.defaultRackName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalUnits => $composableBuilder(
+    column: $table.totalUnits,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalVariants => $composableBuilder(
+    column: $table.totalVariants,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastUpdatedAt => $composableBuilder(
+    column: $table.lastUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get displayPriority => $composableBuilder(
+    column: $table.displayPriority,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DashboardItemsCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $DashboardItemsCacheTable> {
+  $$DashboardItemsCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get companyItemId => $composableBuilder(
+    column: $table.companyItemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get companyCode => $composableBuilder(
+    column: $table.companyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryName => $composableBuilder(
+    column: $table.categoryName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get defaultRackName => $composableBuilder(
+    column: $table.defaultRackName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalUnits => $composableBuilder(
+    column: $table.totalUnits,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalVariants => $composableBuilder(
+    column: $table.totalVariants,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastUpdatedAt => $composableBuilder(
+    column: $table.lastUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get displayPriority => $composableBuilder(
+    column: $table.displayPriority,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DashboardItemsCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DashboardItemsCacheTable> {
+  $$DashboardItemsCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get companyItemId => $composableBuilder(
+    column: $table.companyItemId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get companyCode => $composableBuilder(
+    column: $table.companyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get categoryName => $composableBuilder(
+    column: $table.categoryName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get defaultRackName => $composableBuilder(
+    column: $table.defaultRackName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalUnits => $composableBuilder(
+    column: $table.totalUnits,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalVariants => $composableBuilder(
+    column: $table.totalVariants,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastUpdatedAt => $composableBuilder(
+    column: $table.lastUpdatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get displayPriority => $composableBuilder(
+    column: $table.displayPriority,
+    builder: (column) => column,
+  );
+}
+
+class $$DashboardItemsCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DashboardItemsCacheTable,
+          DashboardItemsCacheData,
+          $$DashboardItemsCacheTableFilterComposer,
+          $$DashboardItemsCacheTableOrderingComposer,
+          $$DashboardItemsCacheTableAnnotationComposer,
+          $$DashboardItemsCacheTableCreateCompanionBuilder,
+          $$DashboardItemsCacheTableUpdateCompanionBuilder,
+          (
+            DashboardItemsCacheData,
+            BaseReferences<
+              _$AppDatabase,
+              $DashboardItemsCacheTable,
+              DashboardItemsCacheData
+            >,
+          ),
+          DashboardItemsCacheData,
+          PrefetchHooks Function()
+        > {
+  $$DashboardItemsCacheTableTableManager(
+    _$AppDatabase db,
+    $DashboardItemsCacheTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DashboardItemsCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DashboardItemsCacheTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DashboardItemsCacheTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> companyItemId = const Value.absent(),
+                Value<String> companyCode = const Value.absent(),
+                Value<String> productName = const Value.absent(),
+                Value<String?> categoryName = const Value.absent(),
+                Value<String?> defaultRackName = const Value.absent(),
+                Value<int> totalUnits = const Value.absent(),
+                Value<int> totalVariants = const Value.absent(),
+                Value<DateTime> lastUpdatedAt = const Value.absent(),
+                Value<int> displayPriority = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DashboardItemsCacheCompanion(
+                companyItemId: companyItemId,
+                companyCode: companyCode,
+                productName: productName,
+                categoryName: categoryName,
+                defaultRackName: defaultRackName,
+                totalUnits: totalUnits,
+                totalVariants: totalVariants,
+                lastUpdatedAt: lastUpdatedAt,
+                displayPriority: displayPriority,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String companyItemId,
+                required String companyCode,
+                required String productName,
+                Value<String?> categoryName = const Value.absent(),
+                Value<String?> defaultRackName = const Value.absent(),
+                Value<int> totalUnits = const Value.absent(),
+                Value<int> totalVariants = const Value.absent(),
+                required DateTime lastUpdatedAt,
+                Value<int> displayPriority = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DashboardItemsCacheCompanion.insert(
+                companyItemId: companyItemId,
+                companyCode: companyCode,
+                productName: productName,
+                categoryName: categoryName,
+                defaultRackName: defaultRackName,
+                totalUnits: totalUnits,
+                totalVariants: totalVariants,
+                lastUpdatedAt: lastUpdatedAt,
+                displayPriority: displayPriority,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DashboardItemsCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DashboardItemsCacheTable,
+      DashboardItemsCacheData,
+      $$DashboardItemsCacheTableFilterComposer,
+      $$DashboardItemsCacheTableOrderingComposer,
+      $$DashboardItemsCacheTableAnnotationComposer,
+      $$DashboardItemsCacheTableCreateCompanionBuilder,
+      $$DashboardItemsCacheTableUpdateCompanionBuilder,
+      (
+        DashboardItemsCacheData,
+        BaseReferences<
+          _$AppDatabase,
+          $DashboardItemsCacheTable,
+          DashboardItemsCacheData
+        >,
+      ),
+      DashboardItemsCacheData,
+      PrefetchHooks Function()
+    >;
 typedef $$SyncMetadataTableCreateCompanionBuilder =
     SyncMetadataCompanion Function({
       required String key,
@@ -11820,6 +12742,8 @@ class $AppDatabaseManager {
       $$VariantComponentsTableTableManager(_db, _db.variantComponents);
   $$UnitsTableTableManager get units =>
       $$UnitsTableTableManager(_db, _db.units);
+  $$DashboardItemsCacheTableTableManager get dashboardItemsCache =>
+      $$DashboardItemsCacheTableTableManager(_db, _db.dashboardItemsCache);
   $$SyncMetadataTableTableManager get syncMetadata =>
       $$SyncMetadataTableTableManager(_db, _db.syncMetadata);
 }

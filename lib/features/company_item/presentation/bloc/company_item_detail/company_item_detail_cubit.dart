@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../data/inventory_repository.dart';
+import '../../../../inventory/data/inventory_repository.dart';
 
 part 'company_item_detail_state.dart';
 

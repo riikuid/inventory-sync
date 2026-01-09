@@ -1,6 +1,6 @@
 class ComponentRequest {
   final String name;
-  final String type;
+  final int type;
   final String? manufCode;
   final String? specification;
   final List<String> pathPhotos;

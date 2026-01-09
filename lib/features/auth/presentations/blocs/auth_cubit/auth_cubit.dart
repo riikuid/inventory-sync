@@ -42,17 +42,28 @@ class AuthCubit extends Cubit<AuthState> {
     if (result.isSuccess) {
       final user = result.resultValue!;
       _user = user;
-
-      // Simpan ke cache lokal
       await UserStorage.saveUser(user);
 
-      // 2. Coba sync pull
-      emit(AuthLoading('Menyinkronkan data...'));
+      // 2. Coba sync pull dengan Progress Listener
+      emit(AuthLoading('Menyiapkan sinkronisasi...', progress: 0.0));
+
+      // Subscribe ke stream progress
+      final progressSub = _syncRepository.onSyncProgress.listen((progress) {
+        // Update pesan berdasarkan progress
+        String msg = 'Mengunduh data...';
+        if (progress > 0.3) msg = 'Memproses data...';
+        if (progress > 0.8) msg = 'Finalisasi...';
+
+        emit(AuthLoading(msg, progress: progress));
+      });
+
       try {
         await _syncRepository.pullSinceLast();
+        await progressSub.cancel(); // Jangan lupa cancel
         emit(Authorized(user: user, offline: false));
       } catch (_) {
-        // Sync gagal, tapi auth berhasil → tetap masuk, tapi offline mode
+        await progressSub.cancel();
+        // Tetap masuk offline jika gagal
         emit(Authorized(user: user, offline: true));
       }
       return;

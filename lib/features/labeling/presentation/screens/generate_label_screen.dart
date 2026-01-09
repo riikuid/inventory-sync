@@ -15,7 +15,7 @@ import 'preview_print_screen.dart';
 
 class GenerateLabelsScreen extends StatefulWidget {
   final VariantDetailRow variant;
-  final String userId;
+  final int userId;
 
   // Tambahan: Jika ini diisi, berarti kita sedang melabeli KOMPONEN SEPARATE
   final String? componentId;
@@ -66,21 +66,21 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
       ).showSnackBar(const SnackBar(content: Text('Qty harus > 0')));
       return;
     }
-    if (_selectedRackId == null || _selectedRackId!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih rak terlebih dahulu')),
-      );
-      return;
-    }
+    // if (_selectedRackId == null || _selectedRackId!.isEmpty) {
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     const SnackBar(content: Text('Pilih rak terlebih dahulu')),
+    //   );
+    //   return;
+    // }
 
     final cubit = context.read<CreateLabelsCubit>();
 
     await cubit.generate(
       variantId: widget.variant.variantId, // Tetap kirim variant ID
       companyCode: widget.variant.companyCode,
-      rackId: _selectedRackId!,
+      rackId: _selectedRackId,
       itemName: targetName,
-      rackName: _selectedRackName ?? 'N/A',
+      rackName: _selectedRackName ?? '-',
       qty: _qty,
       userId: widget.userId,
       // Pass component params

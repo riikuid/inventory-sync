@@ -1,6 +1,5 @@
-// safe_call.dart
 import 'package:dio/dio.dart';
-import 'package:inventory_sync_apps/core/dio.dart';
+import 'package:inventory_sync_apps/core/dio.dart'; // Pastikan import ini benar arahnya ke DioClient
 import 'package:inventory_sync_apps/core/result.dart';
 
 import 'config.dart';
@@ -10,20 +9,26 @@ import 'response_code.dart';
 typedef Parser<T> = T Function(dynamic data);
 
 /// Helper universal untuk memanggil endpoint dan memetakan ke Result<T>.
+///
+/// [isSilent] -> Jika true, error parsing/logic internal tidak akan dikirim ke Logger.
+/// (Catatan: Untuk mematikan Log HTTP Request/Response, gunakan Options(extra: {'silent': true}) di dalam [request])
 Future<Result<T>> dioCall<T>(
   Future<Response<dynamic>> Function(Dio dio) request, {
   required Parser<T> parse,
   String Function(dynamic data)? serverMessageExtractor,
+  bool isSilent = false, // <--- PERUBAHAN 1: Parameter baru
 }) async {
   try {
     final dio = await DioClient().instance;
-    final res = await request(
-      dio,
-    ); // 2xx -> tidak throw (default Dio melempar utk !2xx)
+    final res = await request(dio);
+
     final data = res.data;
     return Result.success(parse(data), statusCode: res.statusCode);
   } on DioException catch (e) {
-    // Klasifikasi error
+    // --- Error HTTP (Dio) ---
+    // Error ini biasanya sudah dicatat oleh Interceptor di DioClient,
+    // jadi kita tidak perlu log manual di sini supaya tidak duplikat.
+
     final type = e.type;
     final resp = e.response;
     final code = resp?.statusCode;
@@ -48,18 +53,28 @@ Future<Result<T>> dioCall<T>(
       return resp?.statusMessage;
     }();
 
-    // Kamu bisa tambahkan mapping khusus per status code di sini
     if (code == ResponseCode.unAuthorized) {
-      // contoh: trigger logout di bloc luar (jangan langsung di helper)
-      // cukup pulangkan pesan konsisten
+      // Handle logout logic if needed
     }
 
     final msg =
         serverMsg ??
         (Config.isProduction() ? errorMessage : (e.message ?? 'HTTP Error'));
     return Result.failed(msg, statusCode: code);
-  } catch (e) {
-    // 3) Unknown non-Dio error
+  } catch (e, stackTrace) {
+    // <--- PERUBAHAN 2: Tangkap stackTrace
+    // --- Error Non-HTTP (Parsing / Logic) ---
+    // Contoh: Field JSON berubah, tipe data salah, atau logic error di fungsi parse()
+
+    // PERUBAHAN 3: Log error misterius ini ke Talker agar mudah didebug
+    if (!isSilent && !Config.isProduction()) {
+      DioClient().talker.error(
+        'Error in dioCall (Parsing/Logic)',
+        e,
+        stackTrace,
+      );
+    }
+
     final msg = Config.isProduction() ? errorMessage : e.toString();
     return Result.failed(msg);
   }

@@ -67,7 +67,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
             builder: (context, state) {
               if (state is CompanyItemDetailLoaded) {
                 return Text(
-                  '${state.detail.companyCode} • ${state.detail.productName}',
+                  state.detail.companyCode,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.mono.copyWith(
                     color: AppColors.onSurface,
@@ -106,7 +106,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                     MaterialPageRoute(
                       builder: (context) => CreateVariantScreen(
                         companyItemId: widget.companyItemId,
-                        userId: _user.uuid!,
+                        userId: _user.id!,
                         companyCode: state.detail.companyCode,
                         productName: state.detail.productName,
                         defaultRackId: state.detail.defaultRackId,
@@ -262,6 +262,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                       const SizedBox(height: 2),
                       Text(
                         detail.categoryName,
+                        // 'dede',
                         style: const TextStyle(
                           fontWeight: FontWeight.w500,
                           fontSize: 14,
@@ -367,7 +368,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                   MaterialPageRoute(
                     builder: (context) => CreateVariantScreen(
                       companyItemId: detail.companyItemId,
-                      userId: _user.uuid!,
+                      userId: _user.id!,
                     ),
                   ),
                 );
@@ -436,7 +437,7 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
             MaterialPageRoute(
               builder: (_) => VariantDetailScreen(
                 variantId: v.variantId,
-                userId: _user.uuid!,
+                userId: _user.id!,
               ),
             ),
           );

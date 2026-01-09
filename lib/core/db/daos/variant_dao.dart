@@ -173,6 +173,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
           final unitsCount = countsMap[c.id] ?? 0;
 
           return VariantComponentRow(
+            variantId: d.vc.variantId,
             componentId: c.id,
             name: c.name,
             manufCode: c.manufCode,
@@ -237,8 +238,10 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
         final p = info.product;
         final b = info.brand;
 
-        final compsSeparate = comps.where((c) => c.type == 'SEPARATE').toList();
-        final compsInBox = comps.where((c) => c.type == 'IN_BOX').toList();
+        final compsSeparate = comps
+            .where((c) => c.type == separateType)
+            .toList();
+        final compsInBox = comps.where((c) => c.type == inBoxType).toList();
 
         return VariantDetailRow(
           variantId: variant.id,
@@ -268,7 +271,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
     required String name,
     String? manufCode,
     String? specification,
-    String type = 'SEPARATE', // default SEPARATE
+    int type = separateType, // default SEPARATE
   }) async {
     final companion = ComponentsCompanion.insert(
       id: Uuid().v4(),
@@ -277,7 +280,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
       name: name,
       manufCode: Value(manufCode),
       specification: Value(specification),
-      type: type,
+      type: Value(type),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -288,7 +291,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
   /// Ambil list komponen untuk product tertentu dan type tertentu (non-stream)
   Future<List<Component>> getComponentsByProductAndType({
     required String productId,
-    required String type, // 'IN_BOX' atau 'SEPARATE'
+    required int type, // inBoxType atau separateType
   }) {
     return (select(
       components,
@@ -298,7 +301,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
   /// Watch variant_components (join) tapi hanya yang komponen type == given type
   Stream<List<VariantComponentRow>> watchVariantComponentsByType({
     required String variantId,
-    required String type, // 'IN_BOX' atau 'SEPARATE'
+    required String type, // inBoxType atau separateType
   }) {
     final q =
         (select(
@@ -329,6 +332,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
 
         res.add(
           VariantComponentRow(
+            variantId: variantId,
             componentId: c.id,
             name: c.name,
             manufCode: c.manufCode,
@@ -345,7 +349,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
   //GET COMPNENT ROW
   Future<List<VariantComponentRow>> getVariantComponentsByType({
     required String variantId,
-    required String type, // 'IN_BOX' atau 'SEPARATE'
+    required String type, // inBoxType atau separateType
   }) async {
     final q =
         (select(
@@ -377,6 +381,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
 
       res.add(
         VariantComponentRow(
+          variantId: variantId,
           componentId: c.id,
           name: c.name,
           manufCode: c.manufCode,
@@ -409,7 +414,7 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
         name: name,
         manufCode: manufCode,
         specification: specification,
-        type: 'IN_BOX',
+        type: inBoxType,
       );
 
       // 1.5) (optional) simpan photos ke tabel terpisah jika perlu

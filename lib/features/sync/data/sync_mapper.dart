@@ -169,7 +169,7 @@ ComponentsCompanion componentFromJson(Map<String, dynamic> json) {
     productId: Value(json['product_id'] as String),
     name: Value(json['name'] as String),
     brandId: Value(toStr(json['brand_id'])),
-    type: Value(json['type'] as String),
+    type: Value(json['type'] as int),
     manufCode: Value(toStr(json['manuf_code'])),
     specification: Value(toStr(json['spec_json'])),
     createdAt: Value(_parseDate(json['created_at']) ?? DateTime.now()),

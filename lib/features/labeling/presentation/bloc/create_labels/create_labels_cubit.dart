@@ -19,7 +19,7 @@ class LabelItem {
   final String itemName;
   final String rackName;
   final String companyCode;
-  int status; // 'PENDING' | 'PRINTED' | 'VALIDATED'
+  int status; // 'PENDING' | 'PRINTED' | validatedStatus
   int printCount;
 
   LabelItem({
@@ -55,11 +55,11 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
   Future<void> generate({
     required String variantId,
     required String companyCode,
-    required String rackId,
+    required String? rackId,
     required String rackName,
     required String itemName,
     required int qty,
-    required String userId,
+    required int userId,
     // Tambahan parameter nullable
     String? componentId,
     String? manufCode, // Opsional, untuk dimasukkan ke format QR component
@@ -332,7 +332,7 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
   }
 
   /// mark as printed (call after physical printing success)
-  Future<void> markPrinted(List<String> unitIds, String userId) async {
+  Future<void> markPrinted(List<String> unitIds, int userId) async {
     emit(state.copyWith(status: CreateLabelsStatus.printing));
     try {
       await repo.recordPrintedUnits(unitIds: unitIds, userId: userId);
@@ -373,7 +373,7 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
   //     return;
   //   }
 
-  //   if (match.status == 'VALIDATED') {
+  //   if (match.status == validatedStatus) {
   //     emit(
   //       state.copyWith(
   //         lastScanResult: ScanResult.duplicate('QR sudah tervalidasi'),
@@ -384,7 +384,7 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
 
   //   // mark validated locally (UI)
   //   final updated = state.items.map((it) {
-  //     if (it.id == match.id) return it.copyWith(status: 'VALIDATED');
+  //     if (it.id == match.id) return it.copyWith(status: validatedStatus);
   //     return it;
   //   }).toList();
 
@@ -418,7 +418,7 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
     LabelItem match = matches.first;
 
     // 3. Cek Status Duplicate
-    if (match.status == 'VALIDATED') {
+    if (match.status == validatedStatus) {
       emit(
         state.copyWith(
           lastScanResult: ScanResult.duplicate(
@@ -444,9 +444,9 @@ class CreateLabelsCubit extends Cubit<CreateLabelsState> {
   }
 
   /// finalize (save) all validated items -> set ACTIVE in DB
-  Future<void> finalize(String userId) async {
+  Future<void> finalize(int userId) async {
     final validatedIds = state.items
-        .where((i) => i.status == 'VALIDATED')
+        .where((i) => i.status == validatedStatus)
         .map((i) => i.id)
         .toList();
     if (validatedIds.isEmpty) {

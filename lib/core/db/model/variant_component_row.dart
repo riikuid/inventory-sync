@@ -1,5 +1,6 @@
 class VariantComponentRow {
   final String componentId;
+  final String variantId;
 
   // ID incremental Component dari server
   final int? componentRemoteId;
@@ -8,9 +9,10 @@ class VariantComponentRow {
   final String? manufCode;
   final String? brandName;
   final int totalUnits; // unit ACTIVE untuk komponen ini
-  final String type; // 'IN_BOX' or 'SEPARATE'
+  final int type; // inBoxType or separateType
 
   VariantComponentRow({
+    required this.variantId,
     required this.componentId,
     this.componentRemoteId,
     required this.name,

@@ -1,6 +1,7 @@
 // lib/features/inventory/presentation/screens/variant_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_sync_apps/core/constant.dart';
 
 import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
 import 'package:inventory_sync_apps/core/utils/loading_overlay.dart';
@@ -22,7 +23,7 @@ import '../bloc/variant_detail/variant_detail_cubit.dart';
 
 class VariantDetailScreen extends StatelessWidget {
   final String variantId;
-  final String userId;
+  final int userId;
 
   const VariantDetailScreen({
     super.key,
@@ -50,7 +51,7 @@ class VariantDetailScreen extends StatelessWidget {
 }
 
 class _VariantDetailView extends StatelessWidget {
-  final String userId;
+  final int userId;
   const _VariantDetailView({required this.userId});
 
   @override
@@ -299,7 +300,7 @@ class _VariantDetailView extends StatelessWidget {
             // ignore: unnecessary_null_comparison
             if ((d.rackName != null) || (d.uom != null))
               Text(
-                '${d.uom}${'  •  ${d.rackName}'}',
+                '${d.uom} ${d.rackName == null ? '' : '  •  ${d.rackName}'}',
                 style: TextStyle(
                   color: Colors.grey.shade700,
                   fontWeight: FontWeight.w500,
@@ -434,7 +435,7 @@ class _VariantDetailView extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          ComponentPickerScreen(type: 'IN_BOX', variant: d),
+                          ComponentPickerScreen(type: inBoxType, variant: d),
                     ),
                   );
                   if (result != null) {
@@ -504,7 +505,7 @@ class _VariantDetailView extends StatelessWidget {
                       await repo.attachComponentToVariant(
                         componentId: result,
                         variantId: d.variantId,
-                        // type: 'SEPARATE',
+                        // type: separateType,
                       );
                     }
                   }
@@ -661,14 +662,14 @@ class _VariantDetailView extends StatelessWidget {
             //       context,
             //       MaterialPageRoute(
             //         builder: (_) =>
-            //             ComponentPickerScreen(type: 'SEPARATE', variant: d),
+            //             ComponentPickerScreen(type: separateType, variant: d),
             //       ),
             //     );
             //     if (result != null) {
             //       await repo.attachComponentToVariant(
             //         componentId: result,
             //         variantId: d.variantId,
-            //         // type: 'SEPARATE',
+            //         // type: separateType,
             //       );
             //     }
             //   },
@@ -699,14 +700,14 @@ class _VariantDetailView extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          ComponentPickerScreen(type: 'SEPARATE', variant: d),
+                          ComponentPickerScreen(type: separateType, variant: d),
                     ),
                   );
                   if (result != null) {
                     await repo.attachComponentToVariant(
                       componentId: result,
                       variantId: d.variantId,
-                      // type: 'SEPARATE',
+                      // type: separateType,
                     );
                   }
                 },

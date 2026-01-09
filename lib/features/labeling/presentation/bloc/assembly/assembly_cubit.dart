@@ -22,7 +22,7 @@ class AssemblyCubit extends Cubit<AssemblyState> {
     required List<VariantComponentRow> inBoxComponents,
     required String variantRackId,
     required String variantRackName,
-    required String userId, // Butuh userId untuk create unit
+    required int userId, // Butuh userId untuk create unit
     required String companyCode, // Butuh companyCode untuk create unit
   }) async {
     emit(state.copyWith(status: AssemblyStatus.loading));
@@ -105,7 +105,7 @@ class AssemblyCubit extends Cubit<AssemblyState> {
   /// Return: Object Unit (agar UI bisa kirim ke PrinterCubit)
   Future<Unit?> generateComponentUnit({
     required int index,
-    required String userId,
+    required int userId,
     required String companyCode,
   }) async {
     final item = state.components[index];
@@ -193,7 +193,7 @@ class AssemblyCubit extends Cubit<AssemblyState> {
   }
 
   Future<Unit?> createDraftSet({
-    required String userId,
+    required int userId,
     required String companyCode,
     required String rackId,
     required String rackName,
@@ -229,7 +229,7 @@ class AssemblyCubit extends Cubit<AssemblyState> {
 
   /// 4. Finalisasi: Buat Unit Parent (Set) & Link Children
   Future<Unit?> createFinalSet({
-    required String userId,
+    required int userId,
     required String companyCode,
     required String rackId,
     required String rackName,

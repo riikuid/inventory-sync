@@ -10,6 +10,7 @@ import '../../../core/db/daos/unit_dao.dart';
 import '../../../core/db/daos/variant_dao.dart';
 import '../../../core/db/daos/variant_photo_dao.dart';
 import '../../../core/db/model/variant_component_row.dart';
+import '../../sync/data/sync_repository.dart';
 import 'models/assembly_result.dart';
 import 'models/scan_unit_result.dart';
 
@@ -28,9 +29,9 @@ class LabelingRepository {
   Future<List<Unit>> generateBatchLabels({
     required String variantId,
     required String companyCode,
-    required String rackId,
+    String? rackId,
     required int qty,
-    required String userId,
+    required int userId,
     // Parameter Opsional untuk Component Mode
     String? componentId,
     String? manufCode,
@@ -70,7 +71,7 @@ class LabelingRepository {
           status: const Value(pendingStatus),
 
           // Audit Trails
-          createdBy: Value(userId),
+          createdBy: Value(userId.toString()),
           createdAt: now,
           updatedAt: now,
 
@@ -91,14 +92,14 @@ class LabelingRepository {
 
   Future<void> recordPrintedUnits({
     required List<String> unitIds,
-    required String userId,
+    required int userId,
   }) async {
     return db.unitDao.markUnitsPrinted(unitIds, userId);
   }
 
   Future<void> finalizeValidatedUnits({
     required List<String> unitIds,
-    required String userId,
+    required int userId,
   }) async {
     // Gunakan transaction untuk menjamin data konsisten
     await db.transaction(() async {
@@ -152,7 +153,7 @@ class LabelingRepository {
     String? specification,
     String? manufCode,
     required List<String> photoLocalPaths,
-    required String userId,
+    required int userId,
   }) async {
     final now = DateTime.now();
     if (photoLocalPaths.isEmpty) {
@@ -239,6 +240,7 @@ class LabelingRepository {
     );
 
     await _unitDao.insertUnit(companion);
+
     return unitId;
   }
 
@@ -267,7 +269,7 @@ class LabelingRepository {
   Future<AssemblyResult> assembleComponents({
     required String variantId,
     required List<String> componentUnitIds,
-    required String userId,
+    required int userId,
     required String rackId,
     required String rackName,
   }) async {
@@ -288,8 +290,8 @@ class LabelingRepository {
         qrValue: Value(parentQr),
         status: const Value(pendingStatus),
         rackId: Value(rackId),
-        createdBy: Value(userId),
-        updatedBy: Value(userId),
+        createdBy: Value(userId.toString()),
+        updatedBy: Value(userId.toString()),
         lastModifiedAt: Value(now),
         needSync: const Value(true),
         createdAt: Value(now),

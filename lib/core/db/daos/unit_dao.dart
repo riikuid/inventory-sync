@@ -139,7 +139,7 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
   }
 
   /// Mark units as printed (increment printCount, update lastPrintedAt/by)
-  Future<void> markUnitsPrinted(List<String> unitIds, String userId) async {
+  Future<void> markUnitsPrinted(List<String> unitIds, int userId) async {
     if (unitIds.isEmpty) return;
     final now = DateTime.now();
     // read current values first (so we can increment)
@@ -153,7 +153,7 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
         UnitsCompanion(
           printCount: Value(newCount),
           lastPrintedAt: Value(now),
-          lastPrintedBy: Value(userId),
+          lastPrintedBy: Value(userId.toString()),
           status: Value(printedStatus),
           updatedAt: Value(now),
           lastModifiedAt: Value(now),
@@ -164,13 +164,13 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
   }
 
   /// After validation (when all scanned), mark units ACTIVE
-  Future<void> markUnitsActive(List<String> unitIds, String userId) async {
+  Future<void> markUnitsActive(List<String> unitIds, int userId) async {
     if (unitIds.isEmpty) return;
     final now = DateTime.now();
     await (update(units)..where((u) => u.id.isIn(unitIds))).write(
       UnitsCompanion(
         status: Value(activeStatus),
-        updatedBy: Value(userId),
+        updatedBy: Value(userId.toString()),
         updatedAt: Value(now),
         lastModifiedAt: Value(now),
         needSync: const Value(true),
@@ -246,7 +246,7 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
   Future<void> bindUnitsToParent({
     required String parentUnitId,
     required List<String> componentUnitIds,
-    required String userId,
+    required int userId,
     required DateTime now,
   }) async {
     if (componentUnitIds.isEmpty) return;
@@ -255,7 +255,7 @@ class UnitDao extends DatabaseAccessor<AppDatabase> with _$UnitDaoMixin {
       UnitsCompanion(
         parentUnitId: Value(parentUnitId),
         status: const Value(activeStatus),
-        updatedBy: Value(userId),
+        updatedBy: Value(userId.toString()),
         updatedAt: Value(now),
         lastModifiedAt: Value(now),
         needSync: const Value(true),

@@ -24,7 +24,7 @@ class InventoryRepository {
 
   CompanyItemDao get _companyItemDao => db.companyItemDao;
   VariantDao get _variantDao => db.variantDao;
-  VariantComponentDao get _variantComponentDao => db.variantComponentDao;
+  // VariantComponentDao get _variantComponentDao => db.variantComponentDao;
 
   ComponentDao get _componentDao => db.componentDao;
   ComponentPhotoDao get _componentPhotoDao => db.componentPhotoDao;
@@ -247,6 +247,8 @@ class InventoryRepository {
       categoryName = category?.name;
     }
 
+    dev.log('cateogryId: ${item.toJsonString()}');
+
     // 4. Ambil Default Rack Name
     String? defaultRackName;
     if (item.defaultRackId != null) {
@@ -277,6 +279,7 @@ class InventoryRepository {
       final myComponents = componentRows.map((row) {
         final c = row.readTable(db.components);
         return VariantComponentRow(
+          variantId: v.id,
           componentId: c.id,
           name: c.name,
           manufCode: c.manufCode,
@@ -343,8 +346,8 @@ class InventoryRepository {
     );
   }
 
-  Stream<List<CompanyItemListRow>> watchCompanyItems({String? productId}) {
-    return _companyItemDao.watchCompanyItemsWithStock(productId: productId);
+  Stream<List<CompanyItemListRow>> watchCompanyItems() {
+    return _companyItemDao.watchDashboardItems();
   }
 
   Stream<List<CompanyItemVariantRow>> watchVariantsWithStockForItem(
@@ -363,7 +366,7 @@ class InventoryRepository {
     required String name,
     String? manufCode,
     String? specification,
-    String type = 'SEPARATE',
+    int type = separateType,
   }) {
     return _variantDao.createComponentForProduct(
       productId: productId,
@@ -399,7 +402,7 @@ class InventoryRepository {
     required String productId,
     String? brandId,
     required String name,
-    required String type,
+    required int type,
     String? manufCode,
     String? specification,
     required List<String> photos,
@@ -460,7 +463,7 @@ class InventoryRepository {
 
   Future<List<Component>> getComponentsByProductAndType({
     required String productId,
-    required String type,
+    required int type,
   }) {
     return _variantDao.getComponentsByProductAndType(
       productId: productId,
@@ -498,7 +501,7 @@ class InventoryRepository {
     required String name,
     String? manufCode,
     String? specification,
-    String? type,
+    int? type,
   }) {
     return _variantDao.createComponentForProduct(
       productId: productId,
@@ -506,7 +509,7 @@ class InventoryRepository {
       name: name,
       manufCode: manufCode,
       specification: specification,
-      type: type ?? 'SEPARATE',
+      type: type ?? separateType,
     );
   }
 

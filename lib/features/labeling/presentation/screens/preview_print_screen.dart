@@ -5,6 +5,7 @@ import 'dart:developer';
 import 'package:ellipsized_text/ellipsized_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_sync_apps/core/constant.dart';
 import 'package:inventory_sync_apps/core/styles/app_style.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
@@ -17,7 +18,7 @@ import '../../../printer/presentation/bloc/printer_cubit.dart';
 import '../bloc/create_labels/create_labels_cubit.dart';
 
 class PreviewPrintScreen extends StatefulWidget {
-  final String userId;
+  final int userId;
 
   final String companyCode;
   final String manufcode;
@@ -44,7 +45,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
   ) async {
     // 1. Filter item yang belum divalidasi (bisa print ulang item pending/printed)
     final itemsToPrint = labelsCubit.state.items
-        .where((i) => i.status != 'VALIDATED')
+        .where((i) => i.status != validatedStatus)
         .toList();
 
     if (itemsToPrint.isEmpty) {
@@ -162,15 +163,15 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
             builder: (contextCreateLabel, labelsState) {
               final total = labelsState.items.length;
               final validatedCount = labelsState.items
-                  .where((i) => i.status == 'VALIDATED')
+                  .where((i) => i.status == validatedStatus)
                   .length;
               final isAllValidated = total > 0 && validatedCount == total;
               final isAllPending = labelsState.items.every(
-                (i) => i.status == 'PENDING',
+                (i) => i.status == pendingStatus,
               );
               // Cek apakah minimal ada 1 yg PRINTED atau VALIDATED untuk mengaktifkan tombol Validasi
               final isAnyPrinted = labelsState.items.any(
-                (i) => i.status == 'PRINTED' || i.status == 'VALIDATED',
+                (i) => i.status == printedStatus || i.status == validatedStatus,
               );
 
               return WillPopScope(
@@ -355,12 +356,12 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
     String statusText;
 
     switch (item.status) {
-      case 'VALIDATED':
+      case validatedStatus:
         statusColor = Colors.green;
         statusIcon = Icons.check_circle;
         statusText = "Valid";
         break;
-      case 'PRINTED':
+      case printedStatus:
         statusColor = Colors.orange;
         statusIcon = Icons.print;
         statusText = "Printed";
@@ -506,6 +507,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
   }
 
   // --- WIDGET: BOTTOM BUTTONS ---
+
   Widget _buildBottomBar(
     BuildContext context,
     PrinterState printerState,
@@ -800,7 +802,7 @@ class _ScannerModalState extends State<ScannerModal> {
         // Cek Kelengkapan
         final total = state.items.length;
         final validated = state.items
-            .where((i) => i.status == 'VALIDATED')
+            .where((i) => i.status == validatedStatus)
             .length;
 
         if (validated == total) {

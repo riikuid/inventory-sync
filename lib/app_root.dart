@@ -27,9 +27,15 @@ class _AppRootState extends State<AppRoot> {
     return BlocBuilder<AuthCubit, AuthState>(
       builder: (_, state) {
         if (state is AuthInitial || state is AuthLoading) {
-          return StartupScreen(
-            message: state is AuthLoading ? state.message : "Loading...",
-          );
+          double p = 0.0;
+          String m = "Loading...";
+
+          if (state is AuthLoading) {
+            m = state.message;
+            p = state.progress;
+          }
+
+          return StartupScreen(message: m, progress: p);
         }
 
         if (state is UnAuthorized) return const LoginScreen();

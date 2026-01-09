@@ -10,7 +10,7 @@ import '../../../../core/db/daos/company_item_dao.dart';
 import '../../../../core/styles/app_style.dart';
 import '../../../../core/styles/color_scheme.dart';
 import '../../../auth/models/user.dart';
-import '../../../inventory/presentation/screens/company_item_detail_screen.dart';
+import '../../../company_item/presentation/screen/company_item_detail_screen.dart';
 import '../../../variant/presentation/screen/create_variant_screen.dart';
 
 class CompanyItemCard extends StatelessWidget {
@@ -35,7 +35,7 @@ class CompanyItemCard extends StatelessWidget {
             MaterialPageRoute(
               builder: (context) => CreateVariantScreen(
                 companyItemId: row.companyItemId,
-                userId: _user.uuid!,
+                userId: _user.id!,
                 productName: row.productName,
                 companyCode: row.companyCode,
                 isSetUp: true,
@@ -124,31 +124,38 @@ class CompanyItemCard extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             // Right pill stock
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: needToSetupVariant
-                    ? AppColors.secondary.withAlpha(70)
-                    : AppColors.accent,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  width: 1.0,
-                  color: needToSetupVariant
-                      ? AppColors.secondary
-                      : AppColors.focusRing,
-                ),
-              ),
-              child: Text(
-                needToSetupVariant ? '+ Tambah' : '${row.totalUnits} Unit',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: needToSetupVariant
-                      ? AppColors.onAccent
-                      : AppColors.primary,
-                ),
-              ),
-            ),
+            needToSetupVariant
+                ? Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: needToSetupVariant
+                          ? AppColors.secondary.withAlpha(70)
+                          : AppColors.accent,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        width: 1.0,
+                        color: needToSetupVariant
+                            ? AppColors.secondary
+                            : AppColors.focusRing,
+                      ),
+                    ),
+                    child: Text(
+                      needToSetupVariant
+                          ? '+ Tambah'
+                          : '${row.totalUnits} Unit',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: needToSetupVariant
+                            ? AppColors.onAccent
+                            : AppColors.primary,
+                      ),
+                    ),
+                  )
+                : SizedBox(),
           ],
         ),
       ),

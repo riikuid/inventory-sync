@@ -11,8 +11,11 @@ class SyncService {
       (dio) => dio.get(
         '/sync/pull',
         queryParameters: sinceIso != null ? {'since': sinceIso} : null,
+        options: Options(extra: {'silent': true}),
       ),
+
       parse: (data) => data as Map<String, dynamic>,
+      isSilent: true,
     );
   }
 

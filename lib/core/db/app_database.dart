@@ -1,3 +1,4 @@
+// lib/core/db/app_database.dart
 import 'dart:developer' as dev;
 import 'dart:io';
 import 'package:drift/drift.dart';
@@ -37,6 +38,7 @@ part 'app_database.g.dart';
     ComponentPhotos,
     VariantComponents,
     Units,
+    DashboardItemsCache, // ✅ Sudah ada
     SyncMetadata,
   ],
   daos: [
@@ -54,21 +56,55 @@ part 'app_database.g.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
+  // ✅ Constructor default - UBAH JADI TANPA PARAMETER
   AppDatabase() : super(_openConnection());
+
+  // ✅ Constructor untuk isolate - TAMBAHKAN INI
+  AppDatabase.forIsolate(String dbPath)
+    : super(NativeDatabase.createInBackground(File(dbPath)));
 
   @override
   int get schemaVersion => 1;
+
+  // ==================== PATH MANAGEMENT ====================
+
+  // ✅ Cache path database
+  static String? _databasePath;
+
+  // ✅ Getter untuk mendapatkan path
+  static String get databasePath {
+    if (_databasePath == null) {
+      throw StateError(
+        'Database path not initialized. Call getDatabasePath() first.',
+      );
+    }
+    return _databasePath!;
+  }
+
+  // ✅ Method async untuk mendapatkan dan menyimpan path
+  static Future<String> getDatabasePath() async {
+    if (_databasePath != null) return _databasePath!;
+
+    final dir = await getApplicationDocumentsDirectory();
+    _databasePath = p.join(dir.path, 'inventory.db');
+
+    dev.log('📁 Database path initialized: $_databasePath');
+
+    return _databasePath!;
+  }
 }
 
+// ✅ Fungsi _openConnection() tetap di luar (sesuai struktur asli)
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dir = await getApplicationDocumentsDirectory();
     final file = File(p.join(dir.path, 'inventory.db'));
-    // print('DEBUG: inventory DB path -> ${file.path}');
+
     dev.log('DEBUG: inventory DB path -> ${file.path}');
+
+    // ✅ Simpan path ke static variable saat pertama kali dibuka
+    AppDatabase._databasePath = file.path;
+
     return NativeDatabase.createInBackground(file);
   });
 }
-
-// optional tapi enak: re-export supaya di-import dari sini pun keliatan tables-nya
-// export 'tables.dart';

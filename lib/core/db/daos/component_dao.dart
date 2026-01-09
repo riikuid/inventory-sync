@@ -20,7 +20,7 @@ class ComponentDao extends DatabaseAccessor<AppDatabase>
   /// Watch komponen untuk product + type (stream) — dipakai UI yang butuh realtime
   Stream<List<ComponentWithBrandAndStock>> watchComponentsByProductAndType({
     required String productId,
-    required String type,
+    required int type,
     required String? search,
   }) {
     final hasSearch = search != null && search.trim().isNotEmpty;

@@ -181,8 +181,8 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     ).then((result) async {
       if (result.isSuccess) {
-        await _authCubit.checkAuthAndStartup();
         LoadingOverlay.hide();
+        await _authCubit.checkAuthAndStartup();
         // CustomToast.success(context, description: result.resultValue?.message);
         // context.pushReplacement(RouteName.layoutScreen);
       } else {

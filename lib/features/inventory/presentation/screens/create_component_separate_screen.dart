@@ -4,6 +4,7 @@ import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/constant.dart';
 import '../../../../core/db/daos/variant_dao.dart';
 import '../../../../core/db/model/variant_detail_row.dart';
 import '../../../../core/styles/text_theme.dart';
@@ -176,7 +177,7 @@ class _CreateComponentSeparateScreenState
 
             final result = ComponentRequest(
               name: _nameController.text.trim(),
-              type: 'SEPARATE',
+              type: separateType,
               manufCode: _codeController.text.trim(),
               specification: _specController.text.trim(),
               pathPhotos: List<String>.from(_photos),

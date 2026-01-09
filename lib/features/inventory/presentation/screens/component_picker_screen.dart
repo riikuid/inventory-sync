@@ -8,8 +8,8 @@ import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
 import 'package:inventory_sync_apps/features/inventory/presentation/screens/create_component_separate_screen.dart';
 import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.dart';
 import 'package:inventory_sync_apps/shared/presentation/widgets/search_field_widget.dart';
+import '../../../../core/constant.dart';
 import '../../../../core/db/model/variant_detail_row.dart';
-import '../../../../core/styles/app_style.dart';
 import '../../../../core/db/app_database.dart';
 import '../../../../core/styles/text_theme.dart';
 import '../../data/inventory_repository.dart';
@@ -18,7 +18,7 @@ import '../widget/separate_component_card.dart';
 import 'create_component_in_box_screen.dart';
 
 class ComponentPickerScreen extends StatefulWidget {
-  final String type;
+  final int type;
   final VariantDetailRow variant;
   const ComponentPickerScreen({
     super.key,
@@ -84,7 +84,7 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
           ),
         ),
         title: Text(
-          'Pilih ${widget.type == 'IN_BOX' ? 'Isi' : 'Komponen'}',
+          'Pilih ${widget.type == inBoxType ? 'Isi' : 'Komponen'}',
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.mono.copyWith(
             color: AppColors.onSurface,
@@ -100,7 +100,7 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
       //   color: AppColors.primary,
       //   width: 150,
       //   child: Text(
-      //     '+  Tambah ${widget.type == 'IN_BOX' ? 'Isi' : 'Komponen'}',
+      //     '+  Tambah ${widget.type == inBoxType ? 'Isi' : 'Komponen'}',
       //     style: TextStyle(
       //       color: AppColors.surface,
       //       fontWeight: FontWeight.w600,
@@ -113,7 +113,7 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
       //       context,
       //       MaterialPageRoute(
       //         builder: (_) {
-      //           if (widget.type == 'IN_BOX') {
+      //           if (widget.type == inBoxType) {
       //             return CreateComponentInBoxScreen(
       //               variantDetailRow: widget.variant,
       //             );
@@ -135,7 +135,7 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
       //         specification: result.specification?.trim(),
       //         variantId: widget.variant.variantId,
       //         photos: result.pathPhotos,
-      //         // type: 'IN_BOX',
+      //         // type: inBoxType,
       //       );
       //       if (mounted) Navigator.pop(context);
       //     }
@@ -160,7 +160,7 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
               context,
               MaterialPageRoute(
                 builder: (_) {
-                  if (widget.type == 'IN_BOX') {
+                  if (widget.type == inBoxType) {
                     return CreateComponentInBoxScreen(
                       variantDetailRow: widget.variant,
                     );
@@ -182,13 +182,13 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
                 specification: result.specification?.trim(),
                 variantId: widget.variant.variantId,
                 photos: result.pathPhotos,
-                // type: 'IN_BOX',
+                // type: inBoxType,
               );
               if (mounted) Navigator.pop(context);
             }
           },
           child: Text(
-            '+  TAMBAH ${widget.type == 'IN_BOX' ? 'ISI' : 'KOMPONEN'}',
+            '+  TAMBAH ${widget.type == inBoxType ? 'ISI' : 'KOMPONEN'}',
             style: TextStyle(
               letterSpacing: 1.1,
               color: AppColors.surface,
@@ -200,7 +200,7 @@ class _ComponentPickerScreenState extends State<ComponentPickerScreen> {
       ),
       body: Column(
         children: [
-          widget.type == 'IN_BOX'
+          widget.type == inBoxType
               ? _buildInBoxHeader()
               : _buildSeparateHeader(),
           Padding(

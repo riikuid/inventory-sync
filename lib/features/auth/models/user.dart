@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 class User {
-  String? uuid;
+  int? id;
   String? name;
   String? username;
   String? email;
@@ -10,7 +10,7 @@ class User {
   String? role;
 
   User({
-    this.uuid,
+    this.id,
     this.name,
     this.username,
     this.email,
@@ -22,7 +22,7 @@ class User {
   factory User.fromRawJson(String str) => User.fromJson(json.decode(str));
 
   factory User.fromJson(Map<String, dynamic> json) => User(
-    uuid: json["uuid"],
+    id: json["id"],
     name: json["name"],
     username: json["username"],
     email: json["email"],
@@ -36,7 +36,7 @@ class User {
   );
 
   Map<String, dynamic> toJson() => {
-    "uuid": uuid,
+    "id": id,
     "name": name,
     "username": username,
     "email": email,

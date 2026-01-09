@@ -33,6 +33,10 @@ const componentsPrefix = 'CO';
 const componentPhotosPrefix = 'CP';
 const unitsPrefix = 'UN';
 
+// COMPONENT TYPE
+const inBoxType = 1;
+const separateType = 2;
+
 // UNIT STATUS
 const activeStatus = 1;
 const pendingStatus = 0;

@@ -111,6 +111,11 @@ class CompanyItems extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<Set<Column>> get indexes => [
+    {productId}, // Index untuk JOIN
+  ];
 }
 
 class Variants extends Table {
@@ -134,6 +139,11 @@ class Variants extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<Set<Column>> get indexes => [
+    {companyItemId},
+  ];
 }
 
 class VariantPhotos extends Table {
@@ -166,7 +176,8 @@ class Components extends Table {
   TextColumn get id => text()(); // UUID
   TextColumn get productId => text()(); // FK -> Products.id
   TextColumn get name => text()(); // "Cone 14276"
-  TextColumn get type => text()(); // "IN_BOX", "SEPARATE"
+  IntColumn get type =>
+      integer().withDefault(const Constant(1))(); // "1: IN_BOX", "2: SEPARATE"
   TextColumn get brandId => text().nullable()();
   TextColumn get manufCode => text().nullable()(); // "14276"
   TextColumn get specification => text().nullable()();
@@ -259,6 +270,36 @@ class Units extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<Set<Column>> get indexes => [
+    {variantId, status}, // Composite index untuk query cepat
+  ];
+}
+
+// Tambahkan tabel baru di tables.dart
+class DashboardItemsCache extends Table {
+  TextColumn get companyItemId => text()();
+  TextColumn get companyCode => text()();
+  TextColumn get productName => text()();
+  TextColumn get categoryName => text().nullable()();
+  TextColumn get defaultRackName => text().nullable()();
+
+  IntColumn get totalUnits => integer().withDefault(const Constant(0))();
+  IntColumn get totalVariants => integer().withDefault(const Constant(0))();
+
+  DateTimeColumn get lastUpdatedAt => dateTime()();
+
+  // 0 = default sort, 1 = recent/priority
+  IntColumn get displayPriority => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {companyItemId};
+
+  @override
+  List<Set<Column>> get indexes => [
+    {displayPriority, lastUpdatedAt}, // Composite index untuk sorting cepat
+  ];
 }
 
 /// Untuk simpan meta sync (misal last pull/push timestamp)

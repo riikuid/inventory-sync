@@ -11,7 +11,7 @@ part 'create_variant_state.dart';
 class CreateVariantCubit extends Cubit<CreateVariantState> {
   final LabelingRepository labelingRepository;
   final String companyItemId;
-  final String userId;
+  final int userId;
   final bool isSetUp;
   final String? defaultRackId;
   final String? defaultRackName;

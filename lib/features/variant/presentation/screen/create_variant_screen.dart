@@ -17,12 +17,12 @@ import '../../../../shared/models/selected_brand_result.dart';
 import '../../../../shared/models/selected_rack_result.dart';
 import '../../../../shared/presentation/screen/brand_picker_screen.dart';
 import '../../../../shared/presentation/screen/rack_picker_screen.dart';
-import '../../../inventory/presentation/screens/company_item_detail_screen.dart';
+import '../../../company_item/presentation/screen/company_item_detail_screen.dart';
 import '../bloc/create_variant/create_variant_cubit.dart';
 
 class CreateVariantScreen extends StatefulWidget {
   final String companyItemId;
-  final String userId;
+  final int userId;
   final String? companyCode;
   final String? productName; // auto base (ex: "Bearing")
   final String? defaultRackId;

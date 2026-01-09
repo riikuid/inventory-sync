@@ -482,34 +482,7 @@ class _CompanyItemSection extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               final item = items[index];
-              return CompanyItemCard(
-                row: item,
-                // onTap: () {
-                //   dev.log('TOTAL VARIANT: ${item.totalVariants}');
-                //   if (item.totalVariants == 0) {
-                //     Navigator.push(
-                //       context,
-                //       MaterialPageRoute(
-                //         builder: (context) => CreateVariantScreen(
-                //           companyItemId: item.companyItemId,
-                //           userId: 'SDWDSD',
-                //           productName: item.productName,
-                //           companyCode: item.companyCode,
-                //         ),
-                //       ),
-                //     );
-                //   } else {
-                //     Navigator.push(
-                //       context,
-                //       MaterialPageRoute(
-                //         builder: (_) => CompanyItemDetailScreen(
-                //           companyItemId: item.companyItemId,
-                //         ),
-                //       ),
-                //     );
-                //   }
-                // },
-              );
+              return CompanyItemCard(row: item);
             },
           ),
       ],
