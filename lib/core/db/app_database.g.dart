@@ -1274,6 +1274,8 @@ class Rack extends DataClass implements Insertable<Rack> {
           other.id == this.id &&
           other.name == this.name &&
           other.warehouseId == this.warehouseId);
+
+  void operator [](String other) {}
 }
 
 class RacksCompanion extends UpdateCompanion<Rack> {

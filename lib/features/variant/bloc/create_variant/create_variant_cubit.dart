@@ -4,7 +4,7 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../labeling/data/labeling_repository.dart';
+import '../../../labeling/data/labeling_repository.dart';
 
 part 'create_variant_state.dart';
 
@@ -122,7 +122,7 @@ class CreateVariantCubit extends Cubit<CreateVariantState> {
   }
 
   bool get canSubmit =>
-      state.rackId != null &&
+      // state.rackId != null &&
       state.name.trim().isNotEmpty &&
       state.uom != null &&
       state.photos.isNotEmpty; // minimal 3
@@ -138,7 +138,7 @@ class CreateVariantCubit extends Cubit<CreateVariantState> {
         brandId: state.brandId,
         variantName: state.name,
         uom: state.uom!,
-        rackId: state.rackId!,
+        rackId: state.rackId,
         specification: state.specification,
         manufCode: state.manufCode,
         photoLocalPaths: state.photos,

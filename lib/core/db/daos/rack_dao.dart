@@ -23,14 +23,33 @@ class RackDao extends DatabaseAccessor<AppDatabase> with _$RackDaoMixin {
     return (select(racks)..where((r) => r.id.equals(id))).getSingleOrNull();
   }
 
-  /// Cari rack berdasarkan nama atau department code atau lokasi
-  // Future<List<Rack>> searchByQuery(String query) {
-  //   final q = '%${query.trim()}%';
-  //   return (select(racks)..where(
-  //         (r) => r.name.like(q) | r.code.like(q) | r.departmentCode.like(q),
-  //       ))
-  //       .get();
+  // Atau jika perlu informasi lengkap dengan warehouse:
+  // Future<Map<String, dynamic>?> getRackWithDetails(String rackId) async {
+  //   final query = select(racks).join([
+  //     leftOuterJoin(warehouses, warehouses.id.equalsExp(racks.warehouseId)),
+  //     leftOuterJoin(departments, departments.id.equalsExp(racks.departmentId)),
+  //     leftOuterJoin(sections, sections.id.equalsExp(racks)),
+  //   ])..where(racks.id.equals(rackId));
+
+  //   final result = await query.getSingleOrNull();
+  //   if (result == null) return null;
+
+  //   final rack = result.readTable(racks);
+  //   final warehouse = result.readTableOrNull(warehouses);
+  //   final department = result.readTableOrNull(departments);
+  //   final section = result.readTableOrNull(sections);
+
+  //   return {
+  //     'rack': rack,
+  //     'warehouse': warehouse,
+  //     'department': department,
+  //     'section': section,
+  //     'displayName':
+  //         '${rack.name ?? ""} - ${department?.name ?? ""} / ${section?.name ?? ""} / ${warehouse?.name ?? ""}',
+  //   };
   // }
+
+  /// Cari rack ber
 
   Stream<List<RackWithContext>> watchRacks({String? search}) {
     final base = select(racks).join([

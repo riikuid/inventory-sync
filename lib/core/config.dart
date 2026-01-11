@@ -9,9 +9,7 @@ import 'assets.dart';
 
 class Config {
   // production || development
-  static Mode mode = Mode.development;
-
-  static bool isProduction() => mode == Mode.production;
+  static Mode mode = Mode.production;
 
   init() async {
     if (mode == Mode.production) {
@@ -26,6 +24,8 @@ class Config {
       await dotenv.load(fileName: development);
     }
   }
+
+  static bool isProduction() => mode == Mode.production;
 }
 
 enum Mode { development, production }

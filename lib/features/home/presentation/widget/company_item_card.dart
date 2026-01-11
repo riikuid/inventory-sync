@@ -10,8 +10,8 @@ import '../../../../core/db/daos/company_item_dao.dart';
 import '../../../../core/styles/app_style.dart';
 import '../../../../core/styles/color_scheme.dart';
 import '../../../auth/models/user.dart';
-import '../../../company_item/presentation/screen/company_item_detail_screen.dart';
-import '../../../variant/presentation/screen/create_variant_screen.dart';
+import '../../../company_item/screen/company_item_detail_screen.dart';
+import '../../../variant/screen/create_variant_screen.dart';
 
 class CompanyItemCard extends StatelessWidget {
   final CompanyItemListRow row;

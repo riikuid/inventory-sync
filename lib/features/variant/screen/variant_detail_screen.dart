@@ -9,17 +9,18 @@ import 'package:inventory_sync_apps/features/inventory/presentation/screens/comp
 import 'package:inventory_sync_apps/features/labeling/presentation/bloc/create_labels/create_labels_cubit.dart';
 import 'package:inventory_sync_apps/features/labeling/presentation/screens/generate_label_screen.dart';
 import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.dart';
-import '../../../../core/db/app_database.dart';
-import '../../../../core/db/daos/variant_dao.dart';
-import '../../../../core/db/model/variant_detail_row.dart';
-import '../../../../core/styles/app_style.dart';
-import '../../../../core/styles/text_theme.dart';
-import '../../../../shared/presentation/widgets/image_carousel.dart';
-import '../../../labeling/data/labeling_repository.dart';
-import '../../../inventory/data/inventory_repository.dart';
-import '../../../labeling/presentation/bloc/assembly/assembly_cubit.dart';
-import '../../../labeling/presentation/screens/assembly_screen.dart';
+import '../../../core/db/app_database.dart';
+import '../../../core/db/daos/variant_dao.dart';
+import '../../../core/db/model/variant_detail_row.dart';
+import '../../../core/styles/app_style.dart';
+import '../../../core/styles/text_theme.dart';
+import '../../../shared/presentation/widgets/image_carousel.dart';
+import '../../labeling/data/labeling_repository.dart';
+import '../../inventory/data/inventory_repository.dart';
+import '../../labeling/presentation/bloc/assembly/assembly_cubit.dart';
+import '../../labeling/presentation/screens/assembly_screen.dart';
 import '../bloc/variant_detail/variant_detail_cubit.dart';
+import 'edit_variant_screen.dart';
 
 class VariantDetailScreen extends StatelessWidget {
   final String variantId;
@@ -108,7 +109,101 @@ class _VariantDetailView extends StatelessWidget {
                 ),
               ),
               foregroundColor: Colors.transparent,
+              actions: [
+                // Menu Edit
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_vert, color: AppColors.onSurface),
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      // Cek apakah variant sudah punya stok
+                      if (_hasStock(d)) {
+                        // Tampilkan warning jika sudah ada stok
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: Text(
+                              "Tidak Dapat Mengedit",
+                              style: AppTextStyles.mono.copyWith(
+                                color: AppColors.onSurface,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            content: Text(
+                              "Variant yang sudah memiliki stok tidak dapat diedit untuk menjaga konsistensi data.",
+                              style: TextStyle(
+                                color: AppColors.onBackground,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: Text(
+                                  "Mengerti",
+                                  style: TextStyle(
+                                    color: AppColors.primary,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      } else {
+                        // Navigate ke EditVariantScreen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EditVariantScreen(
+                              variantId: d.variantId,
+                              userId: userId,
+                              companyCode: d.companyCode,
+                              productName: d.name,
+                            ),
+                          ),
+                        ).then((result) {
+                          // Refresh jika berhasil edit
+                          if (result == true) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Variant berhasil diperbarui'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        });
+                      }
+                    }
+                  },
+                  itemBuilder: (BuildContext context) => [
+                    PopupMenuItem<String>(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.edit_outlined,
+                            size: 18,
+                            color: AppColors.onBackground,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Edit Variant',
+                            style: TextStyle(
+                              color: AppColors.onBackground,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+
             bottomNavigationBar: Container(
               padding: const EdgeInsets.all(16),
               width: double.infinity,

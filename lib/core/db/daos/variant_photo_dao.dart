@@ -16,6 +16,37 @@ class VariantPhotoDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  Future<List<VariantPhoto>> getPhotosByVariantId(String variantId) async {
+    return await (select(variantPhotos)
+          ..where((p) => p.variantId.equals(variantId) & p.deletedAt.isNull())
+          ..orderBy([(p) => OrderingTerm(expression: p.sortOrder)]))
+        .get();
+  }
+
+  /// Soft delete photo
+  Future<void> softDeletePhoto(String photoId) async {
+    await (update(variantPhotos)..where((p) => p.id.equals(photoId))).write(
+      VariantPhotosCompanion(
+        deletedAt: Value(DateTime.now()),
+        lastModifiedAt: Value(DateTime.now()),
+        needSync: const Value(true),
+      ),
+    );
+  }
+
+  /// Delete all photos for a variant (soft delete)
+  Future<void> softDeletePhotosByVariantId(String variantId) async {
+    await (update(
+      variantPhotos,
+    )..where((p) => p.variantId.equals(variantId))).write(
+      VariantPhotosCompanion(
+        deletedAt: Value(DateTime.now()),
+        lastModifiedAt: Value(DateTime.now()),
+        needSync: const Value(true),
+      ),
+    );
+  }
+
   Future<List<VariantPhoto>> getByVariant(String variantId) {
     return (select(variantPhotos)
           ..where((p) => p.variantId.equals(variantId))

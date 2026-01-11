@@ -12,8 +12,8 @@ import 'package:inventory_sync_apps/shared/presentation/widgets/text_field_widge
 import '../../../../shared/presentation/widgets/search_field_widget.dart';
 import '../../../home/presentation/widget/company_item_card.dart';
 import '../../../inventory/data/model/inventory_search_item.dart';
-import '../../../company_item/presentation/screen/company_item_detail_screen.dart';
-import '../../../variant/presentation/screen/create_variant_screen.dart';
+import '../../../company_item/screen/company_item_detail_screen.dart';
+import '../../../variant/screen/create_variant_screen.dart';
 import '../bloc/search_item_cubit.dart';
 
 class SearchItemScreen extends StatelessWidget {

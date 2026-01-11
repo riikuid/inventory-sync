@@ -3,6 +3,8 @@ import 'dart:developer' as dev;
 import 'package:drift/drift.dart';
 import 'package:inventory_sync_apps/core/constant.dart';
 import 'package:inventory_sync_apps/core/db/app_database.dart';
+import 'package:inventory_sync_apps/core/db/daos/brand_dao.dart';
+import 'package:inventory_sync_apps/core/db/daos/rack_dao.dart';
 import 'package:inventory_sync_apps/core/generate_custom_id.dart';
 
 import '../../../core/db/daos/company_item_dao.dart';
@@ -21,6 +23,8 @@ class LabelingRepository {
 
   CompanyItemDao get _companyItemDao => db.companyItemDao;
   VariantDao get _variantDao => db.variantDao;
+  BrandDao get _brandDao => db.brandDao;
+  RackDao get _rackDao => db.rackDao;
   VariantPhotoDao get _variantPhotoDao => db.variantPhotoDao;
   UnitDao get _unitDao => db.unitDao;
 
@@ -51,10 +55,10 @@ class LabelingRepository {
 
         if (componentId != null) {
           // --- CASE 1B: LABEL COMPONENT SEPARATE ---
-          qrResult = 'U1|$companyCode|$componentId';
+          qrResult = 'U$userId|$companyCode|$componentId';
         } else {
           // --- CASE 1A: LABEL VARIANT (SET) ---
-          qrResult = 'U1|$companyCode|$variantId';
+          qrResult = 'U$userId|$companyCode|$variantId';
         }
 
         dev.log(qrResult, name: 'QR RESULT');
@@ -140,7 +144,59 @@ class LabelingRepository {
     );
   }
 
-  // ... (Sisa method createVariant, createSetUnit, dll biarkan tetap ada seperti sebelumnya)
+  /// Get variant by ID untuk keperluan edit
+  Future<Variant?> getVariantById(String variantId) async {
+    return await _variantDao.getVariantById(variantId);
+  }
+
+  /// Get brand by ID
+  Future<Brand?> getBrandById(String brandId) async {
+    return await _brandDao.getById(brandId);
+  }
+
+  /// Get rack by ID
+  Future<Rack?> getRackById(String rackId) async {
+    return await _rackDao.getById(rackId);
+  }
+
+  /// Get variant photos by variant ID
+  Future<List<VariantPhoto>> getVariantPhotos(String variantId) async {
+    return await _variantPhotoDao.getPhotosByVariantId(variantId);
+  }
+
+  /// Update existing variant
+  Future<void> updateVariant({
+    required String variantId,
+    required String? brandId,
+    required String variantName,
+    required String uom,
+    String? rackId,
+    String? specification,
+    String? manufCode,
+    required int userId,
+  }) async {
+    final now = DateTime.now();
+
+    await db.transaction(() async {
+      // Update variant
+      final variantCompanion = VariantsCompanion(
+        id: Value(variantId),
+        brandId: Value(brandId),
+        name: Value(variantName),
+        uom: Value(uom),
+        rackId: Value(rackId),
+        specification: Value(specification),
+        manufCode: Value(manufCode),
+        updatedAt: Value(now),
+        lastModifiedAt: Value(now),
+        needSync: const Value(true),
+      );
+
+      await _variantDao.updateVariant(variantCompanion);
+
+      dev.log(variantCompanion.toString(), name: 'UPDATE VARIANT');
+    });
+  }
 
   /// Setup company_item (is_set, has_components) + create/update 1 variant + photos.
   Future<void> createVariant({
@@ -149,7 +205,7 @@ class LabelingRepository {
     required String? brandId,
     required String variantName,
     required String uom,
-    required String rackId,
+    String? rackId,
     String? specification,
     String? manufCode,
     required List<String> photoLocalPaths,
@@ -163,7 +219,7 @@ class LabelingRepository {
       final companyItem = await _companyItemDao.getById(companyItemId);
       if (companyItem == null) throw Exception('Company item not found');
 
-      if (isSetUp) {
+      if (isSetUp && companyItem.defaultRackId == null && rackId != null) {
         await _companyItemDao.updateDefaultRackCompanyItem(
           id: companyItemId,
           rackId: rackId,

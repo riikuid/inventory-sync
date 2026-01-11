@@ -5,12 +5,14 @@ import 'package:inventory_sync_apps/core/styles/app_style.dart';
 import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
 import 'package:inventory_sync_apps/core/styles/text_theme.dart';
 import 'package:inventory_sync_apps/features/inventory/data/inventory_repository.dart';
-import '../../../../core/user_storage.dart';
-import '../../../../shared/presentation/widgets/primary_button.dart';
-import '../../../auth/models/user.dart';
-import '../../../variant/presentation/screen/create_variant_screen.dart';
+import '../../../core/user_storage.dart';
+import '../../../shared/presentation/widgets/primary_button.dart';
+import '../../auth/models/user.dart';
+import '../../variant/screen/create_variant_screen.dart';
 import '../bloc/company_item_detail/company_item_detail_cubit.dart';
-import '../../../variant/presentation/screen/variant_detail_screen.dart';
+import '../../variant/screen/variant_detail_screen.dart';
+import '../bloc/edit_company_item/edit_company_item_cubit.dart';
+import 'edit_company_item_screen.dart';
 
 class CompanyItemDetailScreen extends StatefulWidget {
   final String companyItemId;
@@ -30,8 +32,18 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
     super.initState();
     final repo = context.read<InventoryRepository>();
     _cubit = CompanyItemDetailCubit(repo);
-    // start watching immediately
     _cubit.watchDetail(widget.companyItemId);
+
+    // Check rack setelah load pertama kali
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final state = _cubit.state;
+      if (state is CompanyItemDetailLoaded) {
+        if (state.detail.defaultRackId == null ||
+            (state.detail.defaultRackId ?? '').isEmpty) {
+          _showRackSetupDialog(context, state.detail);
+        }
+      }
+    });
   }
 
   @override
@@ -62,7 +74,6 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
               color: AppColors.onSurface,
             ),
           ),
-
           title: BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
             builder: (context, state) {
               if (state is CompanyItemDetailLoaded) {
@@ -79,6 +90,47 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
               return const Text('Item Detail');
             },
           ),
+          actions: [
+            // Menu Edit untuk atur lokasi
+            // BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
+            //   builder: (context, state) {
+            //     if (state is! CompanyItemDetailLoaded) {
+            //       return const SizedBox.shrink();
+            //     }
+
+            //     return PopupMenuButton<String>(
+            //       icon: Icon(Icons.more_vert, color: AppColors.onSurface),
+            //       onSelected: (value) {
+            //         if (value == 'edit_rack') {
+            //           _navigateToEditRack(context, state.detail);
+            //         }
+            //       },
+            //       itemBuilder: (BuildContext context) => [
+            //         PopupMenuItem<String>(
+            //           value: 'edit_rack',
+            //           child: Row(
+            //             children: [
+            //               Icon(
+            //                 Icons.edit_location_alt_outlined,
+            //                 size: 18,
+            //                 color: AppColors.onBackground,
+            //               ),
+            //               SizedBox(width: 8),
+            //               Text(
+            //                 'Atur Lokasi',
+            //                 style: TextStyle(
+            //                   color: AppColors.onBackground,
+            //                   fontSize: 14,
+            //                 ),
+            //               ),
+            //             ],
+            //           ),
+            //         ),
+            //       ],
+            //     );
+            //   },
+            // ),
+          ],
         ),
         bottomNavigationBar: Container(
           padding: const EdgeInsets.all(16),
@@ -219,14 +271,11 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [AppStyle.defaultBoxShadow],
       ),
-      // elevation: 1,
-      // shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // top row: badge + title + rack
             Row(
               children: [
                 Container(
@@ -238,7 +287,6 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                   ),
                   alignment: Alignment.center,
                   child: Text(
-                    // show last segment or short code from companyCode
                     detail.companyCode.split('-').last,
                     style: AppTextStyles.mono.copyWith(
                       fontWeight: FontWeight.w600,
@@ -262,42 +310,71 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                       const SizedBox(height: 2),
                       Text(
                         detail.categoryName,
-                        // 'dede',
                         style: const TextStyle(
                           fontWeight: FontWeight.w500,
                           fontSize: 14,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Row(
-                        spacing: 4,
-                        children: [
-                          const Icon(
-                            Icons.room_preferences_outlined,
-                            size: 14,
-                            color: AppColors.onMuted,
+
+                      // MODIFIKASI: Tampilkan button "Atur Lokasi" jika rack null
+                      if (detail.defaultRackName == null)
+                        CustomButton(
+                          elevation: 0,
+                          height: 28,
+                          radius: 8,
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderColor: AppColors.primary,
+                          onPressed: () => _navigateToEditRack(context, detail),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.add_location_alt_outlined,
+                                size: 14,
+                                color: AppColors.primary,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Atur Lokasi Item',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
                           ),
-                          Flexible(
-                            child: Text(
-                              detail.defaultRackName != null
-                                  ? detail.defaultRackName!
-                                  : 'Tidak ada lokasi',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade700,
-                                fontSize: 14,
+                        )
+                      else
+                        // Tampilkan lokasi jika sudah diset
+                        Row(
+                          spacing: 4,
+                          children: [
+                            const Icon(
+                              Icons.room_preferences_outlined,
+                              size: 14,
+                              color: AppColors.onMuted,
+                            ),
+                            Flexible(
+                              child: Text(
+                                detail.defaultRackName!,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey.shade700,
+                                  fontSize: 14,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
                     ],
                   ),
                 ),
               ],
             ),
-            // const SizedBox(height: 12),
-            // info box (description / specification)
+
+            // Specification info box (tetap sama)
             if (detail.variants.isNotEmpty &&
                 detail.variants.first.specification != null) ...[
               Container(
@@ -544,6 +621,84 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
         ),
       ),
     );
+  }
+
+  // 2. Tambahkan method untuk show modal warning
+  void _showRackSetupDialog(BuildContext context, CompanyItemDetail detail) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          "Lokasi/Rak Belum Diatur",
+          style: AppTextStyles.mono.copyWith(
+            color: AppColors.onSurface,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          "Lokasi/Rak untuk item ini belum diatur. Silakan atur lokasi default untuk memudahkan pembuatan variant.",
+          style: TextStyle(
+            color: AppColors.onBackground,
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              "Nanti Saja",
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _navigateToEditRack(context, detail);
+            },
+            child: Text(
+              "Atur Sekarang",
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 3. Method untuk navigate ke edit rack
+  void _navigateToEditRack(BuildContext context, CompanyItemDetail detail) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditCompanyItemScreen(
+          companyItemId: detail.companyItemId,
+          companyCode: detail.companyCode,
+          productName: detail.productName,
+        ),
+      ),
+    ).then((result) {
+      if (result == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lokasi item berhasil diperbarui'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Reload detail
+        _cubit.watchDetail(widget.companyItemId);
+      }
+    });
   }
 
   // Widget _buildAddVariantFab({

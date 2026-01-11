@@ -5,6 +5,7 @@ import 'package:inventory_sync_apps/core/constant.dart';
 import 'package:inventory_sync_apps/core/db/app_database.dart';
 import 'package:inventory_sync_apps/core/db/daos/component_dao.dart';
 import 'package:inventory_sync_apps/core/db/daos/component_photo_dao.dart';
+import 'package:inventory_sync_apps/core/db/daos/rack_dao.dart';
 import 'package:inventory_sync_apps/core/db/daos/variant_component_dao.dart';
 import 'package:inventory_sync_apps/core/generate_custom_id.dart';
 import 'package:uuid/uuid.dart';
@@ -30,6 +31,7 @@ class InventoryRepository {
   ComponentPhotoDao get _componentPhotoDao => db.componentPhotoDao;
 
   CategoryDao get _categoryDao => db.categoryDao;
+  RackDao get _rackDao => db.rackDao;
   // UnitDao get _unitDao => db.unitDao;
 
   Future<List<Brand>> getAllBrands() async {
@@ -343,6 +345,27 @@ class InventoryRepository {
       productId: item.productId,
       productName: product?.name ?? '-',
       variants: variantSummaries,
+    );
+  }
+
+  /// Get company item by ID
+  Future<CompanyItem?> getCompanyItemById(String companyItemId) async {
+    return await _companyItemDao.getById(companyItemId);
+  }
+
+  /// Get rack by ID with complete details
+  Future<dynamic> getRackById(String rackId) async {
+    return await _rackDao.getById(rackId);
+  }
+
+  /// Update default rack for company item
+  Future<void> updateCompanyItemDefaultRack({
+    required String companyItemId,
+    required String rackId,
+  }) async {
+    await _companyItemDao.updateDefaultRackCompanyItem(
+      id: companyItemId,
+      rackId: rackId,
     );
   }
 

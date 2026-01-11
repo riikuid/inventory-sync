@@ -49,6 +49,20 @@ class VariantDao extends DatabaseAccessor<AppDatabase> with _$VariantDaoMixin {
     );
   }
 
+  /// Get variant by ID (single fetch)
+  Future<Variant?> getVariantById(String variantId) async {
+    return await (select(
+      variants,
+    )..where((v) => v.id.equals(variantId))).getSingleOrNull();
+  }
+
+  /// Update variant
+  Future<void> updateVariant(VariantsCompanion companion) async {
+    await (update(
+      variants,
+    )..where((v) => v.id.equals(companion.id.value))).write(companion);
+  }
+
   Stream<int> watchUnitsCount(String variantId) {
     final q = selectOnly(units)
       ..addColumns([units.id.count()])

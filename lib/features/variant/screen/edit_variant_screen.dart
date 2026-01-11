@@ -1,11 +1,5 @@
-// create_variant_screen.dart
-import 'dart:io';
-
-import 'package:dotted_border/dotted_border.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:inventory_sync_apps/core/styles/app_style.dart';
 import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.dart';
 import 'package:inventory_sync_apps/shared/presentation/widgets/text_field_widget.dart';
@@ -17,40 +11,36 @@ import '../../../../shared/models/selected_brand_result.dart';
 import '../../../../shared/models/selected_rack_result.dart';
 import '../../../../shared/presentation/screen/brand_picker_screen.dart';
 import '../../../../shared/presentation/screen/rack_picker_screen.dart';
-import '../../../company_item/presentation/screen/company_item_detail_screen.dart';
-import '../bloc/create_variant/create_variant_cubit.dart';
+import '../../../../shared/presentation/widgets/offline_smart_image.dart';
+import '../bloc/edit_variant/edit_variant_cubit.dart';
 
-class CreateVariantScreen extends StatefulWidget {
-  final String companyItemId;
+class EditVariantScreen extends StatefulWidget {
+  final String variantId;
   final int userId;
   final String? companyCode;
-  final String? productName; // auto base (ex: "Bearing")
-  final String? defaultRackId;
-  final String? defaultRackName;
-  final bool? isSetUp;
+  final String? productName;
 
-  const CreateVariantScreen({
+  const EditVariantScreen({
     super.key,
-    required this.companyItemId,
+    required this.variantId,
     required this.userId,
-    this.isSetUp,
     this.companyCode,
     this.productName,
-    this.defaultRackId,
-    this.defaultRackName,
   });
 
   @override
-  State<CreateVariantScreen> createState() => _CreateVariantScreenState();
+  State<EditVariantScreen> createState() => _EditVariantScreenState();
 }
 
-class _CreateVariantScreenState extends State<CreateVariantScreen> {
+class _EditVariantScreenState extends State<EditVariantScreen> {
   late final TextEditingController _brandController;
   late final TextEditingController _rackController;
   late final TextEditingController _nameController;
   late final TextEditingController _uomController;
+  late final TextEditingController _manufCodeController;
+  late final TextEditingController _specificationController;
+
   bool _overlayShown = false;
-  bool _initialized = false;
 
   final List<String> _uomOptions = const [
     "pcs",
@@ -70,6 +60,8 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
     _rackController = TextEditingController();
     _nameController = TextEditingController();
     _uomController = TextEditingController();
+    _manufCodeController = TextEditingController();
+    _specificationController = TextEditingController();
   }
 
   @override
@@ -78,6 +70,8 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
     _rackController.dispose();
     _nameController.dispose();
     _uomController.dispose();
+    _manufCodeController.dispose();
+    _specificationController.dispose();
     super.dispose();
   }
 
@@ -94,55 +88,36 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => CreateVariantCubit(
+      create: (_) => EditVariantCubit(
         labelingRepository: context.read(),
-        companyItemId: widget.companyItemId,
+        variantId: widget.variantId,
         userId: widget.userId,
-        defaultRackId: widget.defaultRackId,
-        isSetUp: widget.isSetUp ?? false,
-      ),
-      child: BlocConsumer<CreateVariantCubit, CreateVariantState>(
+      )..loadVariant(),
+      child: BlocConsumer<EditVariantCubit, EditVariantState>(
         listener: (context, state) {
-          // success -> pop with true
-          if (state.status == CreateVariantStatus.success) {
+          if (state.status == EditVariantStatus.success) {
             _maybeShowOverlay(false);
             Navigator.of(context).pop(true);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => CompanyItemDetailScreen(
-                  companyItemId: widget.companyItemId,
-                ),
-              ),
-            );
           }
 
-          // show/hide overlay based on loading state
-          if (state.status == CreateVariantStatus.loading) {
+          if (state.status == EditVariantStatus.loading) {
             _maybeShowOverlay(true);
           } else {
             _maybeShowOverlay(false);
           }
+
+          if (state.status == EditVariantStatus.failure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.errorMessage ?? 'Gagal mengupdate variant'),
+              ),
+            );
+          }
         },
         builder: (context, state) {
-          final cubit = context.read<CreateVariantCubit>();
+          final cubit = context.read<EditVariantCubit>();
 
-          // call initFor once after the first build to prefill autoBase, etc.
-          if (!_initialized) {
-            _initialized = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              // productName can be null -> initFor handles it
-              cubit.initFor(
-                productName: widget.productName ?? '',
-                defaultRackId: widget.defaultRackId,
-                defaultRackName: widget.defaultRackName,
-              );
-            });
-          }
-
-          // sinkronisasi safety: update controller saat build (menangani initial state)
-          // hindari overwrite bila user sedang mengetik: simple guard not implemented full,
-          // but builder-run updates only when contents differ.
+          // Sync controllers dengan state
           if (_brandController.text != (state.brandName ?? '')) {
             _brandController.text = state.brandName ?? '';
           }
@@ -152,9 +127,28 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
           if (_uomController.text != (state.uom ?? '')) {
             _uomController.text = state.uom ?? '';
           }
-
-          if (_nameController.text != (state.name)) {
+          if (_nameController.text != state.name) {
             _nameController.text = state.name;
+          }
+          if (_manufCodeController.text != (state.manufCode ?? '')) {
+            _manufCodeController.text = state.manufCode ?? '';
+          }
+          if (_specificationController.text != (state.specification ?? '')) {
+            _specificationController.text = state.specification ?? '';
+          }
+
+          // Show loading while initial load
+          if (state.status == EditVariantStatus.initial ||
+              (state.status == EditVariantStatus.loading &&
+                  state.name.isEmpty)) {
+            return Scaffold(
+              backgroundColor: AppColors.background,
+              appBar: AppBar(
+                backgroundColor: AppColors.background,
+                title: Text('Edit Variant'),
+              ),
+              body: Center(child: CircularProgressIndicator()),
+            );
           }
 
           return Scaffold(
@@ -162,9 +156,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
             appBar: AppBar(
               iconTheme: IconThemeData(color: AppColors.onSurface),
               leading: IconButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+                onPressed: () => Navigator.pop(context),
                 icon: Icon(
                   Icons.arrow_back_ios_rounded,
                   weight: 260,
@@ -180,7 +172,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Tambah Variant ${widget.productName}',
+                    'Edit Variant ${widget.productName ?? ''}',
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: AppColors.onSurface,
@@ -190,7 +182,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                   ),
                   SizedBox(height: 3),
                   Text(
-                    '${widget.companyCode}',
+                    '${widget.companyCode ?? ''}',
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.mono.copyWith(
                       color: AppColors.primary,
@@ -215,7 +207,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                 radius: 40,
                 height: 50,
                 color: AppColors.primary,
-                onPressed: state.status == CreateVariantStatus.loading
+                onPressed: state.status == EditVariantStatus.loading
                     ? null
                     : (cubit.canSubmit ? cubit.submit : null),
                 child: Row(
@@ -228,7 +220,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                     ),
                     SizedBox(width: 8),
                     Text(
-                      'SIMPAN VARIAN',
+                      'SIMPAN PERUBAHAN',
                       style: TextStyle(
                         color: AppColors.surface,
                         fontWeight: FontWeight.w600,
@@ -244,6 +236,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Foto Produk (Read-only / Disabled)
                   Row(
                     children: [
                       Text(
@@ -260,71 +253,46 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                         ),
                       ),
                       SizedBox(width: 5),
+                      Text(
+                        '(tidak dapat diubah)',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
 
+                  // Display existing photos (read-only)
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: [
-                      ...List.generate(state.photos.length, (i) {
-                        return Stack(
-                          children: [
-                            Container(
-                              width: 90,
-                              height: 90,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(15),
-                                image: DecorationImage(
-                                  image: FileImage(File(state.photos[i])),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              right: -8,
-                              top: -8,
-                              child: IconButton(
-                                icon: const Icon(Icons.close, size: 18),
-                                onPressed: () => cubit.removePhoto(i),
-                              ),
-                            ),
-                          ],
-                        );
-                      }),
-                      if (state.photos.length < 5)
-                        DottedBorder(
-                          options: RoundedRectDottedBorderOptions(
-                            radius: Radius.circular(15),
-                            dashPattern: [10, 5],
-                            strokeWidth: 2,
-                            color: AppColors.border,
-                          ),
-                          child: GestureDetector(
-                            onTap: () => _showAddPhotoMenu(context, cubit),
-                            child: Container(
-                              width: 90,
-                              height: 90,
-                              color: Colors.transparent,
-                              child: const Icon(
-                                Icons.add_a_photo_outlined,
-                                size: 32,
-                                color: AppColors.border,
-                              ),
-                            ),
+                    children: state.photos.map((photo) {
+                      return Container(
+                        width: 90,
+                        height: 90,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(color: AppColors.border, width: 1),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: OfflineSmartImage(
+                            localPath: photo.localPath,
+                            remoteUrl: photo.remoteUrl,
+                            fit: BoxFit.cover,
                           ),
                         ),
-                    ],
+                      );
+                    }).toList(),
                   ),
+
                   SizedBox(height: 16),
-                  // Brand (readonly, tap to pick)
+
+                  // Brand
                   TextFieldWidget(
                     controller: _brandController,
                     readonly: true,
                     required: false,
                     label: 'Brand/Merk',
-
                     fillColor: Colors.transparent,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(15),
@@ -348,23 +316,18 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                       );
 
                       if (result is SelectedBrandResult) {
-                        // tampilkan nama segera di UI
-                        final displayName = result.name;
-                        _brandController.text = displayName;
-
-                        // panggil onBrandSelected agar cubit auto-compose name
-                        // (ini akan menambahkan brand ke belakang autoBase bila perlu)
+                        _brandController.text = result.name;
                         cubit.onBrandSelected(result.id, result.name);
                       }
                     },
                   ),
                   SizedBox(height: 16),
 
-                  // Rack (readonly, tap to pick)
+                  // Rack
                   TextFieldWidget(
                     controller: _rackController,
                     readonly: true,
-                    required: true,
+                    required: false,
                     label: 'Lokasi Rak',
                     fillColor: Colors.transparent,
                     border: OutlineInputBorder(
@@ -417,7 +380,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                   ),
                   SizedBox(height: 16),
 
-                  // UOM: use modal bottom sheet instead of dropdown
+                  // UOM
                   TextFieldWidget(
                     controller: _uomController,
                     readonly: true,
@@ -473,6 +436,7 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
 
                   // Kode Manufaktur
                   TextFieldWidget(
+                    controller: _manufCodeController,
                     required: false,
                     label: 'Kode Manufaktur',
                     fillColor: Colors.transparent,
@@ -480,7 +444,6 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
                       borderRadius: BorderRadius.circular(15),
                       borderSide: BorderSide(color: AppColors.border, width: 1),
                     ),
-                    // maxLines: 4,
                     hintText: 'Contoh: 31274/2322',
                     hintStyle: TextStyle(
                       color: AppColors.primary,
@@ -492,8 +455,9 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
 
                   // Spesifikasi
                   TextFieldWidget(
+                    controller: _specificationController,
                     required: false,
-                    label: 'Spesifikasi ',
+                    label: 'Spesifikasi',
                     fillColor: Colors.transparent,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(15),
@@ -516,46 +480,4 @@ class _CreateVariantScreenState extends State<CreateVariantScreen> {
       ),
     );
   }
-
-  void _showAddPhotoMenu(BuildContext context, CreateVariantCubit cubit) {
-    showCupertinoModalPopup(
-      context: context,
-      builder: (ctx) => CupertinoActionSheet(
-        title: const Text("Tambah Foto"),
-        actions: [
-          CupertinoActionSheetAction(
-            child: const Text(
-              "Kamera",
-              style: TextStyle(color: AppColors.primary),
-            ),
-            onPressed: () {
-              Navigator.pop(ctx);
-              cubit.addPhoto(ImageSource.camera);
-            },
-          ),
-          CupertinoActionSheetAction(
-            child: const Text(
-              "Galeri",
-              style: TextStyle(color: AppColors.primary),
-            ),
-            onPressed: () {
-              Navigator.pop(ctx);
-              cubit.addPhoto(ImageSource.gallery);
-            },
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          isDefaultAction: true,
-          child: const Text(
-            "Batal",
-            style: TextStyle(color: AppColors.focusRing),
-          ),
-          onPressed: () => Navigator.pop(ctx),
-        ),
-      ),
-    );
-  }
 }
-
-/// Small fallback LoadingOverlay util in case project doesn't have one.
-/// If you have your own LoadingOverlay, remove this and import yours instead.

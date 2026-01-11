@@ -177,17 +177,16 @@ class _HomeViewState extends State<_HomeView> {
                   ),
 
                   // 2. Category Section (List Horizontal, tetap dibungkus Adapter karena tingginya fix)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      // Pastikan _CategorySection tidak punya padding internal yang dobel
-                      child: _CategorySection(categories: loaded.categories),
-                    ),
-                  ),
-
+                  // SliverToBoxAdapter(
+                  //   child: Padding(
+                  //     padding: const EdgeInsets.symmetric(
+                  //       horizontal: 16,
+                  //       vertical: 8,
+                  //     ),
+                  //     // Pastikan _CategorySection tidak punya padding internal yang dobel
+                  //     child: _CategorySection(categories: loaded.categories),
+                  //   ),
+                  // ),
                   const SliverToBoxAdapter(child: SizedBox(height: 10)),
 
                   // 3. Company Item Header
@@ -360,7 +359,7 @@ class _SearchBar extends StatelessWidget {
               context,
             ).push(MaterialPageRoute(builder: (_) => const SearchItemScreen()));
           },
-          child: Material(child: SearchFieldWidget()),
+          child: Material(child: SearchFieldWidget(enabled: false)),
         ),
       ),
     );

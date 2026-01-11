@@ -4,6 +4,7 @@ import '../../../core/styles/color_scheme.dart';
 
 class SearchFieldWidget extends StatelessWidget {
   final TextEditingController? controller;
+  final bool? enabled;
   final String? hintText;
   final FocusNode? focusNode;
   final Function(String)? onSubmitted;
@@ -17,12 +18,13 @@ class SearchFieldWidget extends StatelessWidget {
     this.onClear,
     this.focusNode,
     this.hintText,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.only(left: 6, right: 16, top: 4, bottom: 4),
+      padding: EdgeInsets.only(left: 4, right: 16, top: 4, bottom: 4),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(100),
@@ -45,6 +47,7 @@ class SearchFieldWidget extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
+              enabled: enabled,
               controller: controller,
               focusNode: focusNode,
               textInputAction: TextInputAction.search,
