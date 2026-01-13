@@ -265,7 +265,7 @@ class _EditCompanyItemScreenState extends State<EditCompanyItemScreen> {
 
                       if (result is SelectedRackResult) {
                         String name =
-                            '${result.name ?? ""} - ${result.departmentName ?? ""} / ${result.sectionName ?? ""} / ${result.warehouseName ?? ""}';
+                            '${result.name} / ${result.warehouseName ?? ""}';
                         _rackController.text = name;
                         cubit.setRack(result.id, name);
                       }

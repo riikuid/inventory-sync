@@ -44,8 +44,9 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
   bool get isComponentMode => widget.componentId != null;
   String get targetName =>
       isComponentMode ? widget.componentName! : widget.variant.name;
-  String get targetManufCode =>
-      isComponentMode ? widget.componentManuf! : widget.variant.manufCode ?? '';
+  String get targetManufCode => isComponentMode
+      ? widget.componentManuf ?? ''
+      : widget.variant.manufCode ?? '';
 
   @override
   void initState() {
@@ -251,20 +252,24 @@ class _GenerateLabelsScreenState extends State<GenerateLabelsScreen> {
                       fontSize: 14,
                     ),
                   ),
-                  SizedBox(height: 2),
-                  Text(
-                    '$targetManufCode${targetManufCode.isNotEmpty && widget.variant.rackName!.isNotEmpty ? '  •  ${widget.variant.rackName}' : ''}',
-                    style: TextStyle(
-                      color: AppColors.onBackground,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
-                    ),
-                  ),
-                  if (isComponentMode)
+                  if (targetManufCode.isNotEmpty ||
+                      (widget.variant.rackName ?? '').isNotEmpty) ...[
+                    SizedBox(height: 2),
                     Text(
-                      'Bagian dari: ${widget.variant.name}',
-                      style: TextStyle(fontSize: 10, color: Colors.grey),
+                      // '${widget.variant.rackName}',
+                      '$targetManufCode${targetManufCode.isNotEmpty && widget.variant.rackName!.isNotEmpty ? '  •  ' : ''}${widget.variant.rackName}',
+                      style: TextStyle(
+                        color: AppColors.onBackground,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
+                      ),
                     ),
+                  ],
+                  // if (isComponentMode)
+                  //   Text(
+                  //     'Bagian dari: ${widget.variant.name}',
+                  //     style: TextStyle(fontSize: 10, color: Colors.grey),
+                  //   ),
                 ],
               ),
             ),

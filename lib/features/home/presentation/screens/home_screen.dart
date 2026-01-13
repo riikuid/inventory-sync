@@ -2,17 +2,25 @@ import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_sync_apps/core/styles/color_scheme.dart';
 
 import 'package:inventory_sync_apps/features/inventory/data/inventory_repository.dart';
 import 'package:inventory_sync_apps/core/db/daos/category_dao.dart';
 import 'package:inventory_sync_apps/core/db/daos/company_item_dao.dart';
+import 'package:inventory_sync_apps/features/variant/screen/variant_detail_screen.dart';
+import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.dart';
 import 'package:inventory_sync_apps/shared/presentation/widgets/search_field_widget.dart';
 
+import '../../../../core/user_storage.dart';
+import '../../../auth/models/user.dart';
+import '../../../labeling/data/labeling_repository.dart';
 import '../../../search_item/presentation/screen/search_item_screen.dart';
 import '../../../sync/bloc/sync_cubit.dart';
-import '../bloc/home_cubit.dart';
+import '../bloc/home/home_cubit.dart';
+import '../bloc/qr_scan/qr_scan_cubit.dart';
 import '../widget/category_card.dart';
 import '../widget/company_item_card.dart';
+import '../widget/qr_scanner_modal.dart';
 // import 'company_item_detail_screen.dart'; // TODO: ganti dengan screen detail-mu
 
 class HomeScreen extends StatelessWidget {
@@ -20,8 +28,15 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (ctx) => HomeCubit(ctx.read<InventoryRepository>()),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (ctx) => HomeCubit(ctx.read<InventoryRepository>()),
+        ),
+        BlocProvider<QrScanCubit>(
+          create: (context) => QrScanCubit(context.read<LabelingRepository>()),
+        ),
+      ],
       child: const _HomeView(),
     );
   }
@@ -172,7 +187,29 @@ class _HomeViewState extends State<_HomeView> {
                         horizontal: 16,
                         vertical: 8,
                       ),
-                      child: _SearchBar(),
+                      child: Row(
+                        spacing: 8,
+                        children: [
+                          Expanded(child: _SearchBar()),
+                          CustomButton(
+                            color: AppColors.surface,
+                            padding: const EdgeInsets.all(8),
+                            height: 47,
+                            width: 47,
+                            radius: 100,
+                            borderColor: AppColors.border,
+                            borderWidth: 1.2,
+                            elevation: 0,
+
+                            child: Icon(
+                              Icons.qr_code,
+                              color: AppColors.primary,
+                              size: 22,
+                            ),
+                            onPressed: () => _showQrScanner(context),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
@@ -339,6 +376,92 @@ class _HomeViewState extends State<_HomeView> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showQrScanner(BuildContext context) async {
+    User _user = (await UserStorage.getUser())!;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalContext) {
+        return BlocProvider.value(
+          value: context.read<QrScanCubit>(),
+          child: BlocConsumer<QrScanCubit, QrScanState>(
+            listener: (ctx, state) {
+              if (state.status == QrScanStatus.success &&
+                  state.unitData != null) {
+                // Close modal
+                Navigator.pop(modalContext);
+
+                // Navigate ke detail variant
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => VariantDetailScreen(
+                      variantId: state.unitData!.variant!.id,
+                      userId: _user.id!,
+                    ),
+                  ),
+                );
+                // Navigator.pushNamed(
+                //   context,
+                //   '/variant-detail',
+                //   arguments: {
+                //     'variantId': state.unitData!.variant!.id,
+                //     'variant': state.unitData!.variant,
+                //     'companyItem': state.unitData!.companyItem,
+                //     'product': state.unitData!.product,
+                //   },
+                // );
+
+                // Reset state
+                ctx.read<QrScanCubit>().reset();
+              } else if (state.status == QrScanStatus.notFound) {
+                // Show error
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.error ?? 'QR tidak ditemukan'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+
+                // Close modal after delay
+                Future.delayed(const Duration(seconds: 2), () {
+                  if (modalContext.mounted) {
+                    Navigator.pop(modalContext);
+                    ctx.read<QrScanCubit>().reset();
+                  }
+                });
+              } else if (state.status == QrScanStatus.error) {
+                // Show error
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.error ?? 'Terjadi kesalahan'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+
+                // Close modal after delay
+                Future.delayed(const Duration(seconds: 2), () {
+                  if (modalContext.mounted) {
+                    Navigator.pop(modalContext);
+                    ctx.read<QrScanCubit>().reset();
+                  }
+                });
+              }
+            },
+            builder: (ctx, state) {
+              return QrScannerModal(
+                onScanSuccess: (qrValue) {
+                  ctx.read<QrScanCubit>().scanQr(qrValue);
+                },
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

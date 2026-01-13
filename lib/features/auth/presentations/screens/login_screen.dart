@@ -48,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
         color: AppColors.onBackground,
         image: DecorationImage(
           opacity: 0.3,
-          image: AssetImage("assets/images/bg-inventory.jpg"),
+          image: AssetImage("assets/images/bg-login.jpeg"),
           fit: BoxFit.cover,
         ),
       ),
@@ -64,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   SizedBox(
                     width: AppScreen.width() * 0.3,
-                    child: Image.asset('assets/logos/mp_logo.png'),
+                    child: Image.asset('assets/logo/mp_logo.png'),
                   ),
                   const SizedBox(height: 25),
                   Text(
@@ -81,7 +81,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 25),
                   TextFieldWidget(
-                    label: 'Email/Telp',
+                    // label: 'Email/Telp',
+                    label: 'Username',
                     labelColor: Colors.white,
                     errorStyle: TextStyle(color: Colors.white),
                     hintText: 'Masukkan email atau nomor telepon anda',

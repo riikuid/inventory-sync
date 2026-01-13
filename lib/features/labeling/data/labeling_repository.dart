@@ -370,4 +370,23 @@ class LabelingRepository {
       );
     });
   }
+
+  Future<UnitWithRelations?> scanQrUnit(String qrValue) async {
+    try {
+      // Trim whitespace untuk menghindari false negative
+      final cleanQr = qrValue.trim();
+
+      if (cleanQr.isEmpty) {
+        return null;
+      }
+
+      // Query database dengan joins
+      final result = await _unitDao.findByQrWithJoins(cleanQr);
+
+      return result;
+    } catch (e) {
+      print('Error scanning QR: $e');
+      rethrow;
+    }
+  }
 }

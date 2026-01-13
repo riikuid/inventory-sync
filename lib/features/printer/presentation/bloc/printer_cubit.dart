@@ -24,6 +24,7 @@ class PrinterCubit extends Cubit<PrinterState> {
   }
 
   Future<void> scanPrinters() async {
+    emit(state.copyWith(statusMessage: "Mencari printer..."));
     try {
       final list = await PrintBluetoothThermal.pairedBluetooths;
       emit(
@@ -33,7 +34,54 @@ class PrinterCubit extends Cubit<PrinterState> {
         ),
       );
     } catch (e) {
-      emit(state.copyWith(statusMessage: "Error Scan: $e"));
+      emit(state.copyWith(statusMessage: "Error Scan: $e", error: "$e"));
+    }
+  }
+
+  // CEK KONEKSI REAL-TIME
+  Future<void> checkConnection() async {
+    try {
+      emit(state.copyWith(statusMessage: "Mengecek koneksi..."));
+
+      // Cek apakah benar-benar masih connected
+      final bool isStillConnected =
+          await PrintBluetoothThermal.connectionStatus;
+
+      if (!isStillConnected && state.isConnected) {
+        // Koneksi terputus tapi state masih connected
+        emit(
+          state.copyWith(
+            isConnected: false,
+            statusMessage: "Koneksi terputus. Silakan reconnect.",
+          ),
+        );
+      } else if (isStillConnected && !state.isConnected) {
+        // Koneksi masih ada tapi state tidak updated
+        emit(
+          state.copyWith(
+            isConnected: true,
+            statusMessage:
+                "Terhubung: ${state.selectedDevice?.name ?? 'Unknown'}",
+          ),
+        );
+      } else if (isStillConnected) {
+        emit(
+          state.copyWith(
+            statusMessage:
+                "Terhubung: ${state.selectedDevice?.name ?? 'Unknown'}",
+          ),
+        );
+      } else {
+        emit(state.copyWith(statusMessage: "Tidak terhubung"));
+      }
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isConnected: false,
+          statusMessage: "Error cek koneksi: $e",
+          error: "$e",
+        ),
+      );
     }
   }
 
@@ -56,49 +104,103 @@ class PrinterCubit extends Cubit<PrinterState> {
         state.copyWith(
           selectedDevice: device,
           isConnected: result,
-          statusMessage: result ? "Terhubung: ${device.name}" : "Gagal Connect",
+          statusMessage: result
+              ? "Terhubung: ${device.name}"
+              : "Gagal terhubung ke ${device.name}",
+          error: result ? null : "Koneksi gagal",
         ),
       );
     } catch (e) {
-      emit(state.copyWith(isConnected: false, statusMessage: "Err: $e"));
+      emit(
+        state.copyWith(
+          isConnected: false,
+          statusMessage: "Error: $e",
+          error: "$e",
+        ),
+      );
     }
   }
 
+  // RECONNECT FUNCTION
+  Future<void> reconnect() async {
+    if (state.selectedDevice == null) {
+      emit(
+        state.copyWith(
+          statusMessage: "Tidak ada device tersimpan untuk reconnect",
+          error: "No device to reconnect",
+        ),
+      );
+      return;
+    }
+
+    emit(state.copyWith(statusMessage: "Reconnecting..."));
+
+    // Disconnect dulu
+    try {
+      await PrintBluetoothThermal.disconnect;
+      await Future.delayed(const Duration(milliseconds: 500));
+    } catch (e) {
+      print("Error during disconnect: $e");
+    }
+
+    // Connect ulang
+    await connect(state.selectedDevice!);
+  }
+
   Future<void> disconnect() async {
-    await PrintBluetoothThermal.disconnect;
-    emit(
-      state.copyWith(
-        isConnected: false,
-        statusMessage: "Disconnected",
-        selectedDevice: null,
-      ),
-    );
+    try {
+      await PrintBluetoothThermal.disconnect;
+      emit(
+        state.copyWith(
+          isConnected: false,
+          statusMessage: "Disconnected",
+          selectedDevice: null,
+        ),
+      );
+    } catch (e) {
+      emit(state.copyWith(error: "Error disconnect: $e"));
+    }
   }
 
   // Generic Print Function (TSPL)
   Future<bool> printLabel({
-    required String company,
     required String location,
     required String name,
     required String manufCode,
     required String qrValue,
     required String companyCode,
+    int topMargin = 10,
+    int leftMargin = 20,
+    bool withLogo = false, // Default false karena tidak support
   }) async {
+    // CEK KONEKSI SEBELUM PRINT
+    try {
+      final bool isStillConnected =
+          await PrintBluetoothThermal.connectionStatus;
+      if (!isStillConnected) {
+        emit(
+          state.copyWith(
+            isConnected: false,
+            statusMessage: "Koneksi terputus",
+            error: "Printer tidak terhubung",
+          ),
+        );
+        return false;
+      }
+    } catch (e) {
+      emit(state.copyWith(error: "Error cek koneksi: $e"));
+      return false;
+    }
+
     if (!state.isConnected) return false;
 
     try {
-      int leftMargin = 20;
+      int textStartX = leftMargin;
       int rightColMargin = 190 + leftMargin;
-
       String commands = "";
 
       // --- LOGIC UKURAN QR DINAMIS ---
-      // Semakin panjang karakter, semakin kecil cell width-nya agar muat
       int qrCellSize = 6;
-
-      // if (qrValue.length > 20) {
-      //   qrCellSize = 6;
-      // }
       if (qrValue.length > 40) {
         qrCellSize = 5;
       }
@@ -108,27 +210,25 @@ class PrinterCubit extends Cubit<PrinterState> {
       commands += "GAP 2 mm,0 mm\r\n";
       commands += "CLS\r\n";
 
-      // -- HEADER --
-      commands += "TEXT $leftMargin,20,\"1\",0,1,1,\"$company\"\r\n";
+      // -- HEADER (dengan topMargin) --
+      int headerY = topMargin;
+      commands +=
+          "TEXT $textStartX,$headerY,\"1\",0,1,1,\"PT MANUNGGAL PERKASA\"\r\n";
 
-      // -- QR CODE --
-      // Ukuran QR tetap 8 sesuai request terakhir
-      commands += "QRCODE $leftMargin,40,L,$qrCellSize,A,0,\"$qrValue\"\r\n";
+      // -- QR CODE (mulai dari topMargin + 20) --
+      int qrY = topMargin + 20;
+      commands += "QRCODE $leftMargin,$qrY,L,$qrCellSize,A,0,\"$qrValue\"\r\n";
 
       // -- LOCATION (DIBOLD) --
-      // 1. Nyalakan BOLD
+      int locationY = topMargin + 20;
       commands += "BOLD 1\r\n";
-      // 2. Cetak Teks Location
-      commands += "TEXT $rightColMargin,40,\"4\",0,1,1,\"LOK:$location\"\r\n";
-      // 3. Matikan BOLD (Penting! Agar "Item Name" dibawahnya tidak ikut tebal)
+      commands +=
+          "TEXT $rightColMargin,$locationY,\"4\",0,1,1,\"LOK:$location\"\r\n";
       commands += "BOLD 0\r\n";
-
-      // Item Name (Normal)
-      // commands += "TEXT $rightColMargin,80,\"2\",0,1,1,\"Item Name :\"\r\n";
 
       // -- ITEM NAME WRAPPING --
       List<String> wrappedName = _wrapText(name, 19);
-      int currentY = 80;
+      int currentY = topMargin + 60;
 
       for (String line in wrappedName) {
         commands += "TEXT $rightColMargin,$currentY,\"3\",0,1,1,\"$line\"\r\n";
@@ -138,19 +238,17 @@ class PrinterCubit extends Cubit<PrinterState> {
       // -- SPEC --
       int specLabelY = currentY + 5;
       int specValueY = specLabelY + 20;
-
       commands += "TEXT $rightColMargin,$specLabelY,\"1\",0,1,1,\"SPEC:\"\r\n";
       commands +=
           "TEXT $rightColMargin,$specValueY,\"2\",0,1,1,\"$manufCode\"\r\n";
 
       // -- FOOTER CODE (DIBOLD) --
-      commands += "TEXT $leftMargin,230,\"2\",0,1,1,\"ITEM CODE :\"\r\n";
+      int footerY = 220;
+      int codeY = 245;
 
-      // 1. Nyalakan BOLD lagi untuk Kode di bawah
+      commands += "TEXT $leftMargin,$footerY,\"2\",0,1,1,\"ITEM CODE :\"\r\n";
       commands += "BOLD 1\r\n";
-      // 2. Cetak Kode (Menggunakan Font "5" sesuai kodemu)
-      commands += "TEXT $leftMargin,255,\"5\",0,1,1,\"$companyCode\"\r\n";
-      // 3. Matikan BOLD
+      commands += "TEXT $leftMargin,$codeY,\"5\",0,1,1,\"$companyCode\"\r\n";
       commands += "BOLD 0\r\n";
 
       // -- EXECUTE --

@@ -114,35 +114,35 @@ class _RackPickerScreenState extends State<RackPickerScreen> {
                                     ),
                                   ],
                                 ),
-                                DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withAlpha(30),
-                                    border: Border.all(
-                                      width: 1.0,
-                                      color: AppColors.border,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      vertical: 6,
-                                      horizontal: 12,
-                                    ),
-                                    child: Text(
-                                      rack.departmentCode ?? ' ',
-                                      style: TextStyle(
-                                        color: AppColors.primary,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                                // DecoratedBox(
+                                //   decoration: BoxDecoration(
+                                //     color: AppColors.primary.withAlpha(30),
+                                //     border: Border.all(
+                                //       width: 1.0,
+                                //       color: AppColors.border,
+                                //     ),
+                                //     borderRadius: BorderRadius.circular(8),
+                                //   ),
+                                //   child: Padding(
+                                //     padding: EdgeInsets.symmetric(
+                                //       vertical: 6,
+                                //       horizontal: 12,
+                                //     ),
+                                //     child: Text(
+                                //       rack.departmentCode ?? ' ',
+                                //       style: TextStyle(
+                                //         color: AppColors.primary,
+                                //         fontSize: 12,
+                                //         fontWeight: FontWeight.w500,
+                                //       ),
+                                //     ),
+                                //   ),
+                                // ),
                               ],
                             ),
                             SizedBox(height: 4),
                             Text(
-                              '${(rack.warehouseName ?? '').trimLeft()} - ${rack.departmentName}',
+                              (rack.warehouseName ?? '').trimLeft(),
                               style: TextStyle(
                                 color: Colors.grey.shade600,
                                 fontSize: 14,

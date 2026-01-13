@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_sync_apps/core/db/daos/variant_dao.dart';
 import 'package:inventory_sync_apps/features/labeling/data/labeling_repository.dart';
+import 'package:inventory_sync_apps/features/labeling/presentation/screens/printer_management_screen.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 
@@ -70,7 +71,6 @@ class _AssemblyScreenState extends State<AssemblyScreen> {
     if (item.qrValue == null) return;
 
     final success = await printerCubit.printLabel(
-      company: "PT MANUNGGAL PERKASA",
       location: item
           .rackName, // Pastikan field ini ada di AssemblyItemState atau ambil dari widget.rackName
       name: item.name,
@@ -792,44 +792,33 @@ class _AssemblyScreenState extends State<AssemblyScreen> {
         ],
       ),
     );
-
-    // KONDISI 3: FASE AWAL (Belum print apapun) -> CETAK SEMUA
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.secondary,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          disabledBackgroundColor: Colors.grey.shade300,
-        ),
-        onPressed: isPrinterConnected
-            ? () => _printAllItems(isReprint: false)
-            : null,
-        icon: const Icon(Icons.print),
-        label: const Text(
-          "CETAK SEMUA LABEL",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-      ),
-    );
   }
 
   // --- CONNECTION BAR (Same as PreviewPrintScreen) ---
   Widget _buildConnectionBar(BuildContext context, PrinterState state) {
     final isConnected = state.isConnected;
     return InkWell(
-      onTap: () => context.read<PrinterCubit>().scanPrinters().then(
-        (_) => _showDevicePicker(context),
-      ),
+      onTap: () async {
+        // Navigate ke Printer Management Screen
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PrinterManagementScreen(),
+          ),
+        );
+        // Setelah kembali, check connection lagi
+        if (context.mounted) {
+          context.read<PrinterCubit>().checkConnection();
+        }
+      },
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: isConnected ? Colors.green.shade50 : Colors.red.shade50,
+          color: isConnected ? Colors.green.shade50 : Colors.orange.shade50,
           border: Border.symmetric(
             vertical: BorderSide(
-              color: isConnected ? Colors.green : Colors.red,
+              color: isConnected ? Colors.green : Colors.orange,
               width: 0.5,
             ),
           ),
@@ -839,24 +828,48 @@ class _AssemblyScreenState extends State<AssemblyScreen> {
             Icon(
               isConnected
                   ? Icons.bluetooth_connected
-                  : Icons.bluetooth_searching,
-              size: 18,
-              color: isConnected ? Colors.green : Colors.red,
+                  : Icons.bluetooth_disabled,
+              size: 20,
+              color: isConnected ? Colors.green : Colors.orange,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                isConnected
-                    ? "Terhubung: ${state.selectedDevice?.name}"
-                    : "Printer Disconnected",
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isConnected
-                      ? Colors.green.shade800
-                      : Colors.red.shade800,
-                  fontWeight: FontWeight.w500,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isConnected
+                        ? "Printer Terhubung"
+                        : "Printer Belum Terhubung",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isConnected
+                          ? Colors.green.shade800
+                          : Colors.orange.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isConnected
+                        ? state.selectedDevice?.name ?? 'Unknown'
+                        : "Tap untuk menghubungkan",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isConnected
+                          ? Colors.green.shade700
+                          : Colors.orange.shade700,
+                    ),
+                  ),
+                ],
               ),
+            ),
+            Icon(
+              Icons.settings,
+              size: 20,
+              color: isConnected
+                  ? Colors.green.shade700
+                  : Colors.orange.shade700,
             ),
           ],
         ),

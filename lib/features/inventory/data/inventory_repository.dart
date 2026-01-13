@@ -6,6 +6,7 @@ import 'package:inventory_sync_apps/core/db/app_database.dart';
 import 'package:inventory_sync_apps/core/db/daos/component_dao.dart';
 import 'package:inventory_sync_apps/core/db/daos/component_photo_dao.dart';
 import 'package:inventory_sync_apps/core/db/daos/rack_dao.dart';
+import 'package:inventory_sync_apps/core/db/daos/unit_dao.dart';
 import 'package:inventory_sync_apps/core/db/daos/variant_component_dao.dart';
 import 'package:inventory_sync_apps/core/generate_custom_id.dart';
 import 'package:uuid/uuid.dart';

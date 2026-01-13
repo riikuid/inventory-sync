@@ -9,7 +9,7 @@ import 'assets.dart';
 
 class Config {
   // production || development
-  static Mode mode = Mode.production;
+  static Mode mode = Mode.development;
 
   init() async {
     if (mode == Mode.production) {

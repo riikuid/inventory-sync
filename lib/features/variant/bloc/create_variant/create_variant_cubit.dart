@@ -38,7 +38,7 @@ class CreateVariantCubit extends Cubit<CreateVariantState> {
         brandName == 'Tanpa Brand') {
       return base;
     }
-    return '$base ${brandName.trim()}';
+    return '$base-${brandName.trim()}';
   }
 
   // contoh method: inisialisasi create flow

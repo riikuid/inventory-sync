@@ -9,8 +9,6 @@ import 'package:inventory_sync_apps/features/inventory/presentation/screens/comp
 import 'package:inventory_sync_apps/features/labeling/presentation/bloc/create_labels/create_labels_cubit.dart';
 import 'package:inventory_sync_apps/features/labeling/presentation/screens/generate_label_screen.dart';
 import 'package:inventory_sync_apps/shared/presentation/widgets/primary_button.dart';
-import '../../../core/db/app_database.dart';
-import '../../../core/db/daos/variant_dao.dart';
 import '../../../core/db/model/variant_detail_row.dart';
 import '../../../core/styles/app_style.dart';
 import '../../../core/styles/text_theme.dart';
@@ -306,16 +304,16 @@ class _VariantDetailView extends StatelessWidget {
                         d.componentsSeparate.isEmpty &&
                         d.totalUnits > 0)) ...[
                       // Tampilkan Box Section (jika tidak ada separate)
-                      if (d.componentsSeparate.isEmpty) ...[
-                        const SizedBox(height: 20),
-                        _buildBoxSection(context, d),
-                      ],
+                      // if (d.componentsSeparate.isEmpty) ...[
+                      const SizedBox(height: 20),
+                      _buildBoxSection(context, d),
+                      // ],
 
                       // Tampilkan Separate Section (jika tidak ada in-box)
-                      if (d.componentsInBox.isEmpty) ...[
-                        const SizedBox(height: 20),
-                        _buildSeparateComponentSection(context, d),
-                      ],
+                      // if (d.componentsInBox.isEmpty) ...[
+                      const SizedBox(height: 20),
+                      _buildSeparateComponentSection(context, d),
+                      // ],
                     ],
 
                     const SizedBox(height: 120),
@@ -823,122 +821,129 @@ class _VariantDetailView extends StatelessWidget {
         Column(
           spacing: 10,
           children: separate.map((c) {
-            return Container(
-              decoration: BoxDecoration(
-                boxShadow: [AppStyle.defaultBoxShadow],
-                border: Border.all(width: 1.0, color: AppColors.border),
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(24),
-              ),
-
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
+            return GestureDetector(
+              onLongPress: () {
+                if (!isLocked) {
+                  _detachComponent(context, d.variantId, c.componentId);
+                } else {}
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  boxShadow: [AppStyle.defaultBoxShadow],
+                  border: Border.all(width: 1.0, color: AppColors.border),
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: Colors.grey.shade200,
-                      child: Text(
-                        c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            c.name,
-                            style: AppTextStyles.mono.copyWith(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 18,
-                              color: AppColors.primary,
-                            ),
-                          ),
 
-                          if ((c.brandName != null) ||
-                              (c.manufCode != null)) ...[
-                            SizedBox(height: 3),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: Colors.grey.shade200,
+                        child: Text(
+                          c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              '${c.brandName}${c.manufCode != null && c.manufCode!.isNotEmpty ? '  •  ${c.manufCode}' : ''}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                              c.name,
+                              style: AppTextStyles.mono.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 18,
+                                color: AppColors.primary,
+                              ),
+                            ),
+
+                            if ((c.brandName != null) ||
+                                (c.manufCode != null)) ...[
+                              SizedBox(height: 3),
+                              Text(
+                                '${c.brandName}${c.manufCode != null && c.manufCode!.isNotEmpty ? '  •  ${c.manufCode}' : ''}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${c.totalUnits}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.onSurface,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      CustomButton(
+                        elevation: 0.2,
+                        width: 30,
+                        radius: 15,
+                        color: AppColors.surface,
+                        borderColor: AppColors.border,
+
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => BlocProvider(
+                                create: (context) => CreateLabelsCubit(
+                                  context.read<LabelingRepository>(),
+                                ),
+
+                                child: GenerateLabelsScreen(
+                                  variant: d,
+                                  userId: userId,
+                                  componentId: c.componentId,
+                                  componentName: c.name,
+                                  componentManuf: c.manufCode,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.print_outlined,
+                              size: 14,
+                              color: AppColors.onBackground,
+                            ),
+                            SizedBox(width: 5),
+                            Text(
+                              'Cetak',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.onBackground,
                               ),
                             ),
                           ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '${c.totalUnits}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.onSurface,
-                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    CustomButton(
-                      elevation: 0.2,
-                      width: 30,
-                      radius: 15,
-                      color: AppColors.surface,
-                      borderColor: AppColors.border,
-
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => BlocProvider(
-                              create: (context) => CreateLabelsCubit(
-                                context.read<LabelingRepository>(),
-                              ),
-
-                              child: GenerateLabelsScreen(
-                                variant: d,
-                                userId: userId,
-                                componentId: c.componentId,
-                                componentName: c.name,
-                                componentManuf: c.manufCode,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.print_outlined,
-                            size: 14,
-                            color: AppColors.onBackground,
-                          ),
-                          SizedBox(width: 5),
-                          Text(
-                            'Cetak',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.onBackground,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );

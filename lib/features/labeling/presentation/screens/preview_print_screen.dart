@@ -16,6 +16,7 @@ import '../../../../core/styles/text_theme.dart';
 import '../../../../shared/presentation/widgets/primary_button.dart';
 import '../../../printer/presentation/bloc/printer_cubit.dart';
 import '../bloc/create_labels/create_labels_cubit.dart';
+import 'printer_management_screen.dart';
 
 class PreviewPrintScreen extends StatefulWidget {
   final int userId;
@@ -38,6 +39,14 @@ class PreviewPrintScreen extends StatefulWidget {
 }
 
 class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
+  void initState() {
+    super.initState();
+    // Auto-check koneksi saat masuk screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PrinterCubit>().checkConnection();
+    });
+  }
+
   // Logic Cetak yang Menjembatani PrinterCubit (Global) & LabelsCubit (Lokal)
   void _handlePrint(
     PrinterCubit printerCubit,
@@ -67,7 +76,6 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
     for (var item in itemsToPrint) {
       log(item.rackName, name: 'PRINT');
       bool success = await printerCubit.printLabel(
-        company: "PT MANUNGGAL PERKASA",
         location: item.rackName,
         name: item.itemName,
         manufCode: widget.manufcode,
@@ -121,22 +129,22 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
           );
         }
         // Tampilkan status message jika penting (Connect/Disconnect/Gagal)
-        if (printerState.statusMessage.isNotEmpty &&
-            printerState.statusMessage != "Siap Connect" &&
-            printerState.statusMessage != "Disconnected") {
-          // Filter pesan default
+        // if (printerState.statusMessage.isNotEmpty &&
+        //     printerState.statusMessage != "Siap Connect" &&
+        //     printerState.statusMessage != "Disconnected") {
+        //   // Filter pesan default
 
-          Color color = Colors.blue;
-          if (printerState.isConnected) color = Colors.green;
-          if (printerState.statusMessage.contains("Gagal")) color = Colors.red;
+        //   Color color = Colors.blue;
+        //   if (printerState.isConnected) color = Colors.green;
+        //   if (printerState.statusMessage.contains("Gagal")) color = Colors.red;
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(printerState.statusMessage),
-              backgroundColor: color,
-            ),
-          );
-        }
+        //   ScaffoldMessenger.of(context).showSnackBar(
+        //     SnackBar(
+        //       content: Text(printerState.statusMessage),
+        //       backgroundColor: color,
+        //     ),
+        //   );
+        // }
       },
       child: BlocBuilder<PrinterCubit, PrinterState>(
         builder: (contextPrinter, printerState) {
@@ -335,6 +343,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
                   bottomNavigationBar: _buildBottomBar(
                     context,
                     printerState,
+                    contextPrinter.read<PrinterCubit>(),
                     labelsState,
                     isAllPending,
                     isAnyPrinted,
@@ -459,18 +468,32 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
   }
 
   // --- WIDGET: CONNECTION STATUS BAR ---
+  // Update untuk _buildConnectionBar di PreviewPrintScreen
+
   Widget _buildConnectionBar(BuildContext context, PrinterState state) {
     final isConnected = state.isConnected;
     return InkWell(
-      onTap: () => _showDevicePicker(context),
+      onTap: () async {
+        // Navigate ke Printer Management Screen
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PrinterManagementScreen(),
+          ),
+        );
+        // Setelah kembali, check connection lagi
+        if (context.mounted) {
+          context.read<PrinterCubit>().checkConnection();
+        }
+      },
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: isConnected ? Colors.green.shade50 : Colors.red.shade50,
+          color: isConnected ? Colors.green.shade50 : Colors.orange.shade50,
           border: Border.symmetric(
             vertical: BorderSide(
-              color: isConnected ? Colors.green : Colors.red,
+              color: isConnected ? Colors.green : Colors.orange,
               width: 0.5,
             ),
           ),
@@ -480,26 +503,49 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
             Icon(
               isConnected
                   ? Icons.bluetooth_connected
-                  : Icons.bluetooth_searching,
-              size: 18,
-              color: isConnected ? Colors.green : Colors.red,
+                  : Icons.bluetooth_disabled,
+              size: 20,
+              color: isConnected ? Colors.green : Colors.orange,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                isConnected
-                    ? "Terhubung: ${state.selectedDevice?.name ?? 'Unknown'}"
-                    : "Printer belum terhubung. Ketuk untuk pilih.",
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isConnected
-                      ? Colors.green.shade800
-                      : Colors.red.shade800,
-                  fontWeight: FontWeight.w500,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isConnected
+                        ? "Printer Terhubung"
+                        : "Printer Belum Terhubung",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isConnected
+                          ? Colors.green.shade800
+                          : Colors.orange.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isConnected
+                        ? state.selectedDevice?.name ?? 'Unknown'
+                        : "Tap untuk menghubungkan",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isConnected
+                          ? Colors.green.shade700
+                          : Colors.orange.shade700,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const Icon(Icons.arrow_drop_down, size: 16, color: Colors.grey),
+            Icon(
+              Icons.settings,
+              size: 20,
+              color: isConnected
+                  ? Colors.green.shade700
+                  : Colors.orange.shade700,
+            ),
           ],
         ),
       ),
@@ -511,6 +557,7 @@ class _PreviewPrintScreenState extends State<PreviewPrintScreen> {
   Widget _buildBottomBar(
     BuildContext context,
     PrinterState printerState,
+    PrinterCubit printerCubit,
     CreateLabelsState labelsState,
     bool isAllPending,
     bool isAnyPrinted,

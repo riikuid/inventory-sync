@@ -26,6 +26,7 @@ class CompanyItemDetailScreen extends StatefulWidget {
 
 class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
   late final CompanyItemDetailCubit _cubit;
+  bool _hasShownRackDialog = false;
 
   @override
   void initState() {
@@ -33,17 +34,6 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
     final repo = context.read<InventoryRepository>();
     _cubit = CompanyItemDetailCubit(repo);
     _cubit.watchDetail(widget.companyItemId);
-
-    // Check rack setelah load pertama kali
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final state = _cubit.state;
-      if (state is CompanyItemDetailLoaded) {
-        if (state.detail.defaultRackId == null ||
-            (state.detail.defaultRackId ?? '').isEmpty) {
-          _showRackSetupDialog(context, state.detail);
-        }
-      }
-    });
   }
 
   @override
@@ -58,207 +48,223 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
 
     return BlocProvider.value(
       value: _cubit,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          iconTheme: IconThemeData(color: AppColors.onSurface),
+      child: BlocListener<CompanyItemDetailCubit, CompanyItemDetailState>(
+        listener: (context, state) {
+          // Tampilkan modal hanya sekali saat data loaded dan rack null
+          if (state is CompanyItemDetailLoaded &&
+              !_hasShownRackDialog &&
+              state.detail.defaultRackId == null) {
+            _hasShownRackDialog = true;
+            // Delay sedikit agar dialog muncul setelah screen fully rendered
+            Future.delayed(Duration(milliseconds: 300), () {
+              if (mounted) {
+                _showRackSetupDialog(context, state.detail);
+              }
+            });
+          }
+        },
+        child: Scaffold(
           backgroundColor: AppColors.background,
-          leading: IconButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            icon: Icon(
-              Icons.arrow_back_ios_rounded,
-              size: 18,
-              weight: 260,
-              color: AppColors.onSurface,
+          appBar: AppBar(
+            iconTheme: IconThemeData(color: AppColors.onSurface),
+            backgroundColor: AppColors.background,
+            leading: IconButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              icon: Icon(
+                Icons.arrow_back_ios_rounded,
+                size: 18,
+                weight: 260,
+                color: AppColors.onSurface,
+              ),
             ),
-          ),
-          title: BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
-            builder: (context, state) {
-              if (state is CompanyItemDetailLoaded) {
-                return Text(
-                  state.detail.companyCode,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.mono.copyWith(
-                    color: AppColors.onSurface,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                );
-              }
-              return const Text('Item Detail');
-            },
-          ),
-          actions: [
-            // Menu Edit untuk atur lokasi
-            // BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
-            //   builder: (context, state) {
-            //     if (state is! CompanyItemDetailLoaded) {
-            //       return const SizedBox.shrink();
-            //     }
-
-            //     return PopupMenuButton<String>(
-            //       icon: Icon(Icons.more_vert, color: AppColors.onSurface),
-            //       onSelected: (value) {
-            //         if (value == 'edit_rack') {
-            //           _navigateToEditRack(context, state.detail);
-            //         }
-            //       },
-            //       itemBuilder: (BuildContext context) => [
-            //         PopupMenuItem<String>(
-            //           value: 'edit_rack',
-            //           child: Row(
-            //             children: [
-            //               Icon(
-            //                 Icons.edit_location_alt_outlined,
-            //                 size: 18,
-            //                 color: AppColors.onBackground,
-            //               ),
-            //               SizedBox(width: 8),
-            //               Text(
-            //                 'Atur Lokasi',
-            //                 style: TextStyle(
-            //                   color: AppColors.onBackground,
-            //                   fontSize: 14,
-            //                 ),
-            //               ),
-            //             ],
-            //           ),
-            //         ),
-            //       ],
-            //     );
-            //   },
-            // ),
-          ],
-        ),
-        bottomNavigationBar: Container(
-          padding: const EdgeInsets.all(16),
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            border: Border(
-              top: BorderSide(width: 0.2, color: AppColors.border),
-            ),
-          ),
-          child: BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
-            builder: (context, state) {
-              if (state is! CompanyItemDetailLoaded) {
-                return const SizedBox.shrink();
-              }
-              return CustomButton(
-                elevation: 0,
-                radius: 40,
-                height: 50,
-                color: AppColors.primary,
-                onPressed: () async {
-                  User _user = (await UserStorage.getUser())!;
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CreateVariantScreen(
-                        companyItemId: widget.companyItemId,
-                        userId: _user.id!,
-                        companyCode: state.detail.companyCode,
-                        productName: state.detail.productName,
-                        defaultRackId: state.detail.defaultRackId,
-                        defaultRackName: state.detail.defaultRackName,
-                      ),
+            title: BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
+              builder: (context, state) {
+                if (state is CompanyItemDetailLoaded) {
+                  return Text(
+                    state.detail.companyCode,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.mono.copyWith(
+                      color: AppColors.onSurface,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   );
-                },
-                child: Text(
-                  '+ TAMBAH VARIAN',
-                  style: TextStyle(
-                    color: AppColors.surface,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                ),
-              );
-            },
+                }
+                return const Text('Item Detail');
+              },
+            ),
+            actions: [
+              // Menu Edit untuk atur lokasi
+              // BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
+              //   builder: (context, state) {
+              //     if (state is! CompanyItemDetailLoaded) {
+              //       return const SizedBox.shrink();
+              //     }
+
+              //     return PopupMenuButton<String>(
+              //       icon: Icon(Icons.more_vert, color: AppColors.onSurface),
+              //       onSelected: (value) {
+              //         if (value == 'edit_rack') {
+              //           _navigateToEditRack(context, state.detail);
+              //         }
+              //       },
+              //       itemBuilder: (BuildContext context) => [
+              //         PopupMenuItem<String>(
+              //           value: 'edit_rack',
+              //           child: Row(
+              //             children: [
+              //               Icon(
+              //                 Icons.edit_location_alt_outlined,
+              //                 size: 18,
+              //                 color: AppColors.onBackground,
+              //               ),
+              //               SizedBox(width: 8),
+              //               Text(
+              //                 'Atur Lokasi',
+              //                 style: TextStyle(
+              //                   color: AppColors.onBackground,
+              //                   fontSize: 14,
+              //                 ),
+              //               ),
+              //             ],
+              //           ),
+              //         ),
+              //       ],
+              //     );
+              //   },
+              // ),
+            ],
           ),
-        ),
-        body: BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
-          builder: (context, state) {
-            if (state is CompanyItemDetailLoading ||
-                state is CompanyItemDetailInitial) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (state is CompanyItemDetailError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Terjadi kesalahan:\n${state.message}',
-                        textAlign: TextAlign.center,
+          bottomNavigationBar: Container(
+            padding: const EdgeInsets.all(16),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              border: Border(
+                top: BorderSide(width: 0.2, color: AppColors.border),
+              ),
+            ),
+            child: BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
+              builder: (context, state) {
+                if (state is! CompanyItemDetailLoaded) {
+                  return const SizedBox.shrink();
+                }
+                return CustomButton(
+                  elevation: 0,
+                  radius: 40,
+                  height: 50,
+                  color: AppColors.primary,
+                  onPressed: () async {
+                    User _user = (await UserStorage.getUser())!;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CreateVariantScreen(
+                          companyItemId: widget.companyItemId,
+                          userId: _user.id!,
+                          companyCode: state.detail.companyCode,
+                          productName: state.detail.productName,
+                          defaultRackId: state.detail.defaultRackId,
+                          defaultRackName: state.detail.defaultRackName,
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: () =>
-                            _cubit.watchDetail(widget.companyItemId),
-                        child: const Text('Coba lagi'),
-                      ),
-                    ],
+                    );
+                  },
+                  child: Text(
+                    '+ TAMBAH VARIAN',
+                    style: TextStyle(
+                      color: AppColors.surface,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
                   ),
-                ),
-              );
-            }
+                );
+              },
+            ),
+          ),
+          body: BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
+            builder: (context, state) {
+              if (state is CompanyItemDetailLoading ||
+                  state is CompanyItemDetailInitial) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-            if (state is CompanyItemDetailLoaded) {
-              final detail = state.detail;
-              return RefreshIndicator(
-                onRefresh: () => _cubit.loadDetail(widget.companyItemId),
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
+              if (state is CompanyItemDetailError) {
+                return Center(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      16,
-                      16,
-                      16,
-                      96,
-                    ), // bottom padding for FAB
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildHeaderCard(detail),
-                        const SizedBox(height: 12),
-                        _buildSetupBanner(detail),
-                        const SizedBox(height: 16),
-                        _buildSectionTitle(
-                          'Daftar Variant',
-                          '${detail.variants.length} variant',
+                        Text(
+                          'Terjadi kesalahan:\n${state.message}',
+                          textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 12),
-                        _buildVariantList(detail),
+                        ElevatedButton(
+                          onPressed: () =>
+                              _cubit.watchDetail(widget.companyItemId),
+                          child: const Text('Coba lagi'),
+                        ),
                       ],
                     ),
                   ),
-                ),
-              );
-            }
+                );
+              }
 
-            return const SizedBox.shrink();
-          },
+              if (state is CompanyItemDetailLoaded) {
+                final detail = state.detail;
+                return RefreshIndicator(
+                  onRefresh: () => _cubit.loadDetail(widget.companyItemId),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        16,
+                        16,
+                        16,
+                        96,
+                      ), // bottom padding for FAB
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeaderCard(detail),
+                          const SizedBox(height: 12),
+                          _buildSetupBanner(detail),
+                          const SizedBox(height: 16),
+                          _buildSectionTitle(
+                            'Daftar Variant',
+                            '${detail.variants.length} variant',
+                          ),
+                          const SizedBox(height: 12),
+                          _buildVariantList(detail),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              return const SizedBox.shrink();
+            },
+          ),
+          // floatingActionButton:
+          //     BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
+          //       builder: (context, state) {
+          //         if (state is! CompanyItemDetailLoaded) {
+          //           return const SizedBox.shrink();
+          //         }
+          //         return _buildAddVariantFab(
+          //           companyCode: state.detail.companyCode,
+          //           productName: state.detail.productName,
+          //           defaultRackId: state.detail.defaultRackId,
+          //           defaultRackName: state.detail.defaultRackName,
+          //         );
+          //       },
+          //     ),
         ),
-        // floatingActionButton:
-        //     BlocBuilder<CompanyItemDetailCubit, CompanyItemDetailState>(
-        //       builder: (context, state) {
-        //         if (state is! CompanyItemDetailLoaded) {
-        //           return const SizedBox.shrink();
-        //         }
-        //         return _buildAddVariantFab(
-        //           companyCode: state.detail.companyCode,
-        //           productName: state.detail.productName,
-        //           defaultRackId: state.detail.defaultRackId,
-        //           defaultRackName: state.detail.defaultRackName,
-        //         );
-        //       },
-        //     ),
       ),
     );
   }
@@ -308,14 +314,16 @@ class _CompanyItemDetailScreenState extends State<CompanyItemDetailScreen> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        detail.categoryName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
+                      if (detail.categoryName.isNotEmpty) ...[
+                        Text(
+                          detail.categoryName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
+                        const SizedBox(height: 4),
+                      ],
 
                       // MODIFIKASI: Tampilkan button "Atur Lokasi" jika rack null
                       if (detail.defaultRackName == null)

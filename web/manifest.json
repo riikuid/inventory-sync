@@ -1,6 +1,6 @@
 {
-     "name": "MP Inventory",
-     "short_name": "MP Inventory",
+     "name": "MP Inventory and Stocks",
+     "short_name": "MP Inventory and Stocks",
      "start_url": ".",
      "display": "standalone",
      "background_color": "#0175C2",
